@@ -1,17 +1,18 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useDispatch, useSelector } from 'react-redux';
+import { addTracePoint, resetTracePoints } from './StateTimeSeries';
 
-const Satellite = ({ elapsedTime, radius, theta }) => {
+const Satellite = ({ particleId, elapsedTime, radius, theta }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
-  const [tracePoints, setTracePoints] = useState([]);
+  const dispatch = useDispatch();
 
-  useEffect(() => {
-    if (elapsedTime === 0) {
-      setTracePoints([]);
-    }
-  }, [elapsedTime]);
+  const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
+
+  
+
 
   useFrame(() => {
     const t = elapsedTime*radius*0.2;
@@ -20,21 +21,23 @@ const Satellite = ({ elapsedTime, radius, theta }) => {
     const phi = 0.05 * t;
 
     if (satelliteRef.current) {
-      satelliteRef.current.position.x = x * Math.cos(theta) * Math.cos(phi) + z * Math.sin(phi);
-      satelliteRef.current.position.y = x * Math.sin(theta);
-      satelliteRef.current.position.z = -x * Math.cos(theta) * Math.sin(phi) + z * Math.cos(phi);
+      const newX = x * Math.cos(theta) * Math.cos(phi) + z * Math.sin(phi);
+      const newY = x * Math.sin(theta);
+      const newZ = -x * Math.cos(theta) * Math.sin(phi) + z * Math.cos(phi);
+      
+      satelliteRef.current.position.x = newX;
+      satelliteRef.current.position.y = newY;
+      satelliteRef.current.position.z = newZ;
 
-      setTracePoints(prevPoints => [
-        ...prevPoints,
-        satelliteRef.current.position.x,
-        satelliteRef.current.position.y,
-        satelliteRef.current.position.z
-      ]);
+      const tracePoint = { x: newX, y: newY, z: newZ };
+      dispatch(addTracePoint({ id: particleId, tracePoint }));
+
+      const newTracePoints = particle.tracePoints.flatMap(p => [p.x, p.y, p.z]);
 
       if (lineRef.current) {
         lineRef.current.geometry.setAttribute(
           'position',
-          new THREE.Float32BufferAttribute(tracePoints, 3)
+          new THREE.Float32BufferAttribute(newTracePoints, 3)
         );
       }
     }
@@ -50,8 +53,8 @@ const Satellite = ({ elapsedTime, radius, theta }) => {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            array={new Float32Array(tracePoints)}
-            count={tracePoints.length / 3}
+            array={new Float32Array(particle ? particle.tracePoints.flatMap(p => [p.x, p.y, p.z]) : [])}
+            count={particle ? particle.tracePoints.length : 0}
             itemSize={3}
           />
         </bufferGeometry>

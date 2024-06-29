@@ -7,6 +7,7 @@ const Satellites = ({ satellitesConfig, elapsedTime }) => {
       {satellitesConfig.map((config, index) => (
         <Satellite
           key={index}
+          particleId={config.id}
           elapsedTime={elapsedTime}
           radius={config.radius}
           theta={config.theta}

@@ -3,25 +3,28 @@ import { useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import Satellites from './Satellites';
+import { useDispatch } from 'react-redux';
+import { initializeParticles } from './StateTimeSeries';
 
 
 const EarthScene = ({ elapsedTime}) => {
   const earthRef = useRef();
-  const satelliteRef = useRef();
-  const lineRef = useRef();
+
+  const dispatch = useDispatch();
+
   const [tracePoints, setTracePoints] = useState([]);
   const satellitesConfig = [
-    { radius: 2.1, theta: 0.1 },
-    { radius: 2.2, theta: 1 },
-    { radius: 2.5, theta: 0.3 },
+    { id: 0, radius: 2.1, theta: 0.1 },
+    { id: 1, radius: 2.2, theta: 1 },
+    { id: 2, radius: 2.5, theta: 0.3 },
     // Add more satellite configurations as needed
   ];
 
   useEffect(() => {
     if (elapsedTime === 0) {
-      setTracePoints([]);
+      dispatch(initializeParticles(satellitesConfig.map(s => ({ id: s.id, tracePoints: [] }))));
     }
-  }, [elapsedTime]);
+  }, [elapsedTime, dispatch]);
 
   useFrame(() => {
     if (earthRef.current) {
