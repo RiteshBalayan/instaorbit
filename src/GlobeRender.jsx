@@ -18,7 +18,7 @@ const GlobeRender = ({ elapsedTime}) => {
   
     return (
       <>
-        <ambientLight intensity={0.9} />
+        <ambientLight intensity={0.5} />
         <directionalLight position={[5, 3, 5]} />
         <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
         

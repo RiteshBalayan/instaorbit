@@ -1,0 +1,21 @@
+/* src/components/VerticalSlider.css */
+.vertical-slider {
+    height: 300px;
+    width: 50px;
+  }
+  
+  .thumb {
+    height: 20px;
+    width: 50px;
+    background-color: #fff;
+    border: 1px solid #000;
+    text-align: center;
+    line-height: 20px;
+  }
+  
+  .track {
+    background: #ddd;
+    width: 10px;
+    right: 20px;
+  }
+  
