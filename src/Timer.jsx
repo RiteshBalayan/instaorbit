@@ -93,7 +93,7 @@ const Timer = () => {
           onChange={handleSliderChange}
           orientation="horizontal" // Set slider orientation to horizontal
           invert={false} // Adjust as needed
-          min={0}
+          min={0.001}
           max={Math.max(...timePoints)}
           step={0.001}
           marks={timePoints}

@@ -5,6 +5,8 @@ import { useSelector } from 'react-redux';
 import Timer from './Timer';
 import './App.css';
 import GlobeRender from './GlobeRender';
+import MapRender from './MapRender';
+
 
 function App() {
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
@@ -13,10 +15,13 @@ function App() {
     <div className="App">
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Timer />
-        <Canvas style={{ height: '1000px', width: '100%' }}>
+        <MapRender />
+        <Canvas style={{ height: '400px', width: '50%' }}>
           <GlobeRender elapsedTime={elapsedTime} />
         </Canvas>
+        
       </div>
+      
     </div>
   );
 }

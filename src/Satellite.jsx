@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, resetTracePoints } from './StateTimeSeries';
+import { updateCoordinate } from './CurrentState';
 
 const Satellite = ({ particleId, elapsedTime, radius, theta }) => {
   const satelliteRef = useRef();
@@ -28,8 +29,15 @@ const Satellite = ({ particleId, elapsedTime, radius, theta }) => {
 
         satelliteRef.current.position.set(newX, newY, newZ);
 
-        const tracePoint = {time: elapsedTime, x: newX, y: newY, z: newZ };
+        const r = Math.sqrt((newX)**2 + (newY)**2 + (newZ)**2)
+        const newPhi = Math.atan(newX/newZ)
+        const newTheta = Math.acos(newY/r)
+        const twodY = newX
+        const twodX = (newPhi/(Math.PI/2))*5
+
+        const tracePoint = {time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY};
         dispatch(addTracePoint({ id: particleId, tracePoint }));
+        dispatch(updateCoordinate({id: particleId, coordinates: tracePoint }))
 
         const newTracePoints = particle.tracePoints.flatMap(p => [p.x, p.y, p.z]);
 

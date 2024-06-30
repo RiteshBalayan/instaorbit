@@ -1,12 +1,16 @@
-/* src/components/VerticalSlider.css */
-.vertical-slider {
-    height: 300px;
-    width: 50px;
+.horizontal-slider-container {
+    width: 100%;
+    margin-top: 20px;
+  }
+  
+  .horizontal-slider {
+    width: calc(100% - 20px); /* Adjust width as needed */
+    height: 20px;
   }
   
   .thumb {
     height: 20px;
-    width: 50px;
+    width: 20px;
     background-color: #fff;
     border: 1px solid #000;
     text-align: center;
@@ -15,7 +19,5 @@
   
   .track {
     background: #ddd;
-    width: 10px;
-    right: 20px;
+    height: 10px;
   }
-  

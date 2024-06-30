@@ -4,3 +4,11 @@
   margin: 0;
   overflow: hidden;
 }
+
+.canvas-container {
+  width: 600px;
+  height: 400px;
+  border: 2px solid white;
+  border-radius: 10px;
+  overflow: hidden;
+}
