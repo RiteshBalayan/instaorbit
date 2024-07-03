@@ -78,7 +78,7 @@ function App() {
           />
         </div>
         <div className="bottom-panel">
-          <div>
+          <div className="content">
               <Timer />
           </div>
         </div>
