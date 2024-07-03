@@ -12,25 +12,26 @@ function MapRender() {
   const url = "/00_earthmap1k.jpg"
   const texture = useLoader(TextureLoader, url);
   const aspectRatio = texture.image.width / texture.image.height;
-  const width = 10;
+  const width = 15;
   const height = width / aspectRatio;
 
   return (
-    <div className="canvas-container">
-      <Canvas>
+    <div style={{ width: '40vw', height: '50vh' }}>
+      <Canvas style={{ width: '100%', height: '100%' }}>
         {/* Set up an orthographic camera for 2D rendering */}
         <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={50} />
         <ambientLight />
 
         <mesh>
-            <planeGeometry args={[width, height]} />
-            <meshBasicMaterial map={texture} />
+          <planeGeometry args={[width, height]} />
+          <meshBasicMaterial map={texture} />
         </mesh>
 
         {/* Use the Map component to display the image */}
         <Maps />
       </Canvas>
     </div>
+
   );
 }
 
