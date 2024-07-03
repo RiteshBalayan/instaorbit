@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import SateliteRender from './SateliteRender';
+import SatelliteRender from './SatelliteRender';
 
 const GlobeRender = ({ elapsedTime}) => {
     const earthRef = useRef();
@@ -27,7 +27,7 @@ const GlobeRender = ({ elapsedTime}) => {
           <meshStandardMaterial map={texture} />
         </mesh>
   
-        <SateliteRender elapsedTime={elapsedTime} />
+        <SatelliteRender elapsedTime={elapsedTime} />
         
         <OrbitControls enableZoom={true} />
       </>

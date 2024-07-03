@@ -6,6 +6,7 @@ import Timer from './Timer';
 import './App.css';
 import GlobeRender from './GlobeRender';
 import MapRender from './MapRender';
+import SatelliteConfig from './SatelliteConfig';
 
 
 function App() {
@@ -15,7 +16,9 @@ function App() {
     <div className="App">
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Timer />
-        <MapRender />
+        
+        <SatelliteConfig />
+        {/*<MapRender />*/}
         <Canvas style={{ height: '400px', width: '50%' }}>
           <GlobeRender elapsedTime={elapsedTime} />
         </Canvas>

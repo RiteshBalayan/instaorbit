@@ -1,7 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  particles: [],
+  particles: [
+  ],
+
 };
 
 const particleSlice = createSlice({
@@ -9,7 +11,8 @@ const particleSlice = createSlice({
   initialState,
   reducers: {
     initializeParticles: (state, action) => {
-      state.particles = action.payload;
+      const newParticle = action.payload;
+      state.particles.push(newParticle);
     },
     addTracePoint: (state, action) => {
       const { id, tracePoint } = action.payload;
