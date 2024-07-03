@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateSatellites } from './satelliteSlice';
-import { initializeParticles } from './StateTimeSeries'
+import { updateSatellites } from '../Store/satelliteSlice';
+import { initializeParticles } from '../Store/StateTimeSeries'
 
 const SatelliteConfig = () => {
   const dispatch = useDispatch();

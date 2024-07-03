@@ -8,7 +8,7 @@ import {
   addTimePoint,
   goToTimePoint,
   setElapsedTime,
-} from './timeSlice';
+} from './Store/timeSlice';
 import ReactSlider from 'react-slider';
 import './HorizontalSlider.css';
 

@@ -7,6 +7,7 @@ import Satellites from './Satellites';
 const SatelliteRender = ({ elapsedTime }) => {
   const satellitesConfig = useSelector(state => state.satellites.satellitesConfig);
 
+  
   return (
     
       <Satellites satellitesConfig={satellitesConfig} elapsedTime={elapsedTime} />

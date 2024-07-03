@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
 import Maps from './Maps';
 import { useLoader, useFrame } from '@react-three/fiber';
-import './App.css';
+import '../App.css';
 import { TextureLoader } from 'three';
 
 function MapRender() {

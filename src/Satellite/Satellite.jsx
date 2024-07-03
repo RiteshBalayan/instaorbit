@@ -2,8 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
-import { addTracePoint, initializeParticles } from './StateTimeSeries';
-import { updateCoordinate } from './CurrentState';
+import { addTracePoint, initializeParticles } from '../Store/StateTimeSeries';
+import { updateCoordinate } from '../Store/CurrentState';
 
 const Satellite = ({ particleId, elapsedTime, radius, theta }) => {
   const satelliteRef = useRef();

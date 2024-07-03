@@ -4,9 +4,9 @@ import { Canvas } from '@react-three/fiber';
 import { useSelector } from 'react-redux';
 import Timer from './Timer';
 import './App.css';
-import GlobeRender from './GlobeRender';
-import MapRender from './MapRender';
-import SatelliteConfig from './SatelliteConfig';
+import GlobeRender from './Satellite/GlobeRender';
+import MapRender from './Twomap/MapRender';
+import SatelliteConfig from './Satellite/SatelliteConfig';
 
 
 function App() {
