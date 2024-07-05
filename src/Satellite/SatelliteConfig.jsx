@@ -9,7 +9,7 @@ const SatelliteConfig = () => {
 
   const addSatellite = () => {
     const newId = satellitesConfig.length > 0 ? satellitesConfig[satellitesConfig.length - 1].id + 1 : 0;
-    const newSatellite = { id: newId, radius: 0, theta: 0 };
+    const newSatellite = { id: newId, radius: 0, theta: 0,  eccentricity: 0, closestapproch:0};
     const newConfig = [...satellitesConfig, newSatellite];
     dispatch(updateSatellites(newConfig));
     dispatch(initializeParticles({ id: newId, tracePoints: [{time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0}]}))
@@ -43,6 +43,22 @@ const SatelliteConfig = () => {
               type="number"
               value={satellite.theta}
               onChange={(e) => updateSatellite(satellite.id, 'theta', e.target.value)}
+            />
+          </label>
+          <label>
+          Closestapproch:
+            <input
+              type="number"
+              value={satellite.closestapproch}
+              onChange={(e) => updateSatellite(satellite.id, 'closestapproch', e.target.value)}
+            />
+          </label>
+          <label>
+          Eccentricity:
+            <input
+              type="number"
+              value={satellite.eccentricity}
+              onChange={(e) => updateSatellite(satellite.id, 'eccentricity', e.target.value)}
             />
           </label>
           <button onClick={() => deleteSatellite(satellite.id)}>Delete</button>

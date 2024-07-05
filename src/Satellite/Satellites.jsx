@@ -11,6 +11,8 @@ const Satellites = ({ satellitesConfig, elapsedTime }) => {
           elapsedTime={elapsedTime}
           radius={config.radius}
           theta={config.theta}
+          eccentricity={config.eccentricity}
+          closestapproch={config.closestapproch}
         />
       ))}
     </>

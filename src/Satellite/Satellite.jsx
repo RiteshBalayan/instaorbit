@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../Store/StateTimeSeries';
 import { updateCoordinate } from '../Store/CurrentState';
 
-const Satellite = ({ particleId, elapsedTime, radius, theta }) => {
+const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, eccentricity }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
   const dispatch = useDispatch();
@@ -17,10 +17,17 @@ const Satellite = ({ particleId, elapsedTime, radius, theta }) => {
   useEffect(() => {
     // Check if elapsedTime has changed
     if (elapsedTime !== prevElapsedTime.current) {
-      const t = elapsedTime * radius * 2;
-      const x = radius * Math.cos(t * 5);
-      const z = radius * Math.sin(t * 5);
+      const closestapprochFromFocus = closestapproch + 2
+      const c = ( eccentricity*closestapprochFromFocus )/( 1 - eccentricity)
+      const semimazoraxis = c + closestapprochFromFocus
+      const semiminoraxis = Math.sqrt(semimazoraxis**2 - c**2)
+      const axisofset = semimazoraxis - closestapprochFromFocus
+      const t = (elapsedTime / semimazoraxis);
+      const x = semiminoraxis * Math.cos(t);
+      const z = (semimazoraxis * Math.sin(t) ) + axisofset;
       const phi = 0.05 * t;
+      
+     
 
       if (satelliteRef.current) {
         const newX = x * Math.cos(theta) * Math.cos(phi) + z * Math.sin(phi);
