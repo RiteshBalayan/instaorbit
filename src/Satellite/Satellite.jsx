@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../Store/StateTimeSeries';
 import { updateCoordinate } from '../Store/CurrentState';
 
-const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, eccentricity }) => {
+const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, eccentricity, argumentOfPerapsis }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
   const dispatch = useDispatch();
@@ -22,17 +22,55 @@ const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, ecc
       const semimazoraxis = c + closestapprochFromFocus
       const semiminoraxis = Math.sqrt(semimazoraxis**2 - c**2)
       const axisofset = semimazoraxis - closestapprochFromFocus
-      const t = (elapsedTime / semimazoraxis);
+      const t = (elapsedTime / semimazoraxis)*100;
       const x = semiminoraxis * Math.cos(t);
+      const y = 0;
       const z = (semimazoraxis * Math.sin(t) ) + axisofset;
       const phi = 0.05 * t;
-      
-     
 
+
+      const rotateXMatrix = (theta) => [
+          [1, 0, 0],
+          [0, Math.cos(theta), -Math.sin(theta)],
+          [0, Math.sin(theta), Math.cos(theta)]
+      ];
+      
+      const rotateYMatrix = (theta) => [
+          [Math.cos(theta), 0, Math.sin(theta)],
+          [0, 1, 0],
+          [-Math.sin(theta), 0, Math.cos(theta)]
+      ];
+      
+      const rotateZMatrix = (theta) => [
+          [Math.cos(theta), -Math.sin(theta), 0],
+          [Math.sin(theta), Math.cos(theta), 0],
+          [0, 0, 1]
+      ];
+      
+      const multiplyMatrixVector = (matrix, vector) => {
+          let [x, y, z] = vector;
+          return [
+              matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z,
+              matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z,
+              matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z
+          ];
+      };
+
+      const rotatex = rotateXMatrix(theta)
+      const rotatey = rotateYMatrix(phi) 
+      const vector = [x,y,z]
+
+     
       if (satelliteRef.current) {
-        const newX = x * Math.cos(theta) * Math.cos(phi) + z * Math.sin(phi);
-        const newY = x * Math.sin(theta);
-        const newZ = -x * Math.cos(theta) * Math.sin(phi) + z * Math.cos(phi);
+
+        // First rotate with rotatex
+        const vectorAfterXRotation = multiplyMatrixVector(rotatex, vector);
+
+        // Then rotate with rotatey
+        const vectorAfterXYRotation = multiplyMatrixVector(rotatey, vectorAfterXRotation);
+
+        const [newX, newY, newZ] = vectorAfterXYRotation;
+      
 
         satelliteRef.current.position.set(newX, newY, newZ);
 
@@ -59,7 +97,7 @@ const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, ecc
       // Update previous elapsedTime
       prevElapsedTime.current = elapsedTime;
     }
-  }, [dispatch, elapsedTime, particleId, particle, radius, theta]);
+  }, [dispatch, elapsedTime, particleId, particle, theta]);
 
   return (
     <>
