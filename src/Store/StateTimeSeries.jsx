@@ -37,8 +37,12 @@ const particleSlice = createSlice({
         particle.tracePoints = [];
       }
     },
+    deleteParticle: (state, action) => {
+      const idToDelete = action.payload;
+      state.particles = state.particles.filter(particle => particle.id !== idToDelete);
+    },
   },
 });
 
-export const { initializeParticles, addTracePoint, resetTracePoints } = particleSlice.actions;
+export const { initializeParticles, addTracePoint, resetTracePoints, deleteParticle } = particleSlice.actions;
 export default particleSlice.reducer;

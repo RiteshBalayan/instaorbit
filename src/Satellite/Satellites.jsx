@@ -9,10 +9,12 @@ const Satellites = ({ satellitesConfig, elapsedTime }) => {
           key={index}
           particleId={config.id}
           elapsedTime={elapsedTime}
-          radius={config.radius}
+          argumentOfPeriapsis={config.argumentOfPeriapsis}
           theta={config.theta}
           eccentricity={config.eccentricity}
           closestapproch={config.closestapproch}
+          nodalrotation={config.nodalrotation}
+          trueanomly={config.trueanomly}
         />
       ))}
     </>

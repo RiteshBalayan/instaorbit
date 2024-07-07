@@ -1,15 +1,16 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, extend } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../Store/StateTimeSeries';
 import { updateCoordinate } from '../Store/CurrentState';
+import { Shape } from 'three';
 
-const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, eccentricity, argumentOfPerapsis }) => {
+
+const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricity, argumentOfPeriapsis, nodalrotation, trueanomly }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
   const dispatch = useDispatch();
-
   const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
   const prevElapsedTime = useRef(elapsedTime);
 
@@ -23,12 +24,16 @@ const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, ecc
       const semiminoraxis = Math.sqrt(semimazoraxis**2 - c**2)
       const axisofset = semimazoraxis - closestapprochFromFocus
       const t = (elapsedTime / semimazoraxis)*100;
-      const x = semiminoraxis * Math.cos(t);
+      const x = semiminoraxis * Math.cos(t + THREE.MathUtils.degToRad(trueanomly));
       const y = 0;
-      const z = (semimazoraxis * Math.sin(t) ) + axisofset;
+      const z = (semimazoraxis * Math.sin(t + THREE.MathUtils.degToRad(trueanomly))) + axisofset;
       const phi = 0.05 * t;
 
+      //Anomly calculations
+      const mu = 1;
+      const timeperiod = 2*Math.PI*Math.sqrt((semimazoraxis**3)/mu);
 
+      // Other Transformations
       const rotateXMatrix = (theta) => [
           [1, 0, 0],
           [0, Math.cos(theta), -Math.sin(theta)],
@@ -56,22 +61,30 @@ const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, ecc
           ];
       };
 
-      const rotatex = rotateXMatrix(theta)
+      const rotatex = rotateXMatrix(THREE.MathUtils.degToRad(theta))
+      const rotateNodal = rotateZMatrix(THREE.MathUtils.degToRad(nodalrotation))
       const rotatey = rotateYMatrix(phi) 
-      const vector = [x,y,z]
+      const rotateargumentOfPeriapsis = rotateYMatrix(THREE.MathUtils.degToRad(argumentOfPeriapsis))
 
-     
+      const vector = [x,y,z]
+    
       if (satelliteRef.current) {
 
-        // First rotate with rotatex
-        const vectorAfterXRotation = multiplyMatrixVector(rotatex, vector);
+        // Orbit inclination
+        const inclinationTransform = multiplyMatrixVector(rotatex, vector);
 
-        // Then rotate with rotatey
-        const vectorAfterXYRotation = multiplyMatrixVector(rotatey, vectorAfterXRotation);
+        // Orbit nodal rotation
+        const nodalTransform = multiplyMatrixVector(rotateNodal, inclinationTransform);
 
-        const [newX, newY, newZ] = vectorAfterXYRotation;
+        // Then rotate of earth surface (dynamic)
+        const vectorAfterXYRotation = multiplyMatrixVector(rotatey, nodalTransform);
+
+        //Fixed rotation (argumentOfPeriapsis)
+
+        const finalposition = multiplyMatrixVector(rotateargumentOfPeriapsis, vectorAfterXYRotation)
+
+        const [newX, newY, newZ] = finalposition;
       
-
         satelliteRef.current.position.set(newX, newY, newZ);
 
         const r = Math.sqrt((newX)**2 + (newY)**2 + (newZ)**2)
@@ -99,6 +112,31 @@ const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, ecc
     }
   }, [dispatch, elapsedTime, particleId, particle, theta]);
 
+
+  const ellipseRef = useRef();
+
+  const closestapprochFromFocus = closestapproch + 2
+  const c = ( eccentricity*closestapprochFromFocus )/( 1 - eccentricity)
+  const semimazoraxis = c + closestapprochFromFocus
+  const semiminoraxis = Math.sqrt(semimazoraxis**2 - c**2)
+
+  // Create the shape path
+  const shape = new Shape();
+  shape.absellipse(0, c, semiminoraxis, semimazoraxis, 0, Math.PI * 2, false, 0);
+
+
+  // Create points from the shape
+  const points = shape.getPoints(100);
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+  // Apply rotations to the geometry
+  geometry.rotateX(THREE.MathUtils.degToRad(theta) + Math.PI/2);
+  geometry.rotateZ(THREE.MathUtils.degToRad(nodalrotation));
+  geometry.rotateY(THREE.MathUtils.degToRad(argumentOfPeriapsis));
+
+  const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;;
+  console.log(preview)
+
   return (
     <>
       <mesh ref={satelliteRef}>
@@ -116,6 +154,11 @@ const Satellite = ({ particleId, elapsedTime, radius, theta, closestapproch, ecc
         </bufferGeometry>
         <lineBasicMaterial color="yellow" linewidth={0.5} />
       </line>
+      {preview.visibility &&
+        <line ref={ellipseRef} geometry={geometry}>
+          <lineBasicMaterial color="red" linewidth={3} />
+        </line>
+      }
     </>
   );
 };
