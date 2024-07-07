@@ -23,15 +23,59 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
       const semimazoraxis = c + closestapprochFromFocus
       const semiminoraxis = Math.sqrt(semimazoraxis**2 - c**2)
       const axisofset = semimazoraxis - closestapprochFromFocus
-      const t = (elapsedTime / semimazoraxis)*100;
-      const x = semiminoraxis * Math.cos(t + THREE.MathUtils.degToRad(trueanomly));
-      const y = 0;
-      const z = (semimazoraxis * Math.sin(t + THREE.MathUtils.degToRad(trueanomly))) + axisofset;
-      const phi = 0.05 * t;
-
-      //Anomly calculations
       const mu = 1;
       const timeperiod = 2*Math.PI*Math.sqrt((semimazoraxis**3)/mu);
+      const frequency = 1 / timeperiod
+      const t = elapsedTime*200;
+      const x = semiminoraxis * Math.sin(2*Math.PI*frequency*t + THREE.MathUtils.degToRad(trueanomly));
+      const y = 0;
+      const z = (semimazoraxis * Math.cos(2*Math.PI*frequency*t + THREE.MathUtils.degToRad(trueanomly))) - axisofset;
+      const phi = 0.01 * t;
+
+      //Anomly calculations
+      const perigeetoanomlytime = (THREE.MathUtils.degToRad(trueanomly) / ( 2*(Math.PI) ) )*timeperiod
+      const firstperigeetime = perigeetoanomlytime - timeperiod
+      const timesinceperigee = (t + firstperigeetime) % timeperiod
+      const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
+      
+      function meanToEccentricAnomaly(M, e, tolerance = 1e-6) {
+        // Normalize mean anomaly M to the range 0 to 2π
+          M = M % (2 * Math.PI);
+          if (M < 0) {
+              M += 2 * Math.PI;
+          }
+      
+          let E = M; // Initial guess for E is M
+          let delta = 1;
+          
+          while (Math.abs(delta) > tolerance) {
+              delta = (M - (E - e * Math.sin(E))) / (1 - e * Math.cos(E));
+              E += delta;
+          }
+          
+          return E;
+      }
+
+      const essentricanomly = meanToEccentricAnomaly(meananomly, eccentricity);
+
+      function eccentricToTrueAnomaly(E, e) {
+          // Calculate the true anomaly (ν) from eccentric anomaly (E) and eccentricity (e)
+          const tanNuOver2 = Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2);
+          let nu = 2 * Math.atan(tanNuOver2);
+      
+          // Adjust ν to be within 0 to 2π
+          if (nu < 0) {
+              nu += 2 * Math.PI;
+          }
+      
+          return nu;
+      }
+
+      const renderanomly = eccentricToTrueAnomaly(essentricanomly, eccentricity);
+
+      const Xanomly = semiminoraxis * Math.sin(renderanomly)
+      const Yanomly = 0
+      const Zanomly = (semimazoraxis * Math.cos(renderanomly)) - axisofset;
 
       // Other Transformations
       const rotateXMatrix = (theta) => [
@@ -66,7 +110,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
       const rotatey = rotateYMatrix(phi) 
       const rotateargumentOfPeriapsis = rotateYMatrix(THREE.MathUtils.degToRad(argumentOfPeriapsis))
 
-      const vector = [x,y,z]
+      const vector = [Xanomly, Yanomly, Zanomly]
     
       if (satelliteRef.current) {
 
@@ -84,7 +128,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
         const finalposition = multiplyMatrixVector(rotateargumentOfPeriapsis, vectorAfterXYRotation)
 
         const [newX, newY, newZ] = finalposition;
-      
+
         satelliteRef.current.position.set(newX, newY, newZ);
 
         const r = Math.sqrt((newX)**2 + (newY)**2 + (newZ)**2)
@@ -122,7 +166,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
 
   // Create the shape path
   const shape = new Shape();
-  shape.absellipse(0, c, semiminoraxis, semimazoraxis, 0, Math.PI * 2, false, 0);
+  shape.absellipse(0, -c, semiminoraxis, semimazoraxis, 0, Math.PI * 2, false, 0);
 
 
   // Create points from the shape
@@ -134,8 +178,9 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
   geometry.rotateZ(THREE.MathUtils.degToRad(nodalrotation));
   geometry.rotateY(THREE.MathUtils.degToRad(argumentOfPeriapsis));
 
-  const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;;
-  console.log(preview)
+  const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
+  // this function is in development
+  //console.log(preview)
 
   return (
     <>
