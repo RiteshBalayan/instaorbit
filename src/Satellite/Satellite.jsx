@@ -30,7 +30,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
       const x = semiminoraxis * Math.sin(2*Math.PI*frequency*t + THREE.MathUtils.degToRad(trueanomly));
       const y = 0;
       const z = (semimazoraxis * Math.cos(2*Math.PI*frequency*t + THREE.MathUtils.degToRad(trueanomly))) - axisofset;
-      const phi = 0.01 * t;
+      const phi = -0.01 * t;
 
       //Anomly calculations
       const perigeetoanomlytime = (THREE.MathUtils.degToRad(trueanomly) / ( 2*(Math.PI) ) )*timeperiod
@@ -72,7 +72,6 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
       }
 
       const renderanomly = eccentricToTrueAnomaly(essentricanomly, eccentricity);
-
       const Xanomly = semiminoraxis * Math.sin(renderanomly)
       const Yanomly = 0
       const Zanomly = (semimazoraxis * Math.cos(renderanomly)) - axisofset;
@@ -132,10 +131,10 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
         satelliteRef.current.position.set(newX, newY, newZ);
 
         const r = Math.sqrt((newX)**2 + (newY)**2 + (newZ)**2)
-        const newPhi = Math.atan(newX/newZ)
-        const newTheta = Math.acos(newY/r)
-        const twodY = newX
-        const twodX = (newPhi/(Math.PI/2))*5
+        const twoDphi = Math.atan2(-newZ, newX)
+        const twoDTheta = Math.acos(newY/r)
+        const twodX = (twoDphi/Math.PI)*7.5
+        const twodY = ((-twoDTheta/Math.PI) + 0.5 )*7.5
 
         const tracePoint = {time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY};
         dispatch(addTracePoint({ id: particleId, tracePoint }));

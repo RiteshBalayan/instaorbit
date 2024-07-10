@@ -95,7 +95,7 @@ const SatelliteConfig = () => {
             <input
               type="range"
               min="0"
-              max="10"
+              max="50"
               step="0.01"
               value={satellite.closestapproch}
               onChange={(e) => updateSatellite(satellite.id, 'closestapproch', e.target.value)}
