@@ -1,0 +1,67 @@
+.container {
+  
+  height: 100vh;
+  width: 100vw;
+  justify-content: center;
+  align-items: center;
+  background-color: #000000;
+
+}
+
+.panel {
+  flex: 6;
+  display: flex;
+  flex-direction: column;
+  border-right: 10px solid #000000;
+}
+
+.main-panel {
+  background-color: #000000;
+  position: relative;
+  display:flex;
+  flex-direction: row;
+  width: 100vw
+}
+
+.test {
+  display:flex;
+  flex-direction: row;
+  position: relative;
+  width: 100vw
+
+}
+.primary {
+  border-right: 1px solid #000000;
+  
+}
+
+.secontary {
+  border-right: 1px solid #503c3c;
+  flex : 1
+  
+}
+
+.bottom-panel {
+  background-color: #1a1919;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+
+.resizer-horizontal {
+  height: 10px;
+  cursor: ns-resize;
+  background-color: #4576fc;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.resizer-vertical {
+  width: 10px;
+  cursor: ew-resize;
+  background-color: #3b69ff;
+  position: relative;
+}
