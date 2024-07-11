@@ -7,10 +7,6 @@ import './Simulator.css';
 import GlobeRender from './Satellite/GlobeRender';
 import MapRender from './Twomap/MapRender';
 import SatelliteConfig from './Satellite/SatelliteConfig';
-import Login from './firebase/login';
-import SignUp from './firebase/signup';
-import SignOut from './firebase/signout';
-import GoogleAuth from './firebase/googleauth';
 
 
 function Simulator() {
@@ -32,29 +28,8 @@ function Simulator() {
     setWidth(e.clientX);
   };
 
-  const user = useSelector((state) => state.auth.user);
-
   return (
     <div className="container">
-
-
-
-    <div>
-      <h1>Firebase Auth with React</h1>
-      {user ? (
-        <div>
-          <h2>Hello, {user.displayName || user.email}</h2>
-          <SignOut />
-        </div>
-      ) : (
-        <div>
-          <Login />
-          <GoogleAuth />
-        </div>
-      )}
-    </div>
-
-
 
       <div className="panel">
         <div className="main-panel" style={{ height: `${height}px` }}>  

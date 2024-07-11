@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import Simulator from './simulator';
+import HomePage from './HomePage';
 import './App.css';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       <Routes>
           <Route path="*" element={<LandingPage />} />
           <Route path="/simulator" element={<Simulator/>} />
+          <Route path="/homepage" element={<HomePage/>} />
         </Routes>
     </Router>
   );

@@ -16,7 +16,7 @@ const LandingPage = () => {
         >
           <h1 className="hero-title">World's First Web-Based Space Laboratory</h1>
           <p className="hero-subtitle">Prototype and optimize space missions in hours, not months.</p>
-          <Link to="/simulator">
+          <Link to="/homepage">
           <motion.button
             className="cta-button"
             whileHover={{ scale: 1.1 }}
