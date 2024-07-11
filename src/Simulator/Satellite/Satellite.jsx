@@ -2,8 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useFrame, extend } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
-import { addTracePoint, initializeParticles } from '../Store/StateTimeSeries';
-import { updateCoordinate } from '../Store/CurrentState';
+import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
+import { updateCoordinate } from '../../Store/CurrentState';
 import { Shape } from 'three';
 
 

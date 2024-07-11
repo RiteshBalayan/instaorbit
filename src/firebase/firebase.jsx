@@ -2,6 +2,9 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
 import store from '../Store/store'; // import the store
 import { setUser, clearUser } from '../Store/authSlice';
+import 'firebase/firestore';
+import 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCudNeubH3iECgWrQm5HqQyaeWcczT4NCQ",
@@ -16,6 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const firestore = getFirestore(app);
 
 // Listen to auth state changes and dispatch appropriate actions
 onAuthStateChanged(auth, (user) => {
@@ -26,4 +30,4 @@ onAuthStateChanged(auth, (user) => {
     }
   });
 
-export { auth, googleProvider };
+export { firestore, auth, googleProvider };
