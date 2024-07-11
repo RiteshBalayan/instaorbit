@@ -18,19 +18,24 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
   useEffect(() => {
     // Check if elapsedTime has changed
     if (elapsedTime !== prevElapsedTime.current) {
-      const closestapprochFromFocus = closestapproch + 2
+      //As render radius is 2 Unit so convert km to unit
+      const closestapprochFromFocus = ((closestapproch/3185.5) + 2)
       const c = ( eccentricity*closestapprochFromFocus )/( 1 - eccentricity)
-      const semimazoraxis = c + closestapprochFromFocus
-      const semiminoraxis = Math.sqrt(semimazoraxis**2 - c**2)
+      const semimazoraxis = (c + closestapprochFromFocus) ;
+      const semiminoraxis = (Math.sqrt(semimazoraxis**2 - c**2)) ;
       const axisofset = semimazoraxis - closestapprochFromFocus
-      const mu = 1;
+      //Gravitation constant times mass factored to our unit
+      //Orignal value is 3.98589196e14 m^3 s^-2
+      // multiply by 60^2 and divide by 318500^2
+      const mu = 0.0443910270;
       const timeperiod = 2*Math.PI*Math.sqrt((semimazoraxis**3)/mu);
       const frequency = 1 / timeperiod
-      const t = elapsedTime*200;
+      //Convert minutes to second
+      const t = elapsedTime/60;
       const x = semiminoraxis * Math.sin(2*Math.PI*frequency*t + THREE.MathUtils.degToRad(trueanomly));
       const y = 0;
       const z = (semimazoraxis * Math.cos(2*Math.PI*frequency*t + THREE.MathUtils.degToRad(trueanomly))) - axisofset;
-      const phi = -0.01 * t;
+      const phi = -7.292115e-5*60 * t;
 
       //Anomly calculations
       const perigeetoanomlytime = (THREE.MathUtils.degToRad(trueanomly) / ( 2*(Math.PI) ) )*timeperiod

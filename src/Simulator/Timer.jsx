@@ -21,12 +21,12 @@ const Timer = () => {
   const timePoints = useSelector((state) => state.timer.timePoints);
   const intervalRef = useRef(null);
   const [searchTime, setSearchTime] = useState('');
-  
+  const [timeStep, setTimeStep] = useState(0.001);
 
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = setInterval(() => {
-        const newTime = roundToThreeDecimals(elapsedTime + 0.001);
+        const newTime = roundToThreeDecimals(elapsedTime + timeStep);
         dispatch(updateElapsedTime(newTime));
         dispatch(addTimePoint(newTime));
       }, 1); // Update every 1ms for accurate timing
@@ -34,7 +34,7 @@ const Timer = () => {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isRunning, elapsedTime, dispatch]);
+  }, [isRunning, elapsedTime, timeStep, dispatch]);
 
   const handleStartPause = () => {
     dispatch(startPauseTimer());
@@ -66,9 +66,13 @@ const Timer = () => {
     dispatch(setElapsedTime(value));
   };
 
+  const handleTimeStepChange = (value) => {
+    setTimeStep(value);
+  };
+
   return (
     <div>
-      <p>Elapsed Time: {elapsedTime.toFixed(3)}s</p>
+      <p>Elapsed Time: {elapsedTime.toFixed(3)}s ; {(elapsedTime/60).toFixed(3)}m ; {(elapsedTime/3600).toFixed(3)}h</p>
       <button onClick={handleStartPause}>
         {isRunning ? 'Pause' : 'Start'}
       </button>
@@ -101,6 +105,21 @@ const Timer = () => {
         />
       </div>
 
+      <div>
+        <h4>Time Step: {timeStep}s</h4>
+        <ReactSlider
+          className="horizontal-slider"
+          thumbClassName="thumb"
+          trackClassName="track"
+          value={timeStep}
+          onChange={handleTimeStepChange}
+          orientation="horizontal"
+          invert={false}
+          min={0}
+          max={50}
+          step={0.001}
+        />
+      </div>
     </div>
   );
 };
