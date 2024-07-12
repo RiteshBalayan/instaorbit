@@ -11,7 +11,7 @@ const SatelliteRender = ({ elapsedTime }) => {
   return (
     
       <Satellites satellitesConfig={satellitesConfig} elapsedTime={elapsedTime} />
-    
+
   );
 };
 
