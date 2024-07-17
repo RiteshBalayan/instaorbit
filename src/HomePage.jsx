@@ -32,7 +32,7 @@ const HomePage = () => {
 
 
       <div className="card-container">
-        <Link to="/craft-optimizer" className="card">
+        <Link to="/cad" className="card">
           <div className="card-content">
             <h2>Craft Optimizer</h2>
             <p>Optimize your spacecraft design for efficiency and performance.</p>
@@ -46,7 +46,7 @@ const HomePage = () => {
           </div>
         </Link>
 
-        <Link to="/constellation-planner" className="card">
+        <Link to="/constellation" className="card">
           <div className="card-content">
             <h2>Constellation Planner</h2>
             <p>Design satellite constellations for optimal coverage and efficiency.</p>
