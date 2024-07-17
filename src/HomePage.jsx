@@ -1,14 +1,32 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import './HomePage.css'; 
 import Login from './firebase/login';
 import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';
+import { uploadState, downloadState } from './firebase/firebaseUtils';
 
 const HomePage = () => {
 
-    const user = useSelector((state) => state.auth.user);
+  const user = useSelector((state) => state.auth.user);
+
+  const dispatch = useDispatch();
+  const state = useSelector((state) => state);
+
+  const handleUpload = async () => {
+    await uploadState(state);
+  };
+
+  const handleDownload = async () => {
+    const downloadedState = await downloadState();
+    if (downloadedState) {
+      // Dispatch actions to set the Redux store state with the downloaded data
+      Object.keys(downloadedState).forEach((key) => {
+        dispatch({ type: `SET_${key.toUpperCase()}`, payload: downloadedState[key] });
+      });
+    }
+  };
 
   return (
     <div className="home-page">
@@ -53,6 +71,8 @@ const HomePage = () => {
           </div>
         </Link>
       </div>
+      <button onClick={handleUpload}>Upload</button>
+      <button onClick={handleDownload}>Download</button>
     </div>
   );
 };

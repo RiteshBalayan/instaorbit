@@ -39,6 +39,11 @@ const CurrentState = createSlice({
       state.satelite = state.satelite.filter(s => s.id !== idToDelete);
     }
   },
+  extraReducers: (builder) => {
+    builder.addCase('SET_AUTH', (state, action) => {
+      return action.payload;
+    });
+  },
 });
 
 export const { updateCoordinate, deleteState, togglePreview } = CurrentState.actions;

@@ -53,6 +53,10 @@ const groupSlice = createSlice({
       }
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase('SET_GROUPS', (state, action) => {
+      return action.payload;
+    })},
 });
 
 export const {

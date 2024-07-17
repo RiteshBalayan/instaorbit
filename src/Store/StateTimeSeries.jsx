@@ -42,6 +42,11 @@ const particleSlice = createSlice({
       state.particles = state.particles.filter(particle => particle.id !== idToDelete);
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase('SET_AUTH', (state, action) => {
+      return action.payload;
+    });
+  },
 });
 
 export const { initializeParticles, addTracePoint, resetTracePoints, deleteParticle } = particleSlice.actions;

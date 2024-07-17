@@ -13,6 +13,11 @@ const authSlice = createSlice({
       state.user = null;
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase('SET_AUTH', (state, action) => {
+      return action.payload;
+    });
+  },
 });
 
 export const { setUser, clearUser } = authSlice.actions;

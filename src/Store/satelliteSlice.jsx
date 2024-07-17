@@ -30,6 +30,11 @@ const satelliteSlice = createSlice({
       state.satellitesConfig = state.satellitesConfig.filter(s => s.id !== idToDelete);
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase('SET_AUTH', (state, action) => {
+      return action.payload;
+    });
+  },
 });
 
 export const { updateSatellites, addSatellite, updateSatellite, deleteSatellite } = satelliteSlice.actions;

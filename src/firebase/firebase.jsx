@@ -19,7 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
-const firestore = getFirestore(app);
+const db = getFirestore(app);
 
 // Listen to auth state changes and dispatch appropriate actions
 onAuthStateChanged(auth, (user) => {
@@ -30,4 +30,4 @@ onAuthStateChanged(auth, (user) => {
     }
   });
 
-export { firestore, auth, googleProvider };
+export { db, auth, googleProvider };

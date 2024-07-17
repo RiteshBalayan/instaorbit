@@ -33,6 +33,11 @@ const timerSlice = createSlice({
         state.elapsedTime = roundToThreeDecimals(action.payload);
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase('SET_AUTH', (state, action) => {
+      return action.payload;
+    });
+  },
 });
 
 export const {
