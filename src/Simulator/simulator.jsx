@@ -7,7 +7,7 @@ import './Simulator.css';
 import GlobeRender from './Satellite/GlobeRender';
 import MapRender from './Twomap/MapRender';
 import SatelliteConfig from './Satellite/SatelliteConfig';
-import { uploadState, downloadState } from '../firebase/firebaseUtils';
+import { uploadStateField, downloadStateField } from '../firebase/firebaseUtils';
 
 
 function Simulator() {
@@ -34,16 +34,15 @@ function Simulator() {
   const state = useSelector((state) => state);
 
   const handleUpload = async () => {
-    await uploadState(state);
+    // Assuming 'state' is your entire Redux state object
+    await uploadStateField(state.timer, 'timer');
   };
-
+  
   const handleDownload = async () => {
-    const downloadedState = await downloadState();
+    const downloadedState = await downloadStateField('timer');
     if (downloadedState) {
       // Dispatch actions to set the Redux store state with the downloaded data
-      Object.keys(downloadedState).forEach((key) => {
-        dispatch({ type: `SET_${key.toUpperCase()}`, payload: downloadedState[key] });
-      });
+      dispatch({ type: `SET_TIMER`, payload: downloadedState });
     }
   };
 

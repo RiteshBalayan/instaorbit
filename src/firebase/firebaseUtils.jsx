@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { auth } from './firebase';
 
 
@@ -10,27 +10,29 @@ const serializeState = (state) => {
   return JSON.parse(JSON.stringify(state)); // Ensures deep copy and serialization
 };
 
-export const uploadState = async (state) => {
+export const uploadStateField = async (stateSlice, fieldName) => {
   try {
     const user = auth.currentUser;
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
 
-      // Serialize state
-      const serializedState = serializeState(state);
+      // Serialize state slice
+      const serializedState = serializeState(stateSlice);
 
-      // Set or replace the document with the serialized state
-      await setDoc(userDocRef, serializedState);
-      console.log("State uploaded successfully");
+      // Update the document with the serialized state slice
+      await updateDoc(userDocRef, {
+        [fieldName]: serializedState
+      });
+      console.log(`State field '${fieldName}' uploaded successfully`);
     } else {
       console.log("No user is signed in");
     }
   } catch (error) {
-    console.error("Error uploading state: ", error);
+    console.error(`Error uploading state field '${fieldName}': `, error);
   }
 };
 
-export const downloadState = async () => {
+export const downloadStateField = async (fieldName) => {
   try {
     const user = auth.currentUser;
     if (user) {
@@ -38,10 +40,16 @@ export const downloadState = async () => {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        console.log("State downloaded successfully");
-        return docSnap.data();
+        const data = docSnap.data();
+        if (data && data[fieldName]) {
+          console.log(`State field '${fieldName}' downloaded successfully`);
+          return data[fieldName];
+        } else {
+          console.log(`No field '${fieldName}' found in document`);
+          return null;
+        }
       } else {
-        console.log("No such document");
+        console.log("No document found for the user");
         return null;
       }
     } else {
@@ -49,7 +57,9 @@ export const downloadState = async () => {
       return null;
     }
   } catch (error) {
-    console.error("Error downloading state: ", error);
+    console.error(`Error downloading state field '${fieldName}': `, error);
     return null;
   }
 };
+
+

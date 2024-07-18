@@ -51,7 +51,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
       const vec = new THREE.Vector3(Xanomly, Yanomly, Zanomly)
 
       //Rotating transform of Ellipse in three space
-      const euler = new THREE.Euler(theta, (argumentOfPeriapsis + phi), nodalrotation, 'XZY');
+      const euler = new THREE.Euler(theta, argumentOfPeriapsis, nodalrotation, 'XZY');
     
       if (satelliteRef.current) {
 
@@ -101,7 +101,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
   // Apply rotations to the geometry
   geometry.rotateX(theta + Math.PI/2);
   geometry.rotateZ(nodalrotation);
-  geometry.rotateY(argumentOfPeriapsis + phi);
+  geometry.rotateY(argumentOfPeriapsis);
 
   const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
   // this function is in development
