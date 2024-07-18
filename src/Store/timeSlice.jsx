@@ -34,7 +34,7 @@ const timerSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase('SET_AUTH', (state, action) => {
+    builder.addCase('SET_TIMER', (state, action) => {
       return action.payload;
     });
   },

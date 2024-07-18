@@ -40,7 +40,7 @@ const CurrentState = createSlice({
     }
   },
   extraReducers: (builder) => {
-    builder.addCase('SET_AUTH', (state, action) => {
+    builder.addCase('SET_CURRENTSTATE', (state, action) => {
       return action.payload;
     });
   },

@@ -30,7 +30,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
   const semiminoraxis = (Math.sqrt(semimazoraxis**2 - c**2)) ;
   const axisofset = semimazoraxis - closestapprochFromFocus;
   const timeperiod = 2*Math.PI*Math.sqrt((semimazoraxis**3)/mu);
-  const phi = 0 * t; // Account for earth rotation
+  const phi = 7.2722e-2 * t; // Account for earth rotation
 
   useEffect(() => {
     // Check if elapsedTime has changed
@@ -51,7 +51,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
       const vec = new THREE.Vector3(Xanomly, Yanomly, Zanomly)
 
       //Rotating transform of Ellipse in three space
-      const euler = new THREE.Euler(theta, argumentOfPeriapsis, nodalrotation, 'XZY');
+      const euler = new THREE.Euler(theta, (argumentOfPeriapsis + phi), nodalrotation, 'XZY');
     
       if (satelliteRef.current) {
 
@@ -101,7 +101,7 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
   // Apply rotations to the geometry
   geometry.rotateX(theta + Math.PI/2);
   geometry.rotateZ(nodalrotation);
-  geometry.rotateY(argumentOfPeriapsis);
+  geometry.rotateY(argumentOfPeriapsis + phi);
 
   const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
   // this function is in development

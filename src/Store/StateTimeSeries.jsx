@@ -43,7 +43,7 @@ const particleSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase('SET_AUTH', (state, action) => {
+    builder.addCase('SET_PARTICLES', (state, action) => {
       return action.payload;
     });
   },

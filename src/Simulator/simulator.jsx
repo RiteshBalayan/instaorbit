@@ -1,12 +1,13 @@
 // src/App.jsx
 import React, { useState }  from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import Timer from './Timer';
 import './Simulator.css';
 import GlobeRender from './Satellite/GlobeRender';
 import MapRender from './Twomap/MapRender';
 import SatelliteConfig from './Satellite/SatelliteConfig';
+import { uploadState, downloadState } from '../firebase/firebaseUtils';
 
 
 function Simulator() {
@@ -28,8 +29,28 @@ function Simulator() {
     setWidth(e.clientX);
   };
 
+  //For Save to cloud Functionality
+  const dispatch = useDispatch();
+  const state = useSelector((state) => state);
+
+  const handleUpload = async () => {
+    await uploadState(state);
+  };
+
+  const handleDownload = async () => {
+    const downloadedState = await downloadState();
+    if (downloadedState) {
+      // Dispatch actions to set the Redux store state with the downloaded data
+      Object.keys(downloadedState).forEach((key) => {
+        dispatch({ type: `SET_${key.toUpperCase()}`, payload: downloadedState[key] });
+      });
+    }
+  };
+
   return (
     <div className="container">
+      <button onClick={handleUpload}>Upload</button>
+      <button onClick={handleDownload}>Download</button>
 
       <div className="panel">
         <div className="main-panel" style={{ height: `${height}px` }}>  
