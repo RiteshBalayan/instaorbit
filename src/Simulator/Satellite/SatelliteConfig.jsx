@@ -12,6 +12,7 @@ const SatelliteConfig = () => {
   const satellitesConfig = useSelector(state => state.satellites.satellitesConfig);
   const [newSatelliteName, setNewSatelliteName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+  const [activeSatellite, setActiveSatellite] = useState(null);
 
   const handleAddSatelliteClick = () => {
     setShowNameInput(true);
@@ -49,86 +50,102 @@ const SatelliteConfig = () => {
     dispatch(updateSatellites(newConfig));
     dispatch(deleteParticle(id));
     dispatch(deleteState(id));
+    if (activeSatellite === id) {
+      setActiveSatellite(null); // Deselect the active satellite if it's deleted
+    }
   };
 
   const handleCheckboxChange = (id) => {
     dispatch(togglePreview({ id, visibility: !satellitesConfig.find(s => s.id === id).visibility }));
   };
 
+  const handleSatelliteClick = (id) => {
+    setActiveSatellite(activeSatellite === id ? null : id);
+  };
+
   return (
     <div>
       {satellitesConfig.map((satellite) => (
         <div key={satellite.id} style={{ marginBottom: '10px' }}>
-          <h3>{satellite.name}</h3>
-          <label>
-            True Anomoly:
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value={satellite.trueanomly}
-              onChange={(e) => updateSatellite(satellite.id, 'trueanomly', e.target.value)}
-            />
-            {satellite.trueanomly}
-          </label>
-          <label>
-            Argument Of Periapsis:
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value={satellite.argumentOfPeriapsis}
-              onChange={(e) => updateSatellite(satellite.id, 'argumentOfPeriapsis', e.target.value)}
-            />
-            {satellite.argumentOfPeriapsis}
-          </label>
-          <label>
-            Nodal Rotation:
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value={satellite.nodalrotation}
-              onChange={(e) => updateSatellite(satellite.id, 'nodalrotation', e.target.value)}
-            />
-            {satellite.nodalrotation}
-          </label>
-          <label>
-            Theta:
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value={satellite.theta}
-              onChange={(e) => updateSatellite(satellite.id, 'theta', e.target.value)}
-            />
-            {satellite.theta}
-          </label>
-          <label>
-            Closest Approach:
-            <input
-              type="range"
-              min="0"
-              max="40000"
-              step="0.1"
-              value={satellite.closestapproch}
-              onChange={(e) => updateSatellite(satellite.id, 'closestapproch', e.target.value)}
-            />
-            {satellite.closestapproch}
-          </label>
-          <label>
-            Eccentricity:
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={satellite.eccentricity}
-              onChange={(e) => updateSatellite(satellite.id, 'eccentricity', e.target.value)}
-            />
-            {satellite.eccentricity}
-          </label>
-          <label>
+          <h3 
+            onClick={() => handleSatelliteClick(satellite.id)}
+            style={{ cursor: 'pointer', color: activeSatellite === satellite.id ? 'blue' : 'white' }}
+            onMouseEnter={(e) => e.target.style.color = 'blue'}
+            onMouseLeave={(e) => e.target.style.color = activeSatellite === satellite.id ? 'blue' : 'white'}
+          >
+            {satellite.name}
+          </h3>
+          {activeSatellite === satellite.id && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(3, 1fr)', gap: '10px' }}>
+              <label style={{ gridColumn: '1', textAlign: 'left' }}>
+                True Anomoly:
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="360"
+                value={satellite.trueanomly}
+                onChange={(e) => updateSatellite(satellite.id, 'trueanomly', e.target.value)}
+                style={{ gridColumn: '2', textAlign: 'right' }}
+              />
+              <label style={{ gridColumn: '1', textAlign: 'left' }}>
+                Argument Of Periapsis:
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="360"
+                value={satellite.argumentOfPeriapsis}
+                onChange={(e) => updateSatellite(satellite.id, 'argumentOfPeriapsis', e.target.value)}
+                style={{ gridColumn: '2', textAlign: 'right' }}
+              />
+              <label style={{ gridColumn: '1', textAlign: 'left' }}>
+                Nodal Rotation:
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="360"
+                value={satellite.nodalrotation}
+                onChange={(e) => updateSatellite(satellite.id, 'nodalrotation', e.target.value)}
+                style={{ gridColumn: '2', textAlign: 'right' }}
+              />
+              <label style={{ gridColumn: '1', textAlign: 'left' }}>
+                Theta:
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="360"
+                value={satellite.theta}
+                onChange={(e) => updateSatellite(satellite.id, 'theta', e.target.value)}
+                style={{ gridColumn: '2', textAlign: 'right' }}
+              />
+              <label style={{ gridColumn: '1', textAlign: 'left' }}>
+                Closest Approach:
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="40000"
+                step="0.1"
+                value={satellite.closestapproch}
+                onChange={(e) => updateSatellite(satellite.id, 'closestapproch', e.target.value)}
+                style={{ gridColumn: '2', textAlign: 'right' }}
+              />
+              <label style={{ gridColumn: '1', textAlign: 'left' }}>
+                Eccentricity:
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                value={satellite.eccentricity}
+                onChange={(e) => updateSatellite(satellite.id, 'eccentricity', e.target.value)}
+                style={{ gridColumn: '2', textAlign: 'right' }}
+              />
+            <label>
             <input
               type="checkbox"
               checked={satellite.visibility}
@@ -137,6 +154,9 @@ const SatelliteConfig = () => {
             Show Preview
           </label>
           <button onClick={() => deleteSatellite(satellite.id)}>Delete</button>
+            </div>
+            
+          )}
         </div>
       ))}
       {showNameInput ? (

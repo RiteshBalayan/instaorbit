@@ -6,8 +6,8 @@ import Timer from './Timer';
 import './Simulator.css';
 import GlobeRender from './Satellite/GlobeRender';
 import MapRender from './Twomap/MapRender';
-import SatelliteConfig from './Satellite/SatelliteConfig';
-import { uploadStateField, downloadStateField } from '../firebase/firebaseUtils';
+import SlimTopBar from './SlimTopBar';
+import UtilityPanel from './UtilityPanel';
 
 
 function Simulator() {
@@ -29,28 +29,12 @@ function Simulator() {
     setWidth(e.clientX);
   };
 
-  //For Save to cloud Functionality
-  const dispatch = useDispatch();
-  const state = useSelector((state) => state);
-
-  const handleUpload = async () => {
-    // Assuming 'state' is your entire Redux state object
-    await uploadStateField(state.timer, 'timer');
-  };
-  
-  const handleDownload = async () => {
-    const downloadedState = await downloadStateField('timer');
-    if (downloadedState) {
-      // Dispatch actions to set the Redux store state with the downloaded data
-      dispatch({ type: `SET_TIMER`, payload: downloadedState });
-    }
-  };
 
   return (
+    <>
+    <SlimTopBar />
+    <UtilityPanel />
     <div className="container">
-      <button onClick={handleUpload}>Upload</button>
-      <button onClick={handleDownload}>Download</button>
-
       <div className="panel">
         <div className="main-panel" style={{ height: `${height}px` }}>  
           <div className="primary" style={{ width: `${width}px` }}> 
@@ -73,8 +57,7 @@ function Simulator() {
           />
       
           <div className="secontary"> 
-          
-            <SatelliteConfig />
+
             <MapRender />
           
           </div>
@@ -97,6 +80,7 @@ function Simulator() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

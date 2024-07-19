@@ -1,0 +1,60 @@
+.slim-top-bar {
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+    height: 40px; /* Adjust height as needed */
+    z-index: 700;
+  }
+  
+  .top-bar-items {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    height: 100%;
+  }
+  
+  .top-bar-item {
+    margin-right: 10px; /* Adjust spacing between items */
+    padding: 8px 12px;
+    background-color: #e0e0e0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #333;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .top-bar-item:hover {
+    background-color: #d0d0d0;
+  }
+
+  /* No specific styling for buttons to keep them minimalist */
+.top-bar-button {
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: inherit;
+  }
+  
+  .top-bar-button:hover {
+    text-decoration: underline;
+  }
+  
+
+  .loading-indicator {
+    display: inline-block;
+    width: 10px; /* Adjust width as needed */
+    height: 10px; /* Adjust height as needed */
+    margin-left: 5px; /* Adjust spacing from button */
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: #4CAF50; /* Green color */
+    animation: spin 0.8s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }

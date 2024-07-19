@@ -16,14 +16,23 @@ export const uploadStateField = async (stateSlice, fieldName) => {
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
 
-      // Serialize state slice
-      const serializedState = serializeState(stateSlice);
-
-      // Update the document with the serialized state slice
-      await updateDoc(userDocRef, {
-        [fieldName]: serializedState
-      });
-      console.log(`State field '${fieldName}' uploaded successfully`);
+      // Check if the document exists
+      const docSnap = await getDoc(userDocRef);
+      if (docSnap.exists()) {
+        // Document exists, update the field
+        const serializedState = serializeState(stateSlice);
+        await updateDoc(userDocRef, {
+          [fieldName]: serializedState
+        });
+        console.log(`State field '${fieldName}' uploaded successfully`);
+      } else {
+        // Document does not exist, create it
+        const serializedState = serializeState(stateSlice);
+        await setDoc(userDocRef, {
+          [fieldName]: serializedState
+        });
+        console.log(`Document for user '${user.uid}' created with '${fieldName}'`);
+      }
     } else {
       console.log("No user is signed in");
     }
