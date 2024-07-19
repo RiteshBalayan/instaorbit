@@ -1,0 +1,114 @@
+.exptimer-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 80vw;
+  height: 20vh;
+  display: flex;
+  background-color: #1e1e1e;
+  color: #ffffff;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+  border-top: 2px solid #333;
+}
+
+.time-controller {
+  width: 20%;
+  border-right: 1px solid #333;
+  background-color: #2a2a2a;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.controller-content {
+  display: flex;font-size: 1rem;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.time-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 1rem; /* Very small font size */
+}
+
+.time-unit-controls {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.time-unit-btn {
+  font-size: 1rem; /* Very small font size */
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Space between buttons and input */
+  margin-bottom: 10px; /* Add space below the buttons */
+  font-size: 0.7rem;
+}
+
+.control-btn {
+  font-size: 1.5rem; /* Slightly larger font size */
+  width: 40px;       /* Bigger button size */
+  height: 40px;      /* Bigger button size */
+  padding: 0;
+  border: none;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-step-input {
+  width: 60px; /* Adjust width as needed */
+  font-size: 0.8rem; /* Small font size */
+  margin-left: 5px;
+}
+
+.timeline-panel {
+  width: 80%;
+  background-color: #1e1e1e;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.slider-container {
+  margin-top: 10px;
+  flex-grow: 1;
+}
+
+.horizontal-slider {
+  width: 100%;
+  height: 6px;
+  background: #ddd;
+}
+
+.thumb {
+  background: #333;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}

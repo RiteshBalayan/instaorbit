@@ -1,0 +1,14 @@
+.Globe-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 80%;
+    width: 80vw; /* Fixed width for the panel */
+    background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
+    display: flex;
+    flex-direction: column;
+    z-index: 800;
+  }
+
+
+  

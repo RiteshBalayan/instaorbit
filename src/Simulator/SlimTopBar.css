@@ -2,7 +2,7 @@
     background-color: #f0f0f0;
     border-bottom: 1px solid #ccc;
     height: 40px; /* Adjust height as needed */
-    z-index: 700;
+    z-index: 900;
   }
   
   .top-bar-items {
