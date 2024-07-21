@@ -1,0 +1,35 @@
+.control-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 80vw;
+  height: 40vh;
+  display: flex;
+  background-color: #1e1e1e;
+  color: #ffffff;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+  border-top: 2px solid #333;
+}
+
+.control-left {
+  width: 20%;
+  height: 100%;
+  border-right: 1px solid #333;
+  background-color: #2a2a2a;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}/* Full height of the viewport */
+
+
+
+.control-right {
+  width: 80%;
+  height: 100%;
+  background-color: #1e1e1e;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}

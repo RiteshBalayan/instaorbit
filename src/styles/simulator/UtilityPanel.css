@@ -1,0 +1,29 @@
+.utility-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 20vw; /* Fixed width for the panel */
+  background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
+  display: flex;
+  flex-direction: column;
+  z-index: 800;
+}
+
+.panel-top, .panel-bottom {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: #222; /* Default background color */
+}
+
+.panel-bottom {
+  background: #333; /* Slightly darker background for contrast */
+}
+
+.resize-line {
+  height: 5px;
+  background: #555;
+  cursor: ns-resize;
+  user-select: none;
+}

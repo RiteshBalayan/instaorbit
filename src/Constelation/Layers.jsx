@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import '../styles/simulator/UtilityPanel.css';
-import SatelliteConfig from './Satellite/SatelliteConfig';
+import './Layers.css';
+import GroupsComponent from './GroundMap';
+
 
 const UtilityPanel = () => {
   const [topHeight, setTopHeight] = useState(50); // Default height for the top section
@@ -29,8 +30,9 @@ const UtilityPanel = () => {
     <div className="utility-panel">
       <div className="panel-top" style={{ height: `${topHeight}px` }}>
         {/* Top section content here */}
-        <h2>Satellites</h2>
-        <SatelliteConfig />
+        <h2>Layers</h2>
+        <GroupsComponent />
+
       </div>
       <div className="resize-line" onMouseDown={handleMouseDown}></div>
       <div className="panel-bottom">

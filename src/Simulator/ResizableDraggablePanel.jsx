@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './ResizableDraggablePanel.css'; // Import CSS for styling
+import '../styles/simulator/ResizableDraggablePanel.css'; // Import CSS for styling
 import MapRender from './Twomap/MapRender'
 
 const ResizableDraggablePanel = () => {

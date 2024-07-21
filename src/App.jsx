@@ -6,6 +6,7 @@ import Simulator from './Simulator/simulator';
 import HomePage from './HomePage';
 import CAD from './CAD/cad';
 import GroupsComponent from './Constelation/GroundMap'
+import ConstelationView from './Constelation/ConstelationView';
 import './App.css';
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
           <Route path="/simulator" element={<Simulator/>} />
           <Route path="/homepage" element={<HomePage/>} />
           <Route path="/cad" element={<CAD/>} />
-          <Route path='/constellation' element={<GroupsComponent />} />
+          <Route path='/constellation' element={<ConstelationView />} />
         </Routes>
     </Router>
   );

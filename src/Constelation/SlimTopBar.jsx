@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/simulator/SlimTopBar.css'; // Import your CSS file for styling
+import './SlimTopBar.css'; // Import your CSS file for styling
 import { uploadStateField, downloadStateField } from '../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { auth } from '../firebase/firebase'; // Assuming you have an authentication module

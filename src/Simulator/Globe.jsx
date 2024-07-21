@@ -1,7 +1,7 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useSelector } from 'react-redux';
-import './Globe.css';
+import '../styles/simulator/Globe.css';
 import GlobeRender from './Satellite/GlobeRender';
 import SlimTopBar from './SlimTopBar';
 import ResizableDraggablePanel from './ResizableDraggablePanel';

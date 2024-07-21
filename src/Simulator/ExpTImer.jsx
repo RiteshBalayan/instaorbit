@@ -9,7 +9,7 @@ import {
   setElapsedTime,
 } from '../Store/timeSlice';
 import ReactSlider from 'react-slider';
-import './ExpTimer.css';
+import '../styles/simulator/ExpTimer.css';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
