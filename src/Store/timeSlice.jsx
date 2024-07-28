@@ -7,12 +7,16 @@ const timerSlice = createSlice({
   name: 'timer',
   initialState: {
     isRunning: false,
+    starttime: Date.now(),
     elapsedTime: 0,
     timePoints: [],
   },
   reducers: {
     startPauseTimer(state) {
       state.isRunning = !state.isRunning;
+    },
+    setstarttime(state, action) {
+      state.starttime = action.payload;
     },
     resetTimer(state) {
       state.isRunning = false;
@@ -47,6 +51,7 @@ export const {
   addTimePoint,
   goToTimePoint,
   setElapsedTime,
+  setstarttime
 } = timerSlice.actions;
 
 export default timerSlice.reducer;

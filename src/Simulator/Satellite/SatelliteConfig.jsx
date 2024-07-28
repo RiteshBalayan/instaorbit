@@ -27,7 +27,7 @@ const SatelliteConfig = () => {
     const newSatellite = { id: newId, name: newSatelliteName, argumentOfPeriapsis: 0, theta: 0, eccentricity: 0, closestapproch: 0, nodalrotation: 0, trueanomly: 0 };
     const newConfig = [...satellitesConfig, newSatellite];
     dispatch(updateSatellites(newConfig));
-    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+    dispatch(initializeParticles({ id: newId, name: newSatelliteName,  tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
     dispatch(updateCoordinate({ id: newId, coordinates: [] }));
     setNewSatelliteName('');
     setShowNameInput(false);

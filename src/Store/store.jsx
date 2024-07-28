@@ -5,6 +5,7 @@ import CurrentStateReducer from './CurrentState';
 import satelliteReducer from './satelliteSlice';
 import groupReducer from './CAD/groupSlice';
 import authReducer from './authSlice';
+import workingProjectReducer from './workingProject';
 
 const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ const store = configureStore({
     CurrentState: CurrentStateReducer,
     satellites: satelliteReducer,
     groups: groupReducer,
+    workingProject: workingProjectReducer,
   },
 });
 
