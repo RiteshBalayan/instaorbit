@@ -50,20 +50,27 @@ const ExpTimer = () => {
     const minTime = now;
     const maxTime = now + (timePoints.length > 0 ? timePoints[timePoints.length - 1] * 1000 : 0);
 
-    // Map particles to items
-    const particleItems = particles.map((particle, index) => {
+  // Map particles to items
+  const particleItems = particles
+    .map((particle, index) => {
       const tracePoints = particle.tracePoints;
-      const start = new Date(minTime + tracePoints[1].time * 1000);
-      const end = new Date(minTime + tracePoints[tracePoints.length - 1].time * 1000);
-
-      return {
-        id: index + 1,
-        content: particle.name,
-        start: start,
-        end: end,
-        type: 'range',
-      };
-    });
+      
+      // Check if tracePoints exist and have at least two points
+      if (tracePoints && tracePoints.length >= 2) {
+        const start = new Date(minTime + tracePoints[1].time * 1000);
+        const end = new Date(minTime + tracePoints[tracePoints.length - 1].time * 1000);
+        
+        return {
+          id: index + 1,
+          content: particle.name,
+          start: start,
+          end: end,
+          type: 'range',
+        };
+      }
+      return undefined; // Return undefined if conditions are not met
+    })
+    .filter(item => item !== undefined); // Remove undefined values from the array
 
     const items = new DataSet(particleItems);
 
@@ -94,21 +101,25 @@ const ExpTimer = () => {
       height: '150%',
     };
 
-    if (!timelineRef.current.timeline) {
-      const newTimeline = new Timeline(timelineRef.current, items, options);
-      timelineRef.current.timeline = newTimeline;
-    } else {
-      timelineRef.current.timeline.setItems(items);
-      timelineRef.current.timeline.setOptions(options);
+
+    if (timelineRef.current) {
+      if (!timelineRef.current.timeline) {
+        const newTimeline = new Timeline(timelineRef.current, items, options);
+        timelineRef.current.timeline = newTimeline;
+      } else {
+        timelineRef.current.timeline.setItems(items);
+        timelineRef.current.timeline.setOptions(options);
+      }
     }
 
+
     return () => {
-      if (timelineRef.current.timeline) {
+      if (timelineRef.current && timelineRef.current.timeline) {
         timelineRef.current.timeline.destroy();
         timelineRef.current.timeline = null;
       }
     };
-  }, [timePoints, starttime]);
+  }, [timePoints, starttime, particles]);
 
   const handleStartPause = () => {
     dispatch(startPauseTimer());

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect} from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -9,16 +9,30 @@ const GlobeRender = ({ elapsedTime }) => {
     const earthRef = useRef();
     const lightRef = useRef();
     const sunRef = useRef();
+    const torusRef = useRef();
+    const torusRef2 = useRef();
+    const torusRef3 = useRef();
     const texture = useLoader(THREE.TextureLoader, './00_earthmap1k.jpg');
     const starttime = useSelector((state) => state.timer.starttime)
+
+    const [torusRotation1, setTorusRotation1] = useState(Math.random() * Math.PI * 2);
+    const [torusRotation2, setTorusRotation2] = useState(Math.random() * Math.PI * 2);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+          // Generate new random angles every second
+          setTorusRotation1(Math.random() * Math.PI * 2);
+          setTorusRotation2(Math.random() * Math.PI * 2);
+      }, 1000); // Update every second
+
+      return () => clearInterval(interval); // Cleanup on component unmount
+  }, []);
 
     //Get sun direction initial condition
     const initialtime = new Date(starttime);
     initialtime.setHours(0, 0, 0, 0);
 
     const phase = (starttime - initialtime)/(1000*60*60)
-    console.log(phase)
-
 
     useFrame(() => {
         if (earthRef.current) {
@@ -32,6 +46,15 @@ const GlobeRender = ({ elapsedTime }) => {
             lightRef.current.position.set(x, 0, z);
             sunRef.current.position.set(x*100, 0, z*100);
         }
+        if (torusRef.current) {
+          torusRef.current.rotation.z = torusRotation1;
+      }
+      if (torusRef2.current) {
+          torusRef2.current.rotation.z = torusRotation2;
+      }
+      if (torusRef3.current) {
+        torusRef3.current.rotation.z = 1;
+    }
     });
 
     return (
@@ -48,6 +71,42 @@ const GlobeRender = ({ elapsedTime }) => {
             <mesh ref={sunRef}>
                 <sphereGeometry args={[10, 32, 32]} />
                 <meshStandardMaterial color="yellow" emissive="yellow" />
+            </mesh>
+
+            <mesh ref={torusRef} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[2.5, 2.6, 16, 100]} />
+              <meshStandardMaterial
+                color="blue"
+                wireframe={true}
+                transparent={true}
+                opacity={0.05}
+                emissive="blue"
+                emissiveIntensity={0.3}
+              />
+            </mesh>
+
+            <mesh ref={torusRef2} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[2.6, 2.6, 16, 100, Math.PI / 10, Math.PI / 10]} />
+              <meshStandardMaterial
+                color="blue"
+                wireframe={true}
+                transparent={true}
+                opacity={0.01}
+                emissive="blue"
+                emissiveIntensity={0.1}
+              />
+            </mesh>
+
+            <mesh ref={torusRef3} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[2.7, 2.6, 16, 100]} />
+              <meshStandardMaterial
+                color="orange"
+                wireframe={true}
+                transparent={true}
+                opacity={0.05}
+                emissive="orange"
+                emissiveIntensity={0.2}
+              />
             </mesh>
 
             <SatelliteRender elapsedTime={elapsedTime} />
