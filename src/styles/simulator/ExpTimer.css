@@ -6,7 +6,7 @@
   height: 20vh;
   display: flex;
   background-color: #1e1e1e;
-  color: #ffffff;
+  color: #3a3a3a;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
   border-top: 2px solid #333;
 }
@@ -80,20 +80,39 @@
   justify-content: center;
 }
 
+/* Container that holds the button and the display */
+.starttime-container {
+  display: flex; /* Align children in a row */
+  justify-content: space-between;
+  flex-direction: row; /* Space out children to fill the container */
+  align-items: center; /* Center items vertically */
+  padding: 0 0px; /* Add some padding on the left and right */
+  box-sizing: border-box; /* Include padding in element's total width and height */
+}
+
+/* Button styling */
 .starttime-btn {
   font-size: 0.8rem; /* Slightly larger font size */
-  width: 100px;       /* Bigger button size */
-  height: 40px;      /* Bigger button size */
+  width: 120px; /* Bigger button size */
+  height: 40px; /* Bigger button size */
   padding: 0;
   border: none;
   background: #333;
   color: #ffffff;
   cursor: pointer;
   border-radius: 4px;
-  margin: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0; /* Remove margin if unnecessary */
+}
+
+/* Display text styling */
+.starttime-display {
+  font-size: 0.8rem; /* Font size for the display */
+  color: #ffffff; /* Text color */
+  margin: 0; /* Remove margin */
+  text-align: center; /* Center text */
 }
 
 .time-step-input {
@@ -131,10 +150,11 @@
 
 .datepicker-popup {
   position: absolute;
+  font-size: 0.8rem;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgb(255, 255, 255);
+  transform: translate( -50%, -50%);
+  background: rgb(92, 91, 91);
   padding: 20px;
   border: 1px solid #313131;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -143,4 +163,31 @@
 
 .datepicker-popup button {
   margin: 5px;
+}
+
+/* Adjust the height and width of the calendar */
+.rdtPicker {
+  width: 200px; /* Adjust as needed */
+  height: auto; /* Automatically adjust height */
+}
+
+/* Adjust the height of the date and time selection */
+.rdtPicker .rdtDays,
+.rdtPicker .rdtTime {
+  max-height: 100px; /* Set a maximum height */
+  overflow-y: auto; /* Enable scrolling if content exceeds max height */
+}
+
+/* Adjust the individual day cells height */
+.rdtPicker .rdtDays .rdtDay {
+  height: 30px; /* Adjust as needed */
+  line-height: 30px; /* Vertically center the text */
+}
+
+/* Adjust the height of the time selection elements */
+.rdtPicker .rdtTime .rdtHours,
+.rdtPicker .rdtTime .rdtMinutes,
+.rdtPicker .rdtTime .rdtSeconds {
+  height: 30px; /* Adjust as needed */
+  line-height: 30px; /* Vertically center the text */
 }

@@ -8,8 +8,8 @@ function Simulator() {
 
   return (
     <>
-    <UtilityPanel />
     <ExpTimer />
+    <UtilityPanel />
     <Globe />
     </>
   );

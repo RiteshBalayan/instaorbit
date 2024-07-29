@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import Datetime from 'react-datetime';
+import moment from 'moment'; // Import moment
 import 'react-datetime/css/react-datetime.css';
 import {
   startPauseTimer,
@@ -12,6 +13,7 @@ import {
 import { DataSet, Timeline } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../styles/simulator/ExpTimer.css';
+import { format } from 'date-fns';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
@@ -21,6 +23,7 @@ const ExpTimer = () => {
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const timePoints = useSelector((state) => state.timer.timePoints);
   const starttime = useSelector((state) => state.timer.starttime);
+  const formattedStartTime = format(starttime, "dd MMM yyyy hh:mm a");
   const particles = useSelector((state) => state.particles.particles);
   const intervalRef = useRef(null);
   const timelineRef = useRef(null);
@@ -138,12 +141,12 @@ const ExpTimer = () => {
   };
 
   const handleSetStartTime = () => {
-    dispatch(setstarttime(selectedDate.getTime()));
+    dispatch(setstarttime(selectedDate.valueOf())); // Use moment's valueOf
     setShowDatePicker(false);
   };
 
   const handleSetCurrentTime = () => {
-    setSelectedDate(new Date());
+    setSelectedDate(moment()); // Update with current time
   };
 
   return (
@@ -151,7 +154,7 @@ const ExpTimer = () => {
       <div className="time-controller">
         <div className="controller-content">
           <div className="time-display">
-            <p>{formatElapsedTime()}</p>
+          <p style={{ color: 'white' }}>{formatElapsedTime()}</p>
             <div className="time-unit-controls">
               <button onClick={() => handleTimeUnitChange('s')} className="time-unit-btn">s</button>
               <button onClick={() => handleTimeUnitChange('m')} className="time-unit-btn">m</button>
@@ -172,9 +175,12 @@ const ExpTimer = () => {
               onChange={handleTimeStepChange}
               className="time-step-input"
             />
-            <p>Seconds/Step</p>
+            <p style={{ color: 'white' }}>Seconds/Step</p>
           </div>
-          <button className="starttime-btn" onClick={() => setShowDatePicker(true)}>Set Start Time</button>
+        </div>
+        <div className='starttime-container'>
+              <p className="starttime-display"> {formattedStartTime} </p>
+              <button className="starttime-btn" onClick={() => setShowDatePicker(true)}>Change Start Time</button>
         </div>
       </div>
       <div className="timeline-panel">
@@ -182,11 +188,18 @@ const ExpTimer = () => {
       </div>
       {showDatePicker && (
         <div className="datepicker-popup">
-          <Datetime value={selectedDate} onChange={setSelectedDate} />
-          <button onClick={handleSetStartTime}>Set Start Time</button>
-          <button onClick={handleSetCurrentTime}>Set Time to Now</button>
-          <button onClick={() => setShowDatePicker(false)}>Cancel</button>
-        </div>
+        <Datetime 
+          value={selectedDate} 
+          onChange={(date) => setSelectedDate(moment(date))} // Use moment for handling date
+          dateFormat="YYYY-MM-DD" 
+          timeFormat="HH:mm:ss"
+          closeOnSelect={true}
+          inputProps={{ placeholder: 'Select date and time' }}
+        />
+        <button onClick={handleSetStartTime}>Set Start Time</button>
+        <button onClick={handleSetCurrentTime}>Set Time to Now</button>
+        <button onClick={() => setShowDatePicker(false)}>Cancel</button>
+      </div>
       )}
     </div>
   );
