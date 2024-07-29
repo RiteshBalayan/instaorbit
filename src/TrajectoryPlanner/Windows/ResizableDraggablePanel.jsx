@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../styles/simulator/ResizableDraggablePanel.css';
+import '../../Styles/simulator/ResizableDraggablePanel.css';
 import MapRender from '../2DRender/MapRender'
 
 const ResizableDraggablePanel = () => {

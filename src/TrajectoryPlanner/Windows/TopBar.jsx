@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../../styles/simulator/SlimTopBar.css'; 
+import '../../Styles/simulator/SlimTopBar.css'; 
 import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { auth } from '../../firebase/firebase'; 

@@ -12,7 +12,7 @@ import {
 } from '../../Store/timeSlice';
 import { DataSet, Timeline } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
-import '../../styles/simulator/ExpTimer.css';
+import '../../Styles/simulator/Timer.css';
 import { format } from 'date-fns';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;

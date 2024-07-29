@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../styles/simulator/UtilityPanel.css';
+import '../../Styles/simulator/UtilityPanel.css';
 import SatelliteConfig from '../3DRender/ConfigSatellite';
 
 const UtilityPanel = () => {

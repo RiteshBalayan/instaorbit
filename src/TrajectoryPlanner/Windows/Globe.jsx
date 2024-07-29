@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../styles/simulator/Globe.css';
+import '../../Styles/simulator/Globe.css';
 import GlobeRender from '../3DRender/GlobeRender';
 import SlimTopBar from './TopBar';
 import ResizableDraggablePanel from './ResizableDraggablePanel';

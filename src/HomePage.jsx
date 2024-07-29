@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import './HomePage.css'; 
+import './Styles/HomePage.css'; 
 import Login from './firebase/login';
 import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';

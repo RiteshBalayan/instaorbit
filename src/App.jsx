@@ -4,7 +4,7 @@ import Simulator from './TrajectoryPlanner/Simulator';
 import HomePage from './HomePage';
 import CAD from './CAD/cad';
 import ConstelationView from './Constelation/ConstelationView';
-import './App.css';
+import './Styles/App.css';
 
 function App() {
   return (
