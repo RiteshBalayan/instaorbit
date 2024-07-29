@@ -13,7 +13,7 @@ const GlobeRender = () => {
     const torusRef = useRef();
     const torusRef2 = useRef();
     const torusRef3 = useRef();
-    const texture = useLoader(THREE.TextureLoader, './00_earthmap1k.jpg');
+    const texture = useLoader(THREE.TextureLoader, '/00_earthmap1k.jpg');
     const starttime = useSelector((state) => state.timer.starttime)
     const elapsedTime = useSelector((state) => state.timer.elapsedTime)
 
