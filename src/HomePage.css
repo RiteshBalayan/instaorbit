@@ -82,3 +82,112 @@
   .authenticator .button:hover {
     background-color: #0056b3;
   }
+
+
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #0a0a23;
+    color: #fff;
+  }
+  
+  .landing-page {
+    width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  .section {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .hero {
+    background-color: #1a1a40;
+  }
+  
+  .hero-title {
+    font-size: 3em;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.5em;
+    color: #ddd;
+    margin: 20px 0;
+  }
+  
+  .cta-button {
+    background-color: #ff6f61;
+    color: #fff;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .cta-button:hover {
+    background-color: #ff5a45;
+  }
+  
+  .features {
+    background-color: #2a2a40;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  
+  .features-cards {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .feature-card {
+    background-color: #3a3a60;
+    border-radius: 10px;
+    padding: 20px;
+    width: 300px;
+    text-align: left;
+  }
+  
+  .craft {
+    background-color: #2a2a50;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  
+  .trajectory {
+    background-color: #3a3a60;
+    font-family: 'Times New Roman', Times, serif;
+  }
+  
+  .constellation {
+    background-color: #4a4a70;
+    font-family: 'Georgia', serif;
+  }
+  
+  .additional-info {
+    background-color: #5a5a80;
+  }
+  
+  .section-title {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+  }
+  
+  .section-list {
+    list-style: none;
+    padding: 0;
+    font-size: 1.2em;
+  }
+  
+  .section-list li {
+    margin: 10px 0;
+  }
+  

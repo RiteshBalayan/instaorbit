@@ -11,7 +11,7 @@ import {
   toggleGroupVisibility,
   updateLayer,
   deleteLayer,
-} from '../Store/CAD/groupSlice';
+} from '../Store/groupSlice';
 import './GroundMap.css'
 
 const LeafletMap = () => {

@@ -7,7 +7,7 @@ import {
   setSelectedGroup,
   toggleGroupVisibility,
 
-} from '../Store/CAD/groupSlice';
+} from '../Store/groupSlice';
 import './GroundMap.css'
 
 const GroupsComponent = () => {

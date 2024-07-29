@@ -1,14 +1,16 @@
 import React from 'react';
-import Satellite from './Satellite';
+import Satellite from './SimulateSatellite';
+import { useSelector } from 'react-redux';
 
-const Satellites = ({ satellitesConfig, elapsedTime }) => {
+const StackSatellites = () => {
+  const satellitesConfig = useSelector(state => state.satellites.satellitesConfig);
+
   return (
     <>
       {satellitesConfig.map((config, index) => (
         <Satellite
           key={index}
           particleId={config.id}
-          elapsedTime={elapsedTime}
           argumentOfPeriapsis={config.argumentOfPeriapsis}
           theta={config.theta}
           eccentricity={config.eccentricity}
@@ -21,4 +23,4 @@ const Satellites = ({ satellitesConfig, elapsedTime }) => {
   );
 };
 
-export default Satellites;
+export default StackSatellites;

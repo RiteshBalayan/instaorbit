@@ -3,7 +3,7 @@ import particleReducer from './StateTimeSeries';
 import timerReducer from './timeSlice';
 import CurrentStateReducer from './CurrentState';
 import satelliteReducer from './satelliteSlice';
-import groupReducer from './CAD/groupSlice';
+import groupReducer from './groupSlice';
 import authReducer from './authSlice';
 import workingProjectReducer from './workingProject';
 

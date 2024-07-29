@@ -2,10 +2,11 @@ import React, { useRef, useState, useEffect} from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import SatelliteRender from './SatelliteRender';
 import { useSelector } from 'react-redux';
+import StackSatellites from './StackSatellites';
+import { Canvas } from '@react-three/fiber';
 
-const GlobeRender = ({ elapsedTime }) => {
+const GlobeRender = () => {
     const earthRef = useRef();
     const lightRef = useRef();
     const sunRef = useRef();
@@ -14,6 +15,7 @@ const GlobeRender = ({ elapsedTime }) => {
     const torusRef3 = useRef();
     const texture = useLoader(THREE.TextureLoader, './00_earthmap1k.jpg');
     const starttime = useSelector((state) => state.timer.starttime)
+    const elapsedTime = useSelector((state) => state.timer.elapsedTime)
 
     const [torusRotation1, setTorusRotation1] = useState(Math.random() * Math.PI * 2);
     const [torusRotation2, setTorusRotation2] = useState(Math.random() * Math.PI * 2);
@@ -58,7 +60,7 @@ const GlobeRender = ({ elapsedTime }) => {
     });
 
     return (
-        <>
+          <>
             <ambientLight intensity={0.1} />
             <directionalLight ref={lightRef} position={[5, 0, 5]} />
             <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
@@ -109,7 +111,7 @@ const GlobeRender = ({ elapsedTime }) => {
               />
             </mesh>
 
-            <SatelliteRender elapsedTime={elapsedTime} />
+            <StackSatellites />
 
             <OrbitControls enableZoom={true} />
         </>

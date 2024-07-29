@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import '../styles/simulator/UtilityPanel.css';
-import SatelliteConfig from './Satellite/SatelliteConfig';
+import '../../styles/simulator/UtilityPanel.css';
+import SatelliteConfig from '../3DRender/ConfigSatellite';
 
 const UtilityPanel = () => {
   const [topHeight, setTopHeight] = useState(50); // Default height for the top section

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import Datetime from 'react-datetime';
-import moment from 'moment'; // Import moment
+import moment from 'moment';
 import 'react-datetime/css/react-datetime.css';
 import {
   startPauseTimer,
@@ -9,15 +9,15 @@ import {
   updateElapsedTime,
   addTimePoint,
   setstarttime,
-} from '../Store/timeSlice';
+} from '../../Store/timeSlice';
 import { DataSet, Timeline } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
-import '../styles/simulator/ExpTimer.css';
+import '../../styles/simulator/ExpTimer.css';
 import { format } from 'date-fns';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
-const ExpTimer = () => {
+const Timer = () => {
   const dispatch = useDispatch();
   const isRunning = useSelector((state) => state.timer.isRunning);
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
@@ -100,8 +100,6 @@ const ExpTimer = () => {
       },
       height: '150%',
     };
-
-
     if (timelineRef.current) {
       if (!timelineRef.current.timeline) {
         const newTimeline = new Timeline(timelineRef.current, items, options);
@@ -111,8 +109,6 @@ const ExpTimer = () => {
         timelineRef.current.timeline.setOptions(options);
       }
     }
-
-
     return () => {
       if (timelineRef.current && timelineRef.current.timeline) {
         timelineRef.current.timeline.destroy();
@@ -190,8 +186,8 @@ const ExpTimer = () => {
           </div>
         </div>
         <div className='starttime-container'>
-              <p className="starttime-display"> {formattedStartTime} </p>
-              <button className="starttime-btn" onClick={() => setShowDatePicker(true)}>Change Start Time</button>
+          <p className="starttime-display"> {formattedStartTime} </p>
+          <button className="starttime-btn" onClick={() => setShowDatePicker(true)}>Change Start Time</button>
         </div>
       </div>
       <div className="timeline-panel">
@@ -216,4 +212,4 @@ const ExpTimer = () => {
   );
 };
 
-export default ExpTimer;
+export default Timer;

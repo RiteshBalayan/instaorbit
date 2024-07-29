@@ -7,11 +7,12 @@ import { Shape } from 'three';
 import { meanToEccentricAnomaly, eccentricToTrueAnomaly } from './Functions';
 
 
-const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricity, argumentOfPeriapsis, nodalrotation, trueanomly }) => {
+const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOfPeriapsis, nodalrotation, trueanomly }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
   const dispatch = useDispatch();
   const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
+  const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const prevElapsedTime = useRef(elapsedTime);
 
   //Conversion of units 
@@ -61,11 +62,12 @@ const Satellite = ({ particleId, elapsedTime, theta, closestapproch, eccentricit
         satelliteRef.current.position.set(newX, newY, newZ);
 
         //Mapping 3D coordinates to 2D map
+        //North pole is at (0,2,0)
         const r = Math.sqrt((newX)**2 + (newY)**2 + (newZ)**2)
-        const twoDphi = Math.atan2(-newZ, newX)
-        const twoDTheta = Math.acos(newY/r)
+        const twoDphi = Math.atan2(-newZ, newX) //atan2 is angle measured from positive x axis,range: -180 - 180
+        const twoDTheta = Math.acos(newY/r) //cos inverse, range: 0 to 180
         const twodX = (twoDphi/Math.PI)*7.5
-        const twodY = ((-twoDTheta/Math.PI) + 0.5 )*7.5
+        const twodY = ((-twoDTheta/Math.PI) + 0.5 )*7.5 //0.5 is added to account as angle on sphere start from top
 
 
         const tracePoint = {time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY};

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/simulator/SlimTopBar.css'; // Import your CSS file for styling
-import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory, uploadStateField, downloadStateField } from '../firebase/firebaseUtils';
+import '../../styles/simulator/SlimTopBar.css'; 
+import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
-import { auth } from '../firebase/firebase'; // Assuming you have an authentication module
-import { updateitterationID, updatetrajectoryID } from '../Store/workingProject';
+import { auth } from '../../firebase/firebase'; 
+import { updateitterationID, updatetrajectoryID } from '../../Store/workingProject';
 
-const SlimTopBar = () => {
+const TopBar = () => {
   const dispatch = useDispatch();
   const state = useSelector((state) => state);
   const itterationID = useSelector((state) => state.workingProject.itterationID);
   const trajectoryID = useSelector((state) => state.workingProject.trajectoryID);
-  const user = auth.currentUser; // Get current user from Firebase Auth
-
+  const user = auth.currentUser; 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
@@ -215,4 +214,4 @@ const SlimTopBar = () => {
   );
 };
 
-export default SlimTopBar;
+export default TopBar;
