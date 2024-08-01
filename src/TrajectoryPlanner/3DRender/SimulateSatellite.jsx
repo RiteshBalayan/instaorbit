@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
 import { Shape } from 'three';
-import { meanToEccentricAnomaly, eccentricToTrueAnomaly } from './Functions';
+import { meanToEccentricAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation } from './Functions';
 
 
 const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOfPeriapsis, nodalrotation, trueanomly }) => {
@@ -44,22 +44,25 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
       const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
       const essentricanomly = meanToEccentricAnomaly(meananomly, eccentricity);
       const renderanomly = eccentricToTrueAnomaly(essentricanomly, eccentricity);
-
-      //Calculate coordinates on ellipse
-      const Xanomly = semiminoraxis * Math.sin(renderanomly)
-      const Yanomly = 0
-      const Zanomly = (semimazoraxis * Math.cos(renderanomly)) - axisofset;
-      const vec = new THREE.Vector3(Xanomly, Yanomly, Zanomly)
-
-      //Rotating transform of Ellipse in three space
-      const euler = new THREE.Euler(theta, argumentOfPeriapsis, nodalrotation, 'XZY');
     
       if (satelliteRef.current) {
 
-        const rotatedVector = vec.applyEuler(euler);
-        const [newX, newY, newZ] = rotatedVector;
+        const elements = {
+          a: semimazoraxis, // Semi-major axis in km
+          e: eccentricity, // Eccentricity
+          M: meananomly, // Mean anomaly in radians
+          Ω: nodalrotation, // Longitude of ascending node in degrees
+          ω: argumentOfPeriapsis, // Argument of periapsis in degrees
+          i: theta // Inclination in degrees
+          };
+
+        const [position, velocity] = keplerianToCartesian(elements)
+
+        const [newX, newY, newZ] = position;
 
         satelliteRef.current.position.set(newX, newY, newZ);
+        //satelliteRef.current.position.set(a, b, c);
+
 
         //Mapping 3D coordinates to 2D map
         //North pole is at (0,2,0)
@@ -71,6 +74,7 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
 
 
         const tracePoint = {time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY};
+
         dispatch(addTracePoint({ id: particleId, tracePoint })); //Append time series of satellite trajectory
         dispatch(updateCoordinate({id: particleId, coordinates: tracePoint })) //Update current coordinate
 
@@ -88,22 +92,32 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
       // Update previous elapsedTime
       prevElapsedTime.current = elapsedTime;
     }
-  }, [dispatch, elapsedTime, particleId, particle, theta]);
+  }, [dispatch, elapsedTime, particleId, particle, theta, trueanomly ]);
 
 
   //Quick Preview of ellipse for current parameter
   const ellipseRef = useRef();
   const shape = new Shape(); // Create the shape path
-  shape.absellipse(0, -c, semiminoraxis, semimazoraxis, 0, Math.PI * 2, false, 0);
+  shape.absellipse(-c, 0, semimazoraxis, semiminoraxis, 0, Math.PI * 2, false, 0);
+
+        // Create points from the shape
+        const points = shape.getPoints(100);
+        const rotatedPoints = points.map(point => {
+          return applyZ_X_Z_Rotation([point.x, point.y, 0], nodalrotation, theta, argumentOfPeriapsis);
+        });
+  
+        // Update geometry with rotated points
+        const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
+        //ellipseRef.current.geometry = geometry;
 
   // Create points from the shape
-  const points = shape.getPoints(100);
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  //const points = shape.getPoints(100);
+  //const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
   // Apply rotations to the geometry
-  geometry.rotateX(theta + Math.PI/2);
-  geometry.rotateZ(nodalrotation);
-  geometry.rotateY(argumentOfPeriapsis);
+  //geometry.rotateZ(nodalrotation);
+  //geometry.rotateX(theta);
+  //geometry.rotateZ(argumentOfPeriapsis);
 
   const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
   // this function is in development
