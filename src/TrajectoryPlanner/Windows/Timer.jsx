@@ -57,8 +57,8 @@ const Timer = () => {
 
       // Define groups
       const groups = new DataSet([
-        { id: 1, content: 'Events', className: 'events-group'},
-        { id: 2, content: 'Satellite', className: 'Satellite-group' }
+        { id: 1, content: 'Satellite', className: 'events-group'},
+        { id: 2, content: 'Events', className: 'Satellite-group' }
       ]);
 
   // Map particles to items
@@ -77,7 +77,7 @@ const Timer = () => {
           start: start,
           end: end,
           type: 'range',
-          group: 2,
+          group: 1,
         };
       }
       return undefined; // Return undefined if conditions are not met
@@ -93,7 +93,7 @@ const Timer = () => {
       className: 'current-time-point',
       style: "color: white; background-color: black; height: '100%'; weight: '2px'",
       editable: false,
-      group: 1,
+      group: 2,
     };
 
     const items = new DataSet([...particleItems, currentTimePoint]);
@@ -102,8 +102,10 @@ const Timer = () => {
       stack: true,
       align: 'left',
       showCurrentTime: false,
+      autoResize: false,
       min: new Date(minTime),
       minHeight: "100px",
+      orientation: 'top',
       horizontalScroll: true,
       verticalScroll: true,
       zoomable: true,

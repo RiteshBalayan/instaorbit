@@ -12,7 +12,7 @@ const GlobeRender = () => {
     const earthRef = useRef();
     const lightRef = useRef();
     const sunRef = useRef();
-    const texture = useLoader(THREE.TextureLoader, '/00_earthmap1k.jpg');
+    const texture = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
     const starttime = useSelector((state) => state.timer.starttime);
     const elapsedTime = useSelector((state) => state.timer.elapsedTime);
     const view = useSelector((state) => state.view);
@@ -30,8 +30,8 @@ const GlobeRender = () => {
         if (lightRef.current && sunRef.current) {
             const radius = 5;
             const speed = (2 * Math.PI) / (24 * 60 * 60); // Adjust the speed of revolution
-            const x = radius * Math.cos((speed * elapsedTime) + (phase/24)*2*Math.PI);
-            const y = radius * Math.sin((speed * elapsedTime) + (phase/24)*2*Math.PI);
+            const x = radius * Math.cos((-speed * elapsedTime) + (phase/24)*2*Math.PI);
+            const y = radius * Math.sin((-speed * elapsedTime) + (phase/24)*2*Math.PI);
             lightRef.current.position.set(x, y, 0);
             sunRef.current.position.set(x*100, y*100, 0);
         }

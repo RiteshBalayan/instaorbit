@@ -35,37 +35,37 @@ const VonAllenBelt = () => {
 
     return (
           <>
-            <mesh ref={torusRef} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh ref={torusRef} rotation={[0, 0, 0]}>
               <torusGeometry args={[2.5, 2.6, 16, 100]} />
               <meshStandardMaterial
                 color="blue"
                 wireframe={true}
                 transparent={true}
-                opacity={0.0}
+                opacity={0.01}
                 emissive="blue"
                 emissiveIntensity={0.3}
               />
             </mesh>
 
-            <mesh ref={torusRef2} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh ref={torusRef2} rotation={[0, 0, 0]}>
               <torusGeometry args={[2.6, 2.6, 16, 100, Math.PI / 10, Math.PI / 10]} />
               <meshStandardMaterial
                 color="blue"
                 wireframe={true}
                 transparent={true}
-                opacity={0.0}
+                opacity={0.01}
                 emissive="blue"
                 emissiveIntensity={0.1}
               />
             </mesh>
 
-            <mesh ref={torusRef3} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh ref={torusRef3} rotation={[0, 0, 0]}>
               <torusGeometry args={[2.7, 2.6, 16, 100]} />
               <meshStandardMaterial
                 color="orange"
                 wireframe={true}
                 transparent={true}
-                opacity={0.0}
+                opacity={0.01}
                 emissive="orange"
                 emissiveIntensity={0.2}
               />

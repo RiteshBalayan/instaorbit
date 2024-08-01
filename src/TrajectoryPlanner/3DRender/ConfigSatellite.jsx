@@ -1,11 +1,10 @@
 // src/components/SatelliteConfig.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateSatellites } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState, togglePreview } from '../../Store/CurrentState';
-import { auth } from '../../firebase/firebase';
-
+import './SatelliteConfig.css'; // Importing CSS file
 
 const SatelliteConfig = () => {
   const dispatch = useDispatch();
@@ -27,7 +26,7 @@ const SatelliteConfig = () => {
     const newSatellite = { id: newId, name: newSatelliteName, argumentOfPeriapsis: 0, theta: 0, eccentricity: 0, closestapproch: 0, nodalrotation: 0, trueanomly: 0 };
     const newConfig = [...satellitesConfig, newSatellite];
     dispatch(updateSatellites(newConfig));
-    dispatch(initializeParticles({ id: newId, name: newSatelliteName,  tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
     dispatch(updateCoordinate({ id: newId, coordinates: [] }));
     setNewSatelliteName('');
     setShowNameInput(false);
@@ -64,113 +63,59 @@ const SatelliteConfig = () => {
   };
 
   return (
-    <div>
+    <div className="satellite-config">
       {satellitesConfig.map((satellite) => (
-        <div key={satellite.id} style={{ marginBottom: '10px' }}>
+        <div key={satellite.id} className={`satellite-item ${activeSatellite === satellite.id ? 'active' : ''}`}>
           <h3 
             onClick={() => handleSatelliteClick(satellite.id)}
-            style={{ cursor: 'pointer', color: activeSatellite === satellite.id ? 'blue' : 'white' }}
-            onMouseEnter={(e) => e.target.style.color = 'blue'}
-            onMouseLeave={(e) => e.target.style.color = activeSatellite === satellite.id ? 'blue' : 'white'}
+            className="satellite-name"
           >
             {satellite.name}
           </h3>
           {activeSatellite === satellite.id && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(3, 1fr)', gap: '10px' }}>
-              <label style={{ gridColumn: '1', textAlign: 'left' }}>
-                True Anomoly:
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="360"
-                value={satellite.trueanomly}
-                onChange={(e) => updateSatellite(satellite.id, 'trueanomly', e.target.value)}
-                style={{ gridColumn: '2', textAlign: 'right' }}
-              />
-              <label style={{ gridColumn: '1', textAlign: 'left' }}>
-                Argument Of Periapsis:
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="360"
-                value={satellite.argumentOfPeriapsis}
-                onChange={(e) => updateSatellite(satellite.id, 'argumentOfPeriapsis', e.target.value)}
-                style={{ gridColumn: '2', textAlign: 'right' }}
-              />
-              <label style={{ gridColumn: '1', textAlign: 'left' }}>
-                Nodal Rotation:
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="360"
-                value={satellite.nodalrotation}
-                onChange={(e) => updateSatellite(satellite.id, 'nodalrotation', e.target.value)}
-                style={{ gridColumn: '2', textAlign: 'right' }}
-              />
-              <label style={{ gridColumn: '1', textAlign: 'left' }}>
-                Theta:
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="360"
-                value={satellite.theta}
-                onChange={(e) => updateSatellite(satellite.id, 'theta', e.target.value)}
-                style={{ gridColumn: '2', textAlign: 'right' }}
-              />
-              <label style={{ gridColumn: '1', textAlign: 'left' }}>
-                Closest Approach:
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="40000"
-                step="0.1"
-                value={satellite.closestapproch}
-                onChange={(e) => updateSatellite(satellite.id, 'closestapproch', e.target.value)}
-                style={{ gridColumn: '2', textAlign: 'right' }}
-              />
-              <label style={{ gridColumn: '1', textAlign: 'left' }}>
-                Eccentricity:
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="1"
-                step="0.01"
-                value={satellite.eccentricity}
-                onChange={(e) => updateSatellite(satellite.id, 'eccentricity', e.target.value)}
-                style={{ gridColumn: '2', textAlign: 'right' }}
-              />
-            <label>
-            <input
-              type="checkbox"
-              checked={satellite.visibility}
-              onChange={() => handleCheckboxChange(satellite.id)}
-            />
-            Show Preview
-          </label>
-          <button onClick={() => deleteSatellite(satellite.id)}>Delete</button>
+            <div className="satellite-details">
+              {['trueanomly', 'argumentOfPeriapsis', 'nodalrotation', 'theta', 'closestapproch', 'eccentricity'].map((field) => (
+                <div key={field} className="detail-row">
+                  <label className="detail-label">
+                    {field.replace(/([A-Z])/g, ' $1').toUpperCase()}:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="360"
+                    step={field === 'eccentricity' ? '0.01' : '1'}
+                    value={satellite[field]}
+                    onChange={(e) => updateSatellite(satellite.id, field, e.target.value)}
+                    className="detail-input"
+                  />
+                </div>
+              ))}
+              <div className="checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={satellite.visibility}
+                  onChange={() => handleCheckboxChange(satellite.id)}
+                />
+                <span>Show Preview</span>
+              </div>
+              <button className="delete-button" onClick={() => deleteSatellite(satellite.id)}>🗑️</button>
             </div>
-            
           )}
         </div>
       ))}
       {showNameInput ? (
-        <div>
+        <div className="input-container">
           <input
             type="text"
             placeholder="Enter satellite name"
             value={newSatelliteName}
             onChange={(e) => setNewSatelliteName(e.target.value)}
+            className="name-input"
           />
-          <button onClick={handleAddSatellite}>Add Satellite</button>
+          <button className="add-button" onClick={handleAddSatellite}>✔️</button>
         </div>
       ) : (
-        <button onClick={handleAddSatelliteClick}>Add Satellite</button>
+        <button className="add-button" onClick={handleAddSatelliteClick}>➕</button>
       )}
     </div>
   );

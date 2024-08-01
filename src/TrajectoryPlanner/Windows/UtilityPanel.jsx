@@ -48,7 +48,7 @@ const UtilityPanel = () => {
 
   return (
     <div className="utility-panel">
-      <div className="panel-top" style={{ height: `${topHeight}px` }}>
+      <div className="panel-top">
         {/* Top section content here */}
         <h2>Satellites</h2>
         <SatelliteConfig />

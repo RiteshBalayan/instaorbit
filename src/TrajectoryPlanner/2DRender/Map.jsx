@@ -17,19 +17,19 @@ const Map = ({  particleId }) => {
   const sunRef = useRef();
 
   useEffect(() => {
-    if (sunRef.current) {
+    if (sunRef) {
       const initialtime = new Date(starttime);
       initialtime.setHours(0, 0, 0, 0);
       const phase = (starttime - initialtime) / (1000 * 60 * 60);
       const speed = (2 * Math.PI) / (24 * 60 * 60); // Speed of revolution
 
-      const sunX = Math.cos((speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
-      const sunZ = Math.sin((speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
-      const sunY = 0;
+      const sunX = Math.cos((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
+      const sunY = Math.sin((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
+      const sunZ = 0;
 
       const r = Math.sqrt(sunX ** 2 + sunY ** 2 + sunZ ** 2);
-      const twoDphi = Math.atan2(-sunZ, sunX); // Angle from positive x axis
-      const twoDTheta = Math.acos(sunY / r); // Angle from positive z axis
+      const twoDphi = Math.atan2(sunY, sunX); // Angle from positive x axis
+      const twoDTheta = Math.acos(sunZ / r); // Angle from positive z axis
 
       const suntwodX = (twoDphi / Math.PI) * 7.5;
       const suntwodY = ((-twoDTheta / Math.PI) + 0.5) * 7.5;
@@ -46,7 +46,12 @@ const Map = ({  particleId }) => {
   }
   
   if (pointsRef.current) {
-    const newTracePoints = particle.tracePoints.flatMap(p => [p.mapX, p.mapY, 0]);
+    const newTracePoints = particle.tracePoints.flatMap(p => {
+      const x = p.mapX;
+      const y = p.mapY;
+      const z = (y > 1 || y < -1) ? - 1 : 1;
+      return [x, y, z];
+  });
     if (lineRef.current) {
         lineRef.current.geometry.setAttribute(
           'position',

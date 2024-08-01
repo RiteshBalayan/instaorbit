@@ -67,8 +67,8 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
         //Mapping 3D coordinates to 2D map
         //North pole is at (0,2,0)
         const r = Math.sqrt((newX)**2 + (newY)**2 + (newZ)**2)
-        const twoDphi = Math.atan2(-newZ, newX) //atan2 is angle measured from positive x axis,range: -180 - 180
-        const twoDTheta = Math.acos(newY/r) //cos inverse, range: 0 to 180
+        const twoDphi = Math.atan2(newY, newX) //atan2 is angle measured from positive x axis,range: -180 - 180
+        const twoDTheta = Math.acos(newZ/r) //cos inverse, range: 0 to 180
         const twodX = (twoDphi/Math.PI)*7.5
         const twodY = ((-twoDTheta/Math.PI) + 0.5 )*7.5 //0.5 is added to account as angle on sphere start from top
 
@@ -106,18 +106,8 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
           return applyZ_X_Z_Rotation([point.x, point.y, 0], nodalrotation, theta, argumentOfPeriapsis);
         });
   
-        // Update geometry with rotated points
         const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
-        //ellipseRef.current.geometry = geometry;
 
-  // Create points from the shape
-  //const points = shape.getPoints(100);
-  //const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-  // Apply rotations to the geometry
-  //geometry.rotateZ(nodalrotation);
-  //geometry.rotateX(theta);
-  //geometry.rotateZ(argumentOfPeriapsis);
 
   const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
   // this function is in development
