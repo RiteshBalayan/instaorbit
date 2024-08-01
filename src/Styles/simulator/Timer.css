@@ -3,7 +3,7 @@
   bottom: 0;
   left: 0;
   width: 80vw;
-  height: 20vh;
+  height: 25vh;
   display: flex;
   background-color: #1e1e1e;
   color: #3a3a3a;
@@ -124,7 +124,7 @@
 .timeline-panel {
   width: 80%;
   background-color: #1e1e1e;
-  padding: 10px;
+  padding: 0px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -133,6 +133,8 @@
 .slider-container {
   margin-top: 10px;
   flex-grow: 1;
+  background: #636363;
+  color: #a31313;
 }
 
 .horizontal-slider {
@@ -190,4 +192,10 @@
 .rdtPicker .rdtTime .rdtSeconds {
   height: 30px; /* Adjust as needed */
   line-height: 30px; /* Vertically center the text */
+}
+
+.current-time-point {
+  height: 100%!important;
+  background-color: rgba(0, 123, 255, 0.2); /* Customize color as needed */
+  border: 0px solid rgba(0, 123, 255, 0.5);
 }

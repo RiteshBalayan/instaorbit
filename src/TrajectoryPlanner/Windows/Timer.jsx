@@ -14,6 +14,7 @@ import { DataSet, Timeline } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../../Styles/simulator/Timer.css';
 import { format } from 'date-fns';
+import { Center } from '@react-three/drei';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
@@ -27,10 +28,12 @@ const Timer = () => {
   const particles = useSelector((state) => state.particles.particles);
   const intervalRef = useRef(null);
   const timelineRef = useRef(null);
-  const [timeStep, setTimeStep] = useState(0.001);
+  const [timeStep, setTimeStep] = useState(10);
   const [timeUnit, setTimeUnit] = useState('s'); // 's' for seconds, 'm' for minutes, 'h' for hours
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const currentTime = new Date(starttime + elapsedTime*1000)
+  const formattedCurrentTime = format(currentTime, "dd MMM yyyy hh:mm a");
 
   useEffect(() => {
     if (isRunning) {
@@ -49,6 +52,14 @@ const Timer = () => {
     const now = starttime || Date.now();
     const minTime = now;
     const maxTime = now + (timePoints.length > 0 ? timePoints[timePoints.length - 1] * 1000 : 0);
+    const currentTime = new Date(now + elapsedTime*1000)
+    const formattedCurrentTime = format(currentTime, "dd MMM yyyy hh:mm a");
+
+      // Define groups
+      const groups = new DataSet([
+        { id: 1, content: 'Events', className: 'events-group'},
+        { id: 2, content: 'Satellite', className: 'Satellite-group' }
+      ]);
 
   // Map particles to items
   const particleItems = particles
@@ -66,21 +77,35 @@ const Timer = () => {
           start: start,
           end: end,
           type: 'range',
+          group: 2,
         };
       }
       return undefined; // Return undefined if conditions are not met
     })
     .filter(item => item !== undefined); // Remove undefined values from the array
 
-    const items = new DataSet(particleItems);
+    // Add the current time point item
+    const currentTimePoint = {
+      id: 'current-time',
+      content: 'Current Time',
+      start: currentTime,
+      type: 'box',
+      className: 'current-time-point',
+      style: "color: white; background-color: black; height: '100%'; weight: '2px'",
+      editable: false,
+      group: 1,
+    };
+
+    const items = new DataSet([...particleItems, currentTimePoint]);
 
     const options = {
       stack: true,
-      showCurrentTime: true,
+      align: 'left',
+      showCurrentTime: false,
       min: new Date(minTime),
       minHeight: "100px",
       horizontalScroll: true,
-      verticalScroll: false,
+      verticalScroll: true,
       zoomable: true,
       zoomFriction: 20,
       editable: false,
@@ -93,22 +118,30 @@ const Timer = () => {
           hour: 'h',
         },
         majorLabels: {
-          second: 's',
-          minute: 'm',
-          hour: 'h',
+          millisecond:'HH:mm:ss',
+          second:     'D MMMM HH:mm',
+          minute:     'ddd D MMMM',
+          hour:       'ddd D MMMM',
+          weekday:    'MMMM YYYY',
+          day:        'MMMM YYYY',
+          week:       'MMMM YYYY',
+          month:      'YYYY',
+          year:       ''      
         },
       },
-      height: '150%',
+      height: '25vh',
     };
     if (timelineRef.current) {
       if (!timelineRef.current.timeline) {
-        const newTimeline = new Timeline(timelineRef.current, items, options);
+        const newTimeline = new Timeline(timelineRef.current, items, groups, options);
         timelineRef.current.timeline = newTimeline;
       } else {
         timelineRef.current.timeline.setItems(items);
+        timelineRef.current.timeline.setGroups(groups); // Set groups
         timelineRef.current.timeline.setOptions(options);
       }
     }
+
     return () => {
       if (timelineRef.current && timelineRef.current.timeline) {
         timelineRef.current.timeline.destroy();
@@ -160,6 +193,7 @@ const Timer = () => {
     <div className="exptimer-container">
       <div className="time-controller">
         <div className="controller-content">
+        <p style={{ color: 'white', textAlign: 'center', margin: 0, padding: 0  }}>{formattedCurrentTime}</p>
           <div className="time-display">
           <p style={{ color: 'white' }}>{formatElapsedTime()}</p>
             <div className="time-unit-controls">

@@ -5,9 +5,7 @@ import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSelector } from 'react-redux';
 import StackSatellites from './StackSatellites';
-import { AxesHelper } from 'three';
 import VonAllenBelt from './VonAllenBelt';
-import { GridHelper } from 'three';
 
 // Y axis Points towards north Pole
 const GlobeRender = () => {
@@ -15,8 +13,9 @@ const GlobeRender = () => {
     const lightRef = useRef();
     const sunRef = useRef();
     const texture = useLoader(THREE.TextureLoader, '/00_earthmap1k.jpg');
-    const starttime = useSelector((state) => state.timer.starttime)
-    const elapsedTime = useSelector((state) => state.timer.elapsedTime)
+    const starttime = useSelector((state) => state.timer.starttime);
+    const elapsedTime = useSelector((state) => state.timer.elapsedTime);
+    const view = useSelector((state) => state.view);
 
     //Get sun direction initial condition
     const initialtime = new Date(starttime);
@@ -57,12 +56,13 @@ const GlobeRender = () => {
 
             <StackSatellites />
 
-            <gridHelper
+            { view.Grid &&
+              <gridHelper
               args={[100, 100, 'grey', 'grey']}
               rotation={[Math.PI/2, 0, 0]} // Grid size, divisions, color for lines, color for center lines
-            />
-            {/*<VonAllenBelt />*/}
-            <axesHelper args={[5]} />
+            />}
+            {view.VonAllenBelt && <VonAllenBelt />}
+            {view.Axis && <axesHelper args={[5]} />}
             <OrbitControls />
             <PerspectiveCamera
             makeDefault
