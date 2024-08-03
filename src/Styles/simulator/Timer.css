@@ -6,23 +6,26 @@
   height: 25vh;
   display: flex;
   background-color: #1e1e1e;
-  color: #3a3a3a;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
-  border-top: 2px solid #333;
+  color: #f0f0f0;
+  box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.7);
+  border-top: 2px solid #00ffcc;
+  border-radius: 10px 10px 0 0;
 }
 
 .time-controller {
   width: 20%;
-  border-right: 1px solid #333;
+  border-right: 1px solid #00ffcc;
   background-color: #2a2a2a;
   padding: 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  border-radius: 10px 0 0 0;
 }
 
 .controller-content {
-  display: flex;font-size: 1rem;
+  display: flex;
+  font-size: 1rem;
   flex-direction: column;
   height: 100%;
   justify-content: space-between;
@@ -33,6 +36,7 @@
   flex-direction: column;
   align-items: center;
   font-size: 1rem; /* Very small font size */
+  color: #00ffcc;
 }
 
 .time-unit-controls {
@@ -48,9 +52,9 @@
   padding: 0;
   border: none;
   background: #333;
-  color: #fff;
+  color: #00ffcc;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,9 +75,9 @@
   padding: 0;
   border: none;
   background: #333;
-  color: #fff;
+  color: #00ffcc;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 50%;
   margin: 2px;
   display: flex;
   align-items: center;
@@ -98,9 +102,9 @@
   padding: 0;
   border: none;
   background: #333;
-  color: #ffffff;
+  color: #00ffcc;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +114,7 @@
 /* Display text styling */
 .starttime-display {
   font-size: 0.8rem; /* Font size for the display */
-  color: #ffffff; /* Text color */
+  color: #00ffcc; /* Text color */
   margin: 0; /* Remove margin */
   text-align: center; /* Center text */
 }
@@ -119,6 +123,10 @@
   width: 60px; /* Adjust width as needed */
   font-size: 0.8rem; /* Small font size */
   margin-left: 5px;
+  color: #00ffcc;
+  background-color: #2a2a2a;
+  border: 1px solid #00ffcc;
+  border-radius: 10px;
 }
 
 .timeline-panel {
@@ -128,19 +136,22 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  border-radius: 0 10px 0 0;
 }
 
 .slider-container {
   margin-top: 10px;
   flex-grow: 1;
-  background: #636363;
+  background: #2a2a2a;
   color: #a31313;
+  border-radius: 0 0 10px 10px;
 }
 
 .horizontal-slider {
   width: 100%;
   height: 6px;
-  background: #ddd;
+  background: #00ffcc;
+  border-radius: 3px;
 }
 
 .thumb {
@@ -148,6 +159,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  border: 2px solid #00ffcc;
 }
 
 .datepicker-popup {
@@ -158,13 +170,19 @@
   transform: translate( -50%, -50%);
   background: rgb(92, 91, 91);
   padding: 20px;
-  border: 1px solid #313131;
+  border: 1px solid #00ffcc;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  border-radius: 10px;
 }
 
 .datepicker-popup button {
   margin: 5px;
+  background-color: #333;
+  color: #00ffcc;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 /* Adjust the height and width of the calendar */
@@ -196,6 +214,41 @@
 
 .current-time-point {
   height: 100%!important;
-  background-color: rgba(0, 123, 255, 0.2); /* Customize color as needed */
-  border: 0px solid rgba(0, 123, 255, 0.5);
+  background-color: rgba(0, 255, 204, 0.2); /* Customize color as needed */
+  border: 0px solid rgba(0, 255, 204, 0.5);
+}
+
+.time-input .rdt {
+  background-color: var(--highlight-bg);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-color);
+}
+
+.time-input .rdt input {
+  background-color: var(--highlight-bg);
+  color: var(--text-color);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.time-input .rdtPicker {
+  background-color: var(--highlight-bg);
+  color: var(--text-color);
+  border: none;
+}
+
+.time-input .rdtPicker td.rdtDay:hover,
+.time-input .rdtPicker td.rdtHour:hover,
+.time-input .rdtPicker td.rdtMinute:hover,
+.time-input .rdtPicker td.rdtSecond:hover {
+  background-color: var(--highlight-color);
+  color: var(--text-color);
+}
+
+.time-input .rdtPicker td.rdtActive,
+.time-input .rdtPicker td.rdtActive:hover {
+  background-color: var(--highlight-color);
+  color: var(--text-color);
 }

@@ -1,74 +1,135 @@
-import React, { useRef, useEffect } from 'react';
-import { useFrame, useLoader, useThree } from '@react-three/fiber';
+import React, { useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSelector } from 'react-redux';
 import StackSatellites from './StackSatellites';
 import VonAllenBelt from './VonAllenBelt';
+import { useLoader } from '@react-three/fiber';
 
-// Y axis Points towards north Pole
+// Vertex Shader for Glow
+const vertexShader = `
+    varying vec3 vNormal;
+    void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+// Fragment Shader for Glow
+const fragmentShader = `
+    uniform float c;
+    uniform float p;
+    varying vec3 vNormal;
+    void main() {
+        float intensity = pow(c - dot(vNormal, vec3(0.0, 0.0, 1.0)), p);
+        gl_FragColor = vec4(1.0, 0.8, 0.0, 1.0) * intensity;
+    }
+`;
+
+// Vertex Shader for Sun Surface
+const sunVertexShader = `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+// Fragment Shader for Sun Surface
+const sunFragmentShader = `
+    uniform float time;
+    varying vec2 vUv;
+    void main() {
+        vec2 uv = vUv;
+        uv.y += time * 0.01;
+        vec3 color = vec3(1.0, 0.5 + 0.5 * sin(uv.y * 10.0 + time * 2.0), 0.0);
+        gl_FragColor = vec4(color, 1.0);
+    }
+`;
+
 const GlobeRender = () => {
     const earthRef = useRef();
     const lightRef = useRef();
     const sunRef = useRef();
+    const haloRef = useRef();
     const texture = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
     const starttime = useSelector((state) => state.timer.starttime);
     const elapsedTime = useSelector((state) => state.timer.elapsedTime);
     const view = useSelector((state) => state.view);
 
-    //Get sun direction initial condition
+    // Get sun direction initial condition
     const initialtime = new Date(starttime);
     initialtime.setHours(0, 0, 0, 0);
+    const phase = (starttime - initialtime) / (1000 * 60 * 60);
 
-    const phase = (starttime - initialtime)/(1000*60*60)
+    const { clock } = useThree();
 
     useFrame(() => {
         if (earthRef.current) {
             earthRef.current.rotation.y += 0.000;
         }
-        if (lightRef.current && sunRef.current) {
+        if (lightRef.current && sunRef.current && haloRef.current) {
             const radius = 5;
             const speed = (2 * Math.PI) / (24 * 60 * 60); // Adjust the speed of revolution
-            const x = radius * Math.cos((-speed * elapsedTime) + (phase/24)*2*Math.PI);
-            const y = radius * Math.sin((-speed * elapsedTime) + (phase/24)*2*Math.PI);
+            const x = radius * Math.cos((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
+            const y = radius * Math.sin((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
             lightRef.current.position.set(x, y, 0);
-            sunRef.current.position.set(x*100, y*100, 0);
+            sunRef.current.position.set(x * 100, y * 100, 0);
+            haloRef.current.position.set(x * 100, y * 100, 0);
         }
     });
 
-
     return (
-          <>
+        <>
             <ambientLight intensity={0.1} />
-            <directionalLight ref={lightRef} position={[5, 0, 5]} intensity={2}/>
-            <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} /> 
+            <directionalLight ref={lightRef} position={[5, 0, 5]} intensity={2} />
+            <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
 
-            <mesh ref={earthRef} rotation={[Math.PI/2, 0, 0]}>
+            <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
                 <sphereGeometry args={[2, 32, 32]} />
                 <meshStandardMaterial map={texture} />
             </mesh>
 
             <mesh ref={sunRef}>
-                <sphereGeometry args={[10, 32, 32]} />
-                <meshStandardMaterial color="yellow" emissive="yellow" />
+                <sphereGeometry args={[10, 64, 64]} />
+                <shaderMaterial
+                    vertexShader={sunVertexShader}
+                    fragmentShader={sunFragmentShader}
+                    uniforms={{
+                        time: { value: clock.getElapsedTime() },
+                    }}
+                />
+            </mesh>
+
+            <mesh ref={haloRef} scale={[1.5, 1.5, 1.5]}>
+                <sphereGeometry args={[10, 64, 64]} />
+                <shaderMaterial
+                    vertexShader={vertexShader}
+                    fragmentShader={fragmentShader}
+                    uniforms={{ c: { value: 1.0 }, p: { value: 2.0 } }}
+                    blending={THREE.AdditiveBlending}
+                    side={THREE.BackSide}
+                    transparent={true}
+                />
             </mesh>
 
             <StackSatellites />
 
-            { view.Grid &&
-              <gridHelper
-              args={[100, 100, 'grey', 'grey']}
-              rotation={[Math.PI/2, 0, 0]} // Grid size, divisions, color for lines, color for center lines
-            />}
+            {view.Grid &&
+                <gridHelper
+                    args={[100, 100, 'grey', 'grey']}
+                    rotation={[Math.PI / 2, 0, 0]} // Grid size, divisions, color for lines, color for center lines
+                />}
             {view.VonAllenBelt && <VonAllenBelt />}
             {view.Axis && <axesHelper args={[5]} />}
             <OrbitControls />
             <PerspectiveCamera
-            makeDefault
-            position={[5, 0, 0]}
-            up={[0, 0, 1]} 
-          />
+                makeDefault
+                position={[5, 0, 0]}
+                up={[0, 0, 1]}
+            />
         </>
     );
 };

@@ -1,60 +1,64 @@
 .slim-top-bar {
-    background-color: #f0f0f0;
-    border-bottom: 1px solid #ccc;
-    height: 40px; /* Adjust height as needed */
-    z-index: 900;
-  }
-  
-  .top-bar-items {
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    height: 100%;
-  }
-  
-  .top-bar-item {
-    margin-right: 10px; /* Adjust spacing between items */
-    padding: 8px 12px;
-    background-color: #e0e0e0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    color: #333;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .top-bar-item:hover {
-    background-color: #d0d0d0;
-  }
+  background: linear-gradient(145deg, #000428, #004e92); /* Space-themed gradient */
+  border-bottom: 2px solid #00ffcc; /* Neon border */
+  height: 40px; /* Adjust height as needed */
+  z-index: 900;
+  box-shadow: 0 2px 10px rgba(0, 255, 204, 0.5); /* Neon glow effect */
+}
 
-  /* No specific styling for buttons to keep them minimalist */
+.top-bar-items {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 100%;
+  color: #00ffcc; /* Neon text color */
+  background: linear-gradient(145deg, #001f3f, #003f7f); /* Space-themed gradient */
+}
+
+.top-bar-item {
+  margin-right: 10px; /* Adjust spacing between items */
+  padding: 8px 12px;
+  background-color: #00ffcc; /* Neon background */
+  border: 1px solid #004e92; /* Neon border */
+  border-radius: 10px;
+  color: #000428; /* Contrasting text color */
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.top-bar-item:hover {
+  background-color: #004e92; /* Darker background on hover */
+  color: #00ffcc; /* Contrasting text color on hover */
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); /* Neon glow effect on hover */
+}
+
+/* No specific styling for buttons to keep them minimalist */
 .top-bar-button {
-    padding: 0;
-    margin: 0;
-    border: none;
-    background: none;
-    color: inherit;
-    cursor: pointer;
-    font-size: inherit;
-  }
-  
-  .top-bar-button:hover {
-    text-decoration: underline;
-  }
-  
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+}
 
-  .loading-indicator {
-    display: inline-block;
-    width: 10px; /* Adjust width as needed */
-    height: 10px; /* Adjust height as needed */
-    margin-left: 5px; /* Adjust spacing from button */
-    border-radius: 50%;
-    border: 2px solid transparent;
-    border-top-color: #4CAF50; /* Green color */
-    animation: spin 0.8s linear infinite;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
+.top-bar-button:hover {
+  text-decoration: underline;
+}
+
+.loading-indicator {
+  display: inline-block;
+  width: 10px; /* Adjust width as needed */
+  height: 10px; /* Adjust height as needed */
+  margin-left: 5px; /* Adjust spacing from button */
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #00ffcc; /* Neon green color */
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

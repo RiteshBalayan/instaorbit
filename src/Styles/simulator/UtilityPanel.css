@@ -3,30 +3,33 @@
   top: 0;
   right: 0;
   height: 100%;
-  padding: 0px;
-  margin: 0%;
+  padding: 0;
+  margin: 0;
   width: 20vw; /* Fixed width for the panel */
   background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
   display: flex;
   flex-direction: column;
   z-index: 800;
+  box-shadow: 0 0 15px rgba(0, 255, 204, 0.5); /* Neon glow effect */
 }
 
 .panel-top, .panel-bottom {
   flex: 1;
   overflow-y: auto;
-  padding: 0px;
-  margin: 0%;
-  background: #31596b; /* Default background color */
+  padding: 0;
+  margin: 0;
+  background: linear-gradient(145deg, #001f3f, #00274a); /* Space-themed gradient */
+  color: #00ffcc; /* Neon text color */
 }
 
 .panel-bottom {
-  background: #333; /* Slightly darker background for contrast */
+  background: linear-gradient(145deg, #00274a, #001f3f); /* Inverted gradient for contrast */
 }
 
 .resize-line {
   height: 5px;
-  background: #555;
+  background: #00ffcc; /* Neon color */
   cursor: ns-resize;
   user-select: none;
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); /* Neon glow effect */
 }
