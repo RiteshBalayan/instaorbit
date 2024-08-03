@@ -3,6 +3,8 @@
   top: 0;
   right: 0;
   height: 100%;
+  padding: 0px;
+  margin: 0%;
   width: 20vw; /* Fixed width for the panel */
   background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
   display: flex;
@@ -14,6 +16,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 0px;
+  margin: 0%;
   background: #31596b; /* Default background color */
 }
 

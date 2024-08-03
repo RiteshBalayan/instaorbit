@@ -4,10 +4,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
 import { Shape } from 'three';
-import { meanToEccentricAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation } from './Functions';
+import { meanToEccentricAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from './Functions';
 
 
-const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOfPeriapsis, nodalrotation, trueanomly }) => {
+import { Sgp4, Satellite as sat } from 'ootk';
+
+
+const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
   const dispatch = useDispatch();
@@ -16,21 +19,17 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
   const prevElapsedTime = useRef(elapsedTime);
 
   //Conversion of units 
-  closestapproch /= 3185.5;//As render earth radius is 2 Unit in render so convert km to unit
-  const mu = 0.0443910270;  //Gravitation constant times mass factored to our unit, Orignal value is 3.98589196e14 m^3 s^-2, multiply by 60^2 and divide by 318500^3
-  const t = elapsedTime/60;//Convert time
-  theta = THREE.MathUtils.degToRad(theta);//Angles in Radian
+  //closestapproch /= 3185.5;//As render earth radius is 2 Unit in render so convert km to unit
+  const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
+  const t = elapsedTime
+  inclination = THREE.MathUtils.degToRad(inclination);//Angles in Radian
   argumentOfPeriapsis = THREE.MathUtils.degToRad(argumentOfPeriapsis);
-  nodalrotation = THREE.MathUtils.degToRad(nodalrotation);
+  assendingnode = THREE.MathUtils.degToRad(assendingnode);
   trueanomly = THREE.MathUtils.degToRad(trueanomly);
+  console.log(semimajoraxis)
 
   //Orbit Parameters
-  const closestapprochFromFocus = ((closestapproch) + 2);
-  const c = ( eccentricity*closestapprochFromFocus )/( 1 - eccentricity);
-  const semimazoraxis = (c + closestapprochFromFocus) ;
-  const semiminoraxis = (Math.sqrt(semimazoraxis**2 - c**2)) ;
-  const axisofset = semimazoraxis - closestapprochFromFocus;
-  const timeperiod = 2*Math.PI*Math.sqrt((semimazoraxis**3)/mu);
+  const timeperiod = 2*Math.PI*Math.sqrt((semimajoraxis**3)/mu);
   const phi = 7.2722e-2 * t; // Account for earth rotation
 
   useEffect(() => {
@@ -44,25 +43,38 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
       const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
       const essentricanomly = meanToEccentricAnomaly(meananomly, eccentricity);
       const renderanomly = eccentricToTrueAnomaly(essentricanomly, eccentricity);
-    
+
       if (satelliteRef.current) {
 
         const elements = {
-          a: semimazoraxis, // Semi-major axis in km
+          a: semimajoraxis, // Semi-major axis in km
           e: eccentricity, // Eccentricity
           M: meananomly, // Mean anomaly in radians
-          Ω: nodalrotation, // Longitude of ascending node in degrees
+          Ω: assendingnode, // Longitude of ascending node in degrees
           ω: argumentOfPeriapsis, // Argument of periapsis in degrees
-          i: theta // Inclination in degrees
+          i: inclination // Inclination in degrees
           };
 
-        const [position, velocity] = keplerianToCartesian(elements)
+          let newX, newY, newZ;
 
-        const [newX, newY, newZ] = position;
+          if (propagator === 'InstaOrbit') {
+            const [position, velocity] = keplerianToCartesian(elements);
+            [newX, newY, newZ] = position;
+          } else if (propagator === 'SGP4') {
+            var [tleLine1, tleLine2] = getTLE(elements, time);
+            const satrec = Sgp4.createSatrec(tleLine1, tleLine2);
+            const state = Sgp4.propagate(satrec, elapsedTime / 60);
+            newX = state.position.x;
+            newY = state.position.y;
+            newZ = state.position.z;
+          }
+          
+          newX /= 3185.5;
+          newY /= 3185.5;
+          newZ /= 3185.5;
 
         satelliteRef.current.position.set(newX, newY, newZ);
         //satelliteRef.current.position.set(a, b, c);
-
 
         //Mapping 3D coordinates to 2D map
         //North pole is at (0,2,0)
@@ -92,22 +104,23 @@ const Satellite = ({ particleId, theta, closestapproch, eccentricity, argumentOf
       // Update previous elapsedTime
       prevElapsedTime.current = elapsedTime;
     }
-  }, [dispatch, elapsedTime, particleId, particle, theta, trueanomly ]);
+  }, [dispatch, elapsedTime, particleId, particle, inclination, trueanomly ]);
 
 
   //Quick Preview of ellipse for current parameter
   const ellipseRef = useRef();
   const shape = new Shape(); // Create the shape path
-  shape.absellipse(-c, 0, semimazoraxis, semiminoraxis, 0, Math.PI * 2, false, 0);
+  const semiminoraxis = semimajoraxis*Math.sqrt(1-eccentricity**2);
+  const c = Math.sqrt(semimajoraxis**2 - semiminoraxis**2);
+  shape.absellipse(-c, 0, semimajoraxis/3185.5, semiminoraxis/3185.5, 0, Math.PI * 2, false, 0);
 
         // Create points from the shape
         const points = shape.getPoints(100);
         const rotatedPoints = points.map(point => {
-          return applyZ_X_Z_Rotation([point.x, point.y, 0], nodalrotation, theta, argumentOfPeriapsis);
+          return applyZ_X_Z_Rotation([point.x, point.y, 0], assendingnode, inclination, argumentOfPeriapsis);
         });
   
         const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
-
 
   const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
   // this function is in development

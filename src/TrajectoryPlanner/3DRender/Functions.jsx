@@ -75,7 +75,7 @@ export function applyZ_X_Z_Rotation(vector, thetaZ1, thetaX, thetaZ2) {
     const Rz2 = rotateZ(thetaZ2); // Second Z-axis rotation
 
     // Combine rotations: R = Rz2 * Rx * Rz1
-    const combinedRotation = multiplyMatrices(Rz2, multiplyMatrices(Rx, Rz1));
+    const combinedRotation = multiplyMatrices(Rz1, multiplyMatrices(Rx, Rz2));
 
     // Apply the combined rotation matrix to the vector
     const result = [
@@ -122,17 +122,19 @@ export function keplerianToCartesian({a, e, M, Ω, ω, i}) {
     return [Position, Velocity];
 }
 
-export function cartesianToKeplerian(position, velocity) {
+
+
+export function cartesianToKeplerian({position, velocity}) {
     // Constants
     const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
 
     // Extract position and velocity components
-    const x = position.x;
-    const y = position.y;
-    const z = position.z;
-    const vx = velocity.x;
-    const vy = velocity.y;
-    const vz = velocity.z;
+    const x = position[0];
+    const y = position[1];
+    const z = position[2];
+    const vx = velocity[0];
+    const vy = velocity[1];
+    const vz = velocity[2];
 
     // Calculate the distance (r) and speed (v)
     const r = Math.sqrt(x*x + y*y + z*z);
@@ -183,9 +185,102 @@ export function cartesianToKeplerian(position, velocity) {
     return {
         a: a,
         e: e,
-        i: i * 180 / Math.PI, // convert to degrees
-        Ω: Ω * 180 / Math.PI, // convert to degrees
-        ω: ω * 180 / Math.PI, // convert to degrees
-        ν: ν * 180 / Math.PI  // convert to degrees
+        i: i,
+        Ω: Ω,
+        ω: ω, 
+        ν: ν   
     };
+}
+
+function ensureDate(input) {
+    if (!(input instanceof Date)) {
+        return new Date(input);
+    }
+    return input;
+}
+
+export function getTLE(keplerElements, time) {
+    const {
+        a,        // Semi-major axis (km)
+        e,        // Eccentricity
+        M,        // Mean anomaly (radians)
+        Ω,        // Right ascension of ascending node (radians)
+        ω,        // Argument of periapsis (radians)
+        i         // Inclination (radians)
+    } = keplerElements;
+
+    // Ensure time is a Date object
+    time = ensureDate(time);
+    const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
+
+    // Convert radians to degrees
+    const radToDeg = (rad) => rad * (180 / Math.PI);
+
+    // Helper function to format numbers with leading zeros
+    const formatNumber = (num, length) => num.toString().padStart(length, '0');
+
+    const epochYear = time.getUTCFullYear() % 100;
+
+    function getDayOfYear(date) {
+        const startOfYear = new Date(date.getUTCFullYear(), 0, 1);
+        
+        // Calculate the day of the year
+        const dayOfYear = Math.floor((date - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+    
+        // Format the day of the year to three significant figures
+        const formattedDayOfYear = dayOfYear.toString().padStart(3, '0');
+
+        return formattedDayOfYear;
+    }
+
+    const epochday = getDayOfYear(time);
+
+    function getFractionOfDay(time) {
+
+        const dayStart = new Date(time).setHours(0, 0, 0, 0);
+    
+        // Calculate the fraction of the day
+        const fractionDay = (time - dayStart) / (1000 * 60 * 60 * 24);
+    
+        // Remove the decimal by multiplying with 100000000 and convert to integer
+        const fractionScaled = Math.floor(fractionDay * 100000000);
+    
+        // Convert to string and get only the first 8 digits
+        const resultString = fractionScaled.toString().substring(0, 8);
+    
+        // Convert back to number (if needed)
+        const result = parseInt(resultString, 10);
+    
+        return result;
+    }
+
+    const fractionday = getFractionOfDay(time);
+
+    // Placeholder for inclination, RAAN, etc.
+    const inclination = radToDeg(i).toFixed(4);
+    const formatedinclination = inclination.toString().padStart(8, '0');
+
+    const raan = radToDeg(Ω).toFixed(4);
+    const formatedraan = raan.toString().padStart(8, '0');
+
+    const argOfPeriapsis = radToDeg(ω).toFixed(4);
+    const formatedarOfPeriapsis = argOfPeriapsis.toString().padStart(8, '0');
+
+    const meanAnomaly = radToDeg(M).toFixed(4);
+    const formatedmeanAnomly = meanAnomaly.toString().padStart(8, '0');
+    
+    const eccentricity = Math.floor(e * 10000000);
+    const formattedeccentricity = eccentricity.toString().padStart(7, '0');
+
+    // Calculate mean motion
+    // Convert to orbits per day
+    const MeanMotion = Math.sqrt(mu / Math.pow(a, 3))
+    const meanMotionOrbitsPerDay = ((MeanMotion * 86400) / (2 * Math.PI)).toFixed(8);
+    const formatedMeanMotion = meanMotionOrbitsPerDay.toString().padStart(11, '0');
+
+    // Construct TLE strings
+    const line1 = `1 25544U 98067A   ${epochYear}${epochday}.${fractionday} -.00002182  00000-0 -11606-4 0  2927`;
+    const line2 = `2 25544 ${formatedinclination} ${formatedraan} ${formattedeccentricity} ${formatedarOfPeriapsis} ${formatedmeanAnomly} ${formatedMeanMotion}000000`;
+
+    return [line1, line2];
 }

@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { toggleGrid, toggleAxis, toggleVonAllenBelt } from '../../Store/View';
 
 const UtilityPanel = () => {
-  const [topHeight, setTopHeight] = useState(50); // Default height for the top section
+  const [topHeight, setTopHeight] = useState(70); // Default height for the top section
   const view = useSelector((state) => state.view);
   const dispatch = useDispatch();
 
@@ -41,7 +41,7 @@ const UtilityPanel = () => {
       case 'VonAllenBelt':
         dispatch(toggleVonAllenBelt(isChecked));
         break;
-      default:
+      default:next-button
         break;
     }
   };

@@ -12,11 +12,13 @@ const StackSatellites = () => {
           key={index}
           particleId={config.id}
           argumentOfPeriapsis={config.argumentOfPeriapsis}
-          theta={config.theta}
+          inclination={config.inclination}
           eccentricity={config.eccentricity}
-          closestapproch={config.closestapproch}
-          nodalrotation={config.nodalrotation}
+          semimajoraxis={config.semimajoraxis}
+          assendingnode={config.assendingnode}
           trueanomly={config.trueanomly}
+          propagator={config.propagator}
+          time={config.time}
         />
       ))}
     </>
