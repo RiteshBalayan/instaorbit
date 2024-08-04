@@ -104,7 +104,7 @@ const Timer = () => {
       showCurrentTime: false,
       autoResize: false,
       min: new Date(minTime),
-      minHeight: "100px",
+      //minHeight: '100%',
       orientation: 'top',
       horizontalScroll: true,
       verticalScroll: true,
@@ -131,7 +131,7 @@ const Timer = () => {
           year:       ''      
         },
       },
-      height: '25vh',
+      //height: '100%',
     };
     if (timelineRef.current) {
       if (!timelineRef.current.timeline) {

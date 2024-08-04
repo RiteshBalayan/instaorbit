@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import '../../Styles/simulator/UtilityPanel.css';
+import { IconButton, Box } from '@mui/material';
+import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import SatelliteConfig from '../3DRender/ConfigSatellite';
 import UtilityControl from './UtilityControl';
+import '../../Styles/simulator/UtilityPanel.css';
 
 const UtilityPanel = () => {
   const [topHeight, setTopHeight] = useState(60);
@@ -9,7 +11,7 @@ const UtilityPanel = () => {
 
   const handleDrag = (e) => {
     const newTopHeight = (e.clientY / window.innerHeight) * 100;
-    if (newTopHeight > 10 && newTopHeight < 90) { // Limit panel size to prevent collapsing
+    if (newTopHeight > 10 && newTopHeight < 90) {
       setTopHeight(newTopHeight);
     }
   };
@@ -21,14 +23,17 @@ const UtilityPanel = () => {
   return (
     <div>
       {isCollapsed ? (
-        <button className="toggle-button" onClick={togglePanel}>
-          Utility Panel
-        </button>
+        <Box className="toggle-container">
+          <IconButton className="toggle-button" onClick={togglePanel}>
+            <ChevronLeft />
+          </IconButton>
+          <div className="toggle-text">Utility Panel</div>
+        </Box>
       ) : (
         <div className="resizable-panels">
-          <button className="collapse-button" onClick={togglePanel}>
-            Collapse
-          </button>
+          <IconButton className="collapse-button" onClick={togglePanel}>
+            <ChevronRight />
+          </IconButton>
           <div className="top-panel" style={{ height: `${topHeight}%` }}>
             <SatelliteConfig />
           </div>

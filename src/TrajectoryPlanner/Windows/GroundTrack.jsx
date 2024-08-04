@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import '../../Styles/simulator/ResizableDraggablePanel.css';
+import '../../Styles/simulator/GroundTrack.css';
 import MapRender from '../2DRender/MapRender'
 
-const ResizableDraggablePanel = () => {
+const GroundTrack = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpand = () => {
@@ -22,4 +22,4 @@ const ResizableDraggablePanel = () => {
   );
 };
 
-export default ResizableDraggablePanel;
+export default GroundTrack;

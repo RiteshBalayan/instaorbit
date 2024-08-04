@@ -8,8 +8,8 @@
   }
   
   .panel.minimized {
-    width: 10%;
-    height: 10%;
+    width: 200px;
+    height: 100px;
     bottom: 0;
     right: 0;
     border-radius: 10px;
@@ -22,7 +22,7 @@
   .panel.expanded {
     width: 40%;
     height: 40%;
-    bottom: 0;
+    top: 20%;
     left: 0;
     border-radius: 10px;
     overflow: hidden;

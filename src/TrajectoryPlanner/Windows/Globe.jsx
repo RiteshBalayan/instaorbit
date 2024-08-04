@@ -2,7 +2,7 @@ import React from 'react';
 import '../../Styles/simulator/Globe.css';
 import GlobeRender from '../3DRender/GlobeRender';
 import SlimTopBar from './TopBar';
-import ResizableDraggablePanel from './ResizableDraggablePanel';
+import GroundTrack from './GroundTrack';
 import { Canvas } from '@react-three/fiber';
 
 function Globe() {
@@ -13,7 +13,7 @@ function Globe() {
         <Canvas>
             <GlobeRender />
         </Canvas>
-        <ResizableDraggablePanel />
+        <GroundTrack />
     </div> 
   );
 }

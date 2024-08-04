@@ -1,9 +1,9 @@
 .Globe-panel {
-    position: fixed;
+    /*position: fixed;*/
     top: 0;
     left: 0;
-    height: 75%;
-    width: 100vw; /* Fixed width for the panel */
+    height: 100%;
+    width: 100%; /* Fixed width for the panel */
     background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
     display: flex;
     flex-direction: column;
