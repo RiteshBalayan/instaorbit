@@ -1,0 +1,24 @@
+.checkbox-container label {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+  }
+  
+  .checkbox-container .custom-checkbox {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    background: transparent;
+    border: 2px solid #00ffcc;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  
+  .checkbox-container input[type='checkbox']:checked + .custom-checkbox {
+    background: #00ffcc;
+  }
+  
+  .checkbox-container input[type='checkbox'] {
+    display: none;
+  }

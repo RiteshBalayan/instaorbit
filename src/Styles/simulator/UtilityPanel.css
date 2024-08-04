@@ -1,35 +1,68 @@
-.utility-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100%;
-  padding: 0;
+body, html {
   margin: 0;
-  width: 20vw; /* Fixed width for the panel */
-  background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling */
+  background: #1b1b1b; /* Dark background color */
+  font-family: 'Arial', sans-serif; /* Professional font */
+}
+
+.resizable-panels {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 20vw;
+  height: 100vh;
+  background: #2c2c2c; /* Slightly lighter black tint */
   display: flex;
   flex-direction: column;
   z-index: 800;
-  box-shadow: 0 0 15px rgba(0, 255, 204, 0.5); /* Neon glow effect */
+  border-left: 2px solid #444; /* Subtle border */
+  border-radius: 10px 0 0 10px; /* Rounded corners on the left */
 }
 
-.panel-top, .panel-bottom {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-  margin: 0;
-  background: linear-gradient(145deg, #001f3f, #00274a); /* Space-themed gradient */
-  color: #00ffcc; /* Neon text color */
+.top-panel, .bottom-panel {
+  background: #333; /* Dark grey background */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #444; /* Subtle border */
+  color: #ccc; /* Light grey text color */
+  border-radius: 10px; /* Rounded corners */
+  margin: 5px; /* Spacing between panels */
+  padding: 10px;
 }
 
-.panel-bottom {
-  background: linear-gradient(145deg, #00274a, #001f3f); /* Inverted gradient for contrast */
-}
-
-.resize-line {
+.drag-line {
   height: 5px;
-  background: #00ffcc; /* Neon color */
+  background: #444; /* Subtle grey color */
   cursor: ns-resize;
   user-select: none;
-  box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); /* Neon glow effect */
+}
+
+.top-panel, .bottom-panel, .drag-line {
+  transition: height 0.3s ease; /* Smooth transition for resizing */
+}
+
+.top-panel:hover, .bottom-panel:hover, .drag-line:hover {
+  background: #3c3c3c; /* Slightly lighter grey on hover */
+}
+
+.toggle-button, .collapse-button {
+  position: fixed;
+  right: 0;
+  top: 10px;
+  background: #444;
+  color: #ccc;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 10px 0 0 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  z-index: 900;
+}
+
+.toggle-button:hover, .collapse-button:hover {
+  background: #555;
 }

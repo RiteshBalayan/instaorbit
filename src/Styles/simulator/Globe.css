@@ -3,7 +3,7 @@
     top: 0;
     left: 0;
     height: 75%;
-    width: 80vw; /* Fixed width for the panel */
+    width: 100vw; /* Fixed width for the panel */
     background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
     display: flex;
     flex-direction: column;

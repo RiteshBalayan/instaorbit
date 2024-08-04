@@ -7,6 +7,7 @@ import { Canvas } from '@react-three/fiber';
 
 function Globe() {
   return (     
+    
     <div className='Globe-panel'>  
         <SlimTopBar />
         <Canvas>
