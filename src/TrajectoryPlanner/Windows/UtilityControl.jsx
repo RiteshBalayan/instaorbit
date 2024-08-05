@@ -1,7 +1,7 @@
 import React from 'react';
 import '../../Styles/simulator/UtilityControl.css';
 import { useSelector, useDispatch } from 'react-redux';
-import { toggleGrid, toggleAxis, toggleVonAllenBelt } from '../../Store/View';
+import { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight } from '../../Store/View';
 
 const UtilityControl = () => {
   const view = useSelector((state) => state.view);
@@ -19,6 +19,15 @@ const UtilityControl = () => {
       case 'VonAllenBelt':
         dispatch(toggleVonAllenBelt(isChecked));
         break;
+      case 'HDEarth':
+        dispatch(toggleHDEarth(isChecked));
+        break;
+      case 'Sun':
+        dispatch(toggleSun(isChecked));
+        break;
+      case 'AmbientLight':
+        dispatch(toggleAmbientLight(isChecked));
+        break;
       default:
         break;
     }
@@ -26,7 +35,7 @@ const UtilityControl = () => {
 
   return (
     <div className="panel-bottom">
-      <p>Controls</p>
+      <p>Graphics Control</p>
       <div className="checkbox-container">
         <label>
           <input
@@ -49,11 +58,38 @@ const UtilityControl = () => {
         <label>
           <input
             type="checkbox"
+            checked={view.HDEarth}
+            onChange={handleCheckboxChange('HDEarth')}
+          />
+          <span className="custom-checkbox"></span>
+          HDEarth
+        </label>
+        <label>
+          <input
+            type="checkbox"
             checked={view.VonAllenBelt}
             onChange={handleCheckboxChange('VonAllenBelt')}
           />
           <span className="custom-checkbox"></span>
           Von Allen Belt
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={view.Sun}
+            onChange={handleCheckboxChange('Sun')}
+          />
+          <span className="custom-checkbox"></span>
+          Sun
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={view.AmbientLight}
+            onChange={handleCheckboxChange('AmbientLight')}
+          />
+          <span className="custom-checkbox"></span>
+          Ambient Light
         </label>
       </div>
     </div>

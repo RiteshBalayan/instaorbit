@@ -5,6 +5,9 @@ const initialState = {
   Grid: false,
   Axis:false,
   VonAllenBelt:false,
+  HDEarth: true,
+  Sun: true,
+  AmbientLight: false,
 };
 
 const viewSlice = createSlice({
@@ -20,6 +23,15 @@ const viewSlice = createSlice({
     toggleVonAllenBelt: (state, action) => {
         state.VonAllenBelt = action.payload;
       },  
+    toggleHDEarth: (state, action) => {
+        state.HDEarth = action.payload;
+      }, 
+    toggleSun: (state, action) => {
+        state.Sun = action.payload;
+      },  
+    toggleAmbientLight: (state, action) => {
+        state.AmbientLight = action.payload;
+      },   
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
@@ -28,6 +40,6 @@ const viewSlice = createSlice({
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight } = viewSlice.actions;
 
 export default viewSlice.reducer;

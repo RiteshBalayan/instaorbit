@@ -24,7 +24,7 @@ const fragmentShader = `
     varying vec3 vNormal;
     void main() {
         float intensity = pow(c - dot(vNormal, vec3(0.0, 0.0, 1.0)), p);
-        gl_FragColor = vec4(1.0, 0.8, 0.0, 1.0) * intensity;
+        gl_FragColor = vec4(0.0, 0.5, 1.0, 0.2) * intensity; // Blue glow with low intensity
     }
 `;
 
@@ -49,12 +49,17 @@ const sunFragmentShader = `
     }
 `;
 
+const nightMap = './8081_earthlights2k.jpg';
+const cloudsMap = './earthcloudmap.jpg';
+
 const GlobeRender = () => {
     const earthRef = useRef();
     const lightRef = useRef();
     const sunRef = useRef();
     const haloRef = useRef();
     const texture = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
+    const nightTexture = useLoader(THREE.TextureLoader, nightMap);
+    const cloudsTexture = useLoader(THREE.TextureLoader, cloudsMap);
     const starttime = useSelector((state) => state.timer.starttime);
     const elapsedTime = useSelector((state) => state.timer.elapsedTime);
     const view = useSelector((state) => state.view);
@@ -83,15 +88,50 @@ const GlobeRender = () => {
 
     return (
         <>
-            <ambientLight intensity={0.1} />
+            { view.AmbientLight &&
+            <ambientLight intensity={1} />
+            }
             <directionalLight ref={lightRef} position={[5, 0, 5]} intensity={2} />
             <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
 
+            { !view.HDEarth &&
+                <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
+                    <sphereGeometry args={[2, 32, 32]} />
+                    <meshStandardMaterial map={texture} />
+                </mesh>
+            }
+            { view.HDEarth &&     
             <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
-                <sphereGeometry args={[2, 32, 32]} />
-                <meshStandardMaterial map={texture} />
+                <sphereGeometry args={[2, 64, 64]} />
+                <meshStandardMaterial>
+                    <primitive attach="map" object={texture} />
+                    <primitive attach="lightMap" object={nightTexture} />
+                </meshStandardMaterial>
             </mesh>
+            }
+            
+            { view.HDEarth &&  
+            <mesh ref={haloRef} scale={[1.01, 1.01, 1.01]}>
+                <sphereGeometry args={[2, 64, 64]} />
+                <shaderMaterial
+                    vertexShader={vertexShader}
+                    fragmentShader={fragmentShader}
+                    uniforms={{ c: { value: 1.0 }, p: { value: 6.0 } }}
+                    blending={THREE.AdditiveBlending}
+                    side={THREE.BackSide}
+                    transparent={true}
+                />
+            </mesh>
+            }
 
+            { view.HDEarth &&  
+            <mesh>
+                <sphereGeometry args={[2.02, 64, 64]} />
+                <meshStandardMaterial map={cloudsTexture} transparent={true} opacity={0.4} />
+            </mesh>
+            }
+            
+            { view.Sun && 
             <mesh ref={sunRef}>
                 <sphereGeometry args={[10, 64, 64]} />
                 <shaderMaterial
@@ -102,18 +142,7 @@ const GlobeRender = () => {
                     }}
                 />
             </mesh>
-
-            <mesh ref={haloRef} scale={[1.5, 1.5, 1.5]}>
-                <sphereGeometry args={[10, 64, 64]} />
-                <shaderMaterial
-                    vertexShader={vertexShader}
-                    fragmentShader={fragmentShader}
-                    uniforms={{ c: { value: 1.0 }, p: { value: 2.0 } }}
-                    blending={THREE.AdditiveBlending}
-                    side={THREE.BackSide}
-                    transparent={true}
-                />
-            </mesh>
+            }
 
             <StackSatellites />
 
