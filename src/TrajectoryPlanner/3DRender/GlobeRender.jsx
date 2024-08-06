@@ -56,8 +56,8 @@ const GlobeRender = () => {
     const sunRef = useRef();
     const haloRef = useRef();
     const texture = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
-    const nightTexture = useLoader(THREE.TextureLoader, './8081_earthlights2k.jpg');
-    const cloudsTexture = useLoader(THREE.TextureLoader, './earthcloudmap.jpg');
+    const nightTexture = useLoader(THREE.TextureLoader, '/8081_earthlights2k.jpg');
+    const cloudsTexture = useLoader(THREE.TextureLoader, '/earthcloudmap.jpg');
     const starttime = useSelector((state) => state.timer.starttime);
     const elapsedTime = useSelector((state) => state.timer.elapsedTime);
     const view = useSelector((state) => state.view);
