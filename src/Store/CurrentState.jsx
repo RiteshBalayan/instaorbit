@@ -23,17 +23,6 @@ const CurrentState = createSlice({
         state.satelite.push({ id, coordinates, visibility });
       }
     },
-    togglePreview: (state, action) => {
-      const { id, visibility } = action.payload;
-      const existingsatelite = state.satelite.find(p => p.id === id);
-
-      if (existingsatelite) {
-        existingsatelite.visibility = visibility;
-      } else {
-        // Add new satelite with coordinates
-        state.satelite.push({ id, coordinates, visibility });
-      }
-    },
     deleteState: (state, action) => {
       const idToDelete = action.payload;
       state.satelite = state.satelite.filter(s => s.id !== idToDelete);
@@ -46,5 +35,5 @@ const CurrentState = createSlice({
   },
 });
 
-export const { updateCoordinate, deleteState, togglePreview } = CurrentState.actions;
+export const { updateCoordinate, deleteState } = CurrentState.actions;
 export default CurrentState.reducer;

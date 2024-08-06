@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { IconButton, Box } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import SatelliteConfig from '../3DRender/ConfigSatellite';
+import AddSatellite from '../3DRender/AddSatellite'
+import SatelliteList from '../3DRender/SatelliteList';
 import UtilityControl from './UtilityControl';
 import '../../Styles/simulator/UtilityPanel.css';
 
@@ -35,7 +37,8 @@ const UtilityPanel = () => {
             <ChevronRight />
           </IconButton>
           <div className="top-panel" style={{ height: `${topHeight}%` }}>
-            <SatelliteConfig />
+            <AddSatellite />
+            <SatelliteList />
           </div>
           <div
             className="drag-line"

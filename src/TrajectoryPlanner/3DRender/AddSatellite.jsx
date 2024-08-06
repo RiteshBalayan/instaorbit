@@ -4,12 +4,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import DateTime from 'react-datetime';
 import "react-datetime/css/react-datetime.css";
 import moment from 'moment';
-import { updateSatellites } from '../../Store/satelliteSlice';
+import { updateSatellite, updateSatellites, togglePreview  } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
-import { updateCoordinate, deleteState } from '../../Store/CurrentState';
+import { updateCoordinate, deleteState} from '../../Store/CurrentState';
 import './SatelliteConfig.css';
 
-const SatelliteConfig = () => {
+const AddSatellite = () => {
   const dispatch = useDispatch();
   const satellitesConfig = useSelector(state => state.satellites.satellitesConfig);
   const [newSatelliteName, setNewSatelliteName] = useState('');
@@ -17,6 +17,7 @@ const SatelliteConfig = () => {
   const [selectedOption, setSelectedOption] = useState('');
   const [time, setTime] = useState(null);
   const [showParameterInput, setShowParameterInput] = useState(false);
+  const [ID, setID] = useState(null);
   const [newSatelliteParams, setNewSatelliteParams] = useState({
     argumentOfPeriapsis: 0,
     inclination: 0,
@@ -39,6 +40,7 @@ const SatelliteConfig = () => {
     }
     setShowParameterInput(true);
     const newId = satellitesConfig.length > 0 ? satellitesConfig[satellitesConfig.length - 1].id + 1 : 0;
+    setID(newId)
     const newSatellite = {
       id: newId,
       name: newSatelliteName,
@@ -48,8 +50,11 @@ const SatelliteConfig = () => {
       semimajoraxis: 0,
       assendingnode: 0,
       inclination: 0,
-      time: time.format()
+      propagator: selectedOption,
+      time: time.format(),
+      preview: true,
     };
+    setNewSatelliteParams(newSatellite)
     const newConfig = [...satellitesConfig, newSatellite];
     dispatch(updateSatellites(newConfig));
   };
@@ -59,8 +64,11 @@ const SatelliteConfig = () => {
     //const newSatellite = { id: newId, name: newSatelliteName, ...newSatelliteParams, propagator: selectedOption, time: time.format() };
     //const newConfig = [...satellitesConfig, newSatellite];
     //dispatch(updateSatellites(newConfig));
-    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
-    dispatch(updateCoordinate({ id: newId, coordinates: [] }));
+    //const updatedParams = { ...newSatelliteParams, preview: false };
+    //setNewSatelliteParams(updatedParams);
+    dispatch(togglePreview({id: ID, preview: false}));
+    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+    //dispatch(updateCoordinate({ id: ID, coordinates: [] }));
     setNewSatelliteName('');
     setSelectedOption('');
     setTime(null);
@@ -71,81 +79,12 @@ const SatelliteConfig = () => {
   const handleParameterChange = (field, value) => {
     const updatedParams = { ...newSatelliteParams, [field]: parseFloat(value) };
     setNewSatelliteParams(updatedParams);
-    dispatch(updateSatellites(
-      satellitesConfig.map(satellite =>
-        satellite.id === activeSatellite ? { ...satellite, ...updatedParams } : satellite
-      )
-    ));
+    dispatch(updateSatellite({id: ID, conf: newSatelliteParams}));
   };
-
-  {/*const handleParameterChange = (field, value) => {
-    setNewSatelliteParams(prevParams => ({ ...prevParams, [field]: parseFloat(value) }));
-  };*/}
-
-  const deleteSatellite = (id) => {
-    const newConfig = satellitesConfig.filter(s => s.id !== id);
-    dispatch(updateSatellites(newConfig));
-    dispatch(deleteParticle(id));
-    dispatch(deleteState(id));
-    if (activeSatellite === id) {
-      setActiveSatellite(null); // Deselect the active satellite if it's deleted
-    }
-  };
-
-  const handleCheckboxChange = (id) => {
-    dispatch(togglePreview({ id, visibility: !satellitesConfig.find(s => s.id === id).visibility }));
-  };
-
-  const handleSatelliteClick = (id) => {
-    setActiveSatellite(activeSatellite === id ? null : id);
-  };
-
-  const handleClickOutside = (event) => {
-    if (satelliteConfigRef.current && !satelliteConfigRef.current.contains(event.target)) {
-      setActiveSatellite(null);
-    }
-  };
-
-  useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   return (
     <div className="satellite-config" ref={satelliteConfigRef}>
-      {satellitesConfig.map((satellite) => (
-        <div key={satellite.id} className={`satellite-item ${activeSatellite === satellite.id ? 'active' : ''}`}>
-          <h3
-            onClick={() => handleSatelliteClick(satellite.id)}
-            className="satellite-name"
-          >
-            {satellite.name}
-          </h3>
-          {activeSatellite === satellite.id && (
-            <div className="satellite-details">
-              {['trueanomly', 'argumentOfPeriapsis', 'assendingnode', 'inclination', 'semimajoraxis', 'eccentricity', 'propagator', 'time'].map((field) => (
-                <div key={field} className="detail-row">
-                  <label className="detail-label">
-                    {field.replace(/([A-Z])/g, ' $1').toUpperCase()}:
-                  </label>
-                  <div className="fixed-value">{field === 'time' ? moment(satellite[field]).format('YYYY-MM-DD HH:mm:ss') : satellite[field]}</div>
-                </div>
-              ))}
-              <div className="checkbox-container">
-                <input
-                  type="checkbox"
-                  checked={satellite.visibility}
-                  onChange={() => handleCheckboxChange(satellite.id)}
-                />
-                <span>Show Preview</span>
-              </div>
-              <button className="delete-button" onClick={() => deleteSatellite(satellite.id)}>🗑️</button>
-            </div>
-          )}
-        </div>
-      ))}
+
       <div className="input-container">
         {showNameInput && !showParameterInput && (
           <>
@@ -192,22 +131,90 @@ const SatelliteConfig = () => {
         {showParameterInput && (
           <>
             <h3>Add Initial Condition</h3>
-            {['trueanomly', 'argumentOfPeriapsis', 'assendingnode', 'inclination', 'semimajoraxis', 'eccentricity'].map((field) => (
-              <div key={field} className="detail-row">
-                <label className="detail-label">
-                  {field.replace(/([A-Z])/g, ' $1').toUpperCase()}:
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="360"
-                  step={field === 'eccentricity' ? '0.01' : '1'}
-                  value={newSatelliteParams[field]}
-                  onChange={(e) => handleParameterChange(field, e.target.value)}
-                  className="detail-input"
-                />
-              </div>
-            ))}
+            <div key={'semimajoraxis'} className='detail-row'>
+              <label className='detail-label'>
+                Semi-major Axis
+              </label>
+              <input 
+                type='number'
+                min='6400'
+                max='50000'
+                step='1000'
+                value={newSatelliteParams['semimajoraxis']}
+                onChange={(e) => handleParameterChange('semimajoraxis', e.target.value)}
+                className="detail-input"
+              />
+            </div>
+            <div key={'eccentricity'} className='detail-row'>
+              <label className='detail-label'>
+                Eccentricity
+              </label>
+              <input 
+                type='number'
+                min='0'
+                max='1'
+                step='0.05'
+                value={newSatelliteParams['eccentricity']}
+                onChange={(e) => handleParameterChange('eccentricity', e.target.value)}
+                className="detail-input"
+              />
+            </div>
+            <div key={'trueanomly'} className='detail-row'>
+              <label className='detail-label'>
+                TRUE ANOMLY
+              </label>
+              <input 
+                type='number'
+                min='0'
+                max='360'
+                step='1'
+                value={newSatelliteParams['trueanomly']}
+                onChange={(e) => handleParameterChange('trueanomly', e.target.value)}
+                className="detail-input"
+              />
+            </div>
+            <div key={'inclination'} className='detail-row'>
+              <label className='detail-label'>
+                Inclination
+              </label>
+              <input 
+                type='number'
+                min='0'
+                max='360'
+                step='1'
+                value={newSatelliteParams['inclination']}
+                onChange={(e) => handleParameterChange('inclination', e.target.value)}
+                className="detail-input"
+              />
+            </div>
+            <div key={'argumentOfPeriapsis'} className='detail-row'>
+              <label className='detail-label'>
+                Argument of Periapsis
+              </label>
+              <input 
+                type='number'
+                min='0'
+                max='360'
+                step='1'
+                value={newSatelliteParams['argumentOfPeriapsis']}
+                onChange={(e) => handleParameterChange('argumentOfPeriapsis', e.target.value)}
+                className="detail-input"
+              />
+            </div>
+            <div key={'assendingnode'} className='detail-row'>
+              <label className='detail-label'>
+                Assending Node
+              </label>
+              <input 
+                type='number'
+                min='0'
+                max='360'
+                step='1'
+                value={newSatelliteParams['assendingnode']}
+                onChange={(e) => handleParameterChange('assendingnode', e.target.value)}
+                className="detail-input"
+              />
+            </div>
             <button className="add-button" onClick={handleAddSatellite}>
               Done
             </button>
@@ -223,4 +230,4 @@ const SatelliteConfig = () => {
   );
 };
 
-export default SatelliteConfig;
+export default AddSatellite;

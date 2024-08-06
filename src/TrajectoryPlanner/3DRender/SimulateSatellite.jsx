@@ -106,25 +106,54 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
     }
   }, [dispatch, elapsedTime, particleId, particle, inclination, trueanomly ]);
 
-
-  //Quick Preview of ellipse for current parameter
+  const satelliteconfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
   const ellipseRef = useRef();
-  const shape = new Shape(); // Create the shape path
-  const semiminoraxis = semimajoraxis*Math.sqrt(1-eccentricity**2);
-  const c = Math.sqrt(semimajoraxis**2 - semiminoraxis**2);
-  shape.absellipse(-c, 0, semimajoraxis/3185.5, semiminoraxis/3185.5, 0, Math.PI * 2, false, 0);
+  const satellitepreviewRef = useRef();
 
-        // Create points from the shape
-        const points = shape.getPoints(100);
-        const rotatedPoints = points.map(point => {
-          return applyZ_X_Z_Rotation([point.x, point.y, 0], assendingnode, inclination, argumentOfPeriapsis);
-        });
-  
-        const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
+  useEffect(() => {
+    if (ellipseRef.current && satellitepreviewRef.current && satelliteconfig) {
+      // Quick Preview of ellipse for current parameter
+      const shape = new Shape();
+      const SM = semimajoraxis/3185.5;
+      const semiminoraxis = SM * Math.sqrt(1 - eccentricity ** 2);
+      const c = Math.sqrt(SM ** 2 - semiminoraxis ** 2);
+      shape.absellipse(-c, 0, SM, semiminoraxis, 0, Math.PI * 2, false, 0);
 
-  const preview = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))|| false;
-  // this function is in development
-  //console.log(preview)
+      const points = shape.getPoints(100);
+      const rotatedPoints = points.map(point => {
+        return applyZ_X_Z_Rotation([point.x, point.y, 0], assendingnode, inclination, argumentOfPeriapsis);
+      });
+
+      const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
+      ellipseRef.current.geometry = geometry;
+
+      //Preview of Satellite
+      //Calculate Anomly
+      const perigeetoanomlytime = (trueanomly / ( 2*(Math.PI) ) )*timeperiod
+      const firstperigeetime = perigeetoanomlytime - timeperiod
+      const timesinceperigee = (t + firstperigeetime) % timeperiod
+      const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
+      console.log(trueanomly)
+      console.log(meananomly)
+      const elements = {
+        a: semimajoraxis, // Semi-major axis in km
+        e: eccentricity, // Eccentricity
+        M: meananomly, // Mean anomaly in radians
+        Ω: assendingnode, // Longitude of ascending node in degrees
+        ω: argumentOfPeriapsis, // Argument of periapsis in degrees
+        i: inclination // Inclination in degrees
+        };
+      const [position, velocity] = keplerianToCartesian(elements);
+      let preX, preY, preZ;
+      [preX, preY, preZ] = position;
+      preX /= 3185.5;
+      preY /= 3185.5;
+      preZ /= 3185.5;
+
+      satellitepreviewRef.current.position.set(preX, preY, preZ);
+
+    }
+  }, [semimajoraxis, eccentricity, assendingnode, inclination, argumentOfPeriapsis, trueanomly]);
 
   return (
     <>
@@ -143,11 +172,16 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         </bufferGeometry>
         <lineBasicMaterial color="yellow" linewidth={0.5} />
       </line>
-      {preview.visibility &&
-        <line ref={ellipseRef} geometry={geometry}>
+      {satelliteconfig.preview &&
+        <line ref={ellipseRef} >
           <lineBasicMaterial color="red" linewidth={3} />
         </line>
       }
+      {satelliteconfig.preview &&      
+      <mesh ref={satellitepreviewRef}>
+        <sphereGeometry args={[0.05, 4, 4]} />
+        <meshStandardMaterial color="red" />
+      </mesh>}
     </>
   );
 };

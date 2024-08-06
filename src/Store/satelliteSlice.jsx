@@ -19,11 +19,18 @@ const satelliteSlice = createSlice({
       state.satellitesConfig.push(newSatellite);
     },
     updateSatellite: (state, action) => {
-      const { id, newConfig } = action.payload;
+      const { id, conf } = action.payload;
       const satelliteToUpdate = state.satellitesConfig.find(s => s.id === id);
       if (satelliteToUpdate) {
-        Object.assign(satelliteToUpdate, newConfig);
+        Object.assign(satelliteToUpdate, conf);
       }
+    },
+    togglePreview: (state, action) => {
+      const { id, preview } = action.payload;
+      const satelliteToUpdate = state.satellitesConfig.find(s => s.id === id);
+      if (satelliteToUpdate) {
+        satelliteToUpdate.preview = preview;
+      } 
     },
     deleteSatellite: (state, action) => {
       const idToDelete = action.payload;
@@ -37,6 +44,6 @@ const satelliteSlice = createSlice({
   },
 });
 
-export const { updateSatellites, addSatellite, updateSatellite, deleteSatellite } = satelliteSlice.actions;
+export const { updateSatellites, addSatellite, updateSatellite, deleteSatellite, togglePreview } = satelliteSlice.actions;
 
 export default satelliteSlice.reducer;
