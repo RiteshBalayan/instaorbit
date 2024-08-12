@@ -1,15 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import '../../Styles/simulator/SlimTopBar.css'; 
 import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { auth } from '../../firebase/firebase'; 
-import { updateitterationID, updatetrajectoryID } from '../../Store/workingProject';
+import { updateitterationID, updatetrajectoryID, updateitterationName } from '../../Store/workingProject';
+import GoogleAuth from '../../firebase/googleauth';
+import SignOut from '../../firebase/signout';
+import TrajectoriesList from '../TrajectoryList';
+import ItterationList from '../ItterationList'
+
+const Popup = ({ onClose, trajectories, iterations, type }) => {
+  const popupRef = useRef(null);
+
+  const handleClickOutside = (event) => {
+    if (popupRef.current && !popupRef.current.contains(event.target)) {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="popup-overlay">
+      <div className="popup-content" ref={popupRef}>
+        <button className="close-button" onClick={onClose}>X</button>
+        {type === 'trajectory' ? (
+          <>
+            <h2>Select a Trajectory</h2>
+            <TrajectoriesList trajectories={trajectories} />
+          </>
+        ) : (
+          <>
+            <h2>Select an Iteration</h2>
+            <ItterationList iterations={iterations} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 
 const TopBar = () => {
   const dispatch = useDispatch();
   const state = useSelector((state) => state);
   const itterationID = useSelector((state) => state.workingProject.itterationID);
   const trajectoryID = useSelector((state) => state.workingProject.trajectoryID);
+  const ProjectName = useSelector((state) => state.workingProject.trajectoryName);
   const user = auth.currentUser; 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -18,6 +60,27 @@ const TopBar = () => {
   const [saveAsMessage, setSaveAsMessage] = useState('');
   const [showNewTrajInput, setShowNewTrajInput] = useState(false);
   const [newTrajMessage, setNewTrajMessage] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupType, setPopupType] = useState('');
+
+  const saveAsInputRef = useRef(null);
+  const newTrajInputRef = useRef(null);
+
+
+
+  const handleOpenClick = () => {
+    setPopupType('trajectory');
+    setShowPopup(true);
+  };
+
+  const handleVersionClick = () => {
+    setPopupType('iteration');
+    setShowPopup(true);
+  };
+
+  const handleClosePopup = () => {
+    setShowPopup(false);
+  };
 
   const handleNewTrajClick = () => {
     setShowNewTrajInput(true);
@@ -27,9 +90,10 @@ const TopBar = () => {
     if (user && newTrajMessage) {
       setUploading(true);
       try {
-        const newTrajectoryId =await newTrajectory(newTrajMessage);
+        const newTrajectoryId = await newTrajectory(newTrajMessage);
         if (newTrajectoryId) {
           dispatch(updatetrajectoryID(newTrajectoryId));
+          dispatch(updateitterationName(newTrajMessage));
         }
         console.log('Upload successful');
         setNewTrajMessage(''); // Clear the input field after saving
@@ -44,52 +108,21 @@ const TopBar = () => {
     }
   };
 
-  // Handle autosave function
-  const handleAutosave = async () => {
-    if (user) {
-      setAutosaving(true);
-      setUploading(true);
-      try {
-        await uploadAutoSave(trajectoryID, state);
-        console.log('Upload successful');
-      } catch (error) {
-        console.error('Upload failed:', error);
-      } finally {
-        setUploading(false);
-        setAutosaving(false);
-      }
-    } else {
-      console.log('User not authenticated. Upload operation not allowed.');
-    }
-  };
-
-  // Set up autosave interval
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      handleAutosave();
-    }, 60000); // 60000 milliseconds = 1 minute
-
-    // Clear the interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [user, state]);
-
-
-  //Debug error for case itterationID is null
   const handleSave = async () => {
-      setUploading(true);
-      try {
-        const newIterationId =await updateIteration(trajectoryID, itterationID, state);
-        if (newIterationId) {
-          dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux store
-        }
-        console.log('Upload successful');
-        setSaveAsMessage(''); // Clear the input field after saving
-        setShowSaveAsInput(false); // Hide the input field after saving
-      } catch (error) {
-        console.error('Upload failed:', error);
-      } finally {
-        setUploading(false);
+    setUploading(true);
+    try {
+      const newIterationId = await updateIteration(trajectoryID, itterationID, state);
+      if (newIterationId) {
+        dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux store
       }
+      console.log('Upload successful');
+      setSaveAsMessage(''); // Clear the input field after saving
+      setShowSaveAsInput(false); // Hide the input field after saving
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSaveAsClick = () => {
@@ -100,7 +133,7 @@ const TopBar = () => {
     if (user && saveAsMessage) {
       setUploading(true);
       try {
-        const newIterationId =await uploadIteration(trajectoryID, state, saveAsMessage);
+        const newIterationId = await uploadIteration(trajectoryID, state, saveAsMessage);
         if (newIterationId) {
           dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux store
         }
@@ -142,13 +175,29 @@ const TopBar = () => {
     }
   };
 
+  const handleClickOutside = (event) => {
+    if (showSaveAsInput && saveAsInputRef.current && !saveAsInputRef.current.contains(event.target)) {
+      setShowSaveAsInput(false);
+    }
+
+    if (showNewTrajInput && newTrajInputRef.current && !newTrajInputRef.current.contains(event.target)) {
+      setShowNewTrajInput(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSaveAsInput, showNewTrajInput]);
+
   return (
     <div className="slim-top-bar">
       <div className="top-bar-items">
-        {/* Hardcoded example options */}
-        <div className="top-bar-item">File</div>
-        <div className="top-bar-item">Edit</div>
-        <div className="top-bar-item">View</div>
+        <p style={{ marginRight: '10px' }}>{ProjectName}</p>
+        <div className="top-bar-item" onClick={handleOpenClick}>Open</div>
+        <div className="top-bar-item" onClick={handleVersionClick}>Version</div>
         {user && (
           <>
             <div className="top-bar-item">
@@ -158,7 +207,7 @@ const TopBar = () => {
               </button>
             </div>
             {showNewTrajInput && (
-              <div className="top-bar-item">
+              <div className="top-bar-item" ref={newTrajInputRef}>
                 <input
                   type="text"
                   value={newTrajMessage}
@@ -177,7 +226,7 @@ const TopBar = () => {
               </button>
             </div>
             {showSaveAsInput && (
-              <div className="top-bar-item">
+              <div className="top-bar-item" ref={saveAsInputRef}>
                 <input
                   type="text"
                   value={saveAsMessage}
@@ -190,26 +239,35 @@ const TopBar = () => {
               </div>
             )}
             <div className="top-bar-item">
-              <button className="top-bar-button" onClick={handleDownload} disabled={downloading}>
-                Download
-                {downloading && <div className="loading-indicator"></div>}
-              </button>
-            </div>
-            <div className="top-bar-item">
               <button className="top-bar-button" onClick={handleSave} disabled={downloading}>
                 Save
                 {downloading && <div className="loading-indicator"></div>}
               </button>
             </div>
-            <div className="top-bar-item">
-              <div className="top-bar-button">
-                Autosave
-                {autosaving && <div className="loading-indicator">Autosaving...</div>}
-              </div>
-            </div>
           </>
         )}
+        <div className="top-bar-item auth-section">
+          {user ? (
+            <div className="auth-container">
+              <span className="welcome-message">Hello, {user.displayName || user.email}</span>
+              <SignOut className="auth-button"/>
+            </div>
+          ) : (
+            <div className="auth-container">
+              <span className="welcome-message">Log in to save your Progress</span>
+              <GoogleAuth className="auth-button"/>
+            </div>
+          )}
+        </div>
       </div>
+      {showPopup && (
+        <Popup 
+          onClose={handleClosePopup} 
+          trajectories={state.trajectoryList} 
+          iterations={state.iterationList} 
+          type={popupType} 
+        />
+      )}
     </div>
   );
 };

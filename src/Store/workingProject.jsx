@@ -5,6 +5,7 @@ const workingProject = createSlice({
   name: 'workingProject',
   initialState: {
     trajectoryID: null,
+    trajectoryName: 'Unsaved Project',
     itterationID: null,
   },
   reducers: {
@@ -12,14 +13,18 @@ const workingProject = createSlice({
       state.trajectoryID = action.payload;
     },
     updateitterationID(state, action) {
-        state.itterationID = action.payload;
-      },
+      state.itterationID = action.payload;
+    },
+    updateitterationName(state, action) {
+      state.trajectoryName = action.payload;
+    },
   },
 });
 
 export const {
   updatetrajectoryID,
   updateitterationID,
+  updateitterationName,
 } = workingProject.actions;
 
 export default workingProject.reducer;

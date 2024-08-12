@@ -13,7 +13,7 @@ function Globe() {
         <Canvas>
             <GlobeRender />
         </Canvas>
-        <GroundTrack />
+        {/*<GroundTrack />*/}
     </div> 
   );
 }

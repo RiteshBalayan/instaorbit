@@ -42,7 +42,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       const timesinceperigee = (t + firstperigeetime) % timeperiod
       const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
       const essentricanomly = meanToEccentricAnomaly(meananomly, eccentricity);
-      const renderanomly = eccentricToTrueAnomaly(essentricanomly, eccentricity);
+      //const renderanomly = eccentricToTrueAnomaly(essentricanomly, eccentricity);
 
       if (satelliteRef.current) {
 

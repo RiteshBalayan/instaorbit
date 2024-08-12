@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { doc, setDoc, getDoc, deleteDoc, updateDoc, collection, addDoc, arrayUnion } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc, updateDoc, collection, addDoc, arrayUnion, getDocs } from "firebase/firestore";
 import { auth } from './firebase';
 import { useDispatch } from 'react-redux';
 
@@ -102,6 +102,43 @@ export const fetchTrajectories = async () => {
     return [];
   }
 };
+
+// Function to fetch iterations for a given trajectory
+export const fetchIterations = async (trajectoryId) => {
+  try {
+    const user = auth.currentUser;
+
+    if (user) {
+      console.log("User ID:", user.uid);
+      // Reference to the iterations collection inside the specific trajectory document under the user's UID
+      const iterationsCollectionRef = collection(db, "trajectories", trajectoryId, "iterations");
+
+      // Get all documents in the iterations collection
+      const iterationsSnapshot = await getDocs(iterationsCollectionRef);
+
+      if (!iterationsSnapshot.empty) {
+        // Map over the snapshot to retrieve the IDs and Name fields of each document
+        const iterationsData = iterationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().commitMessage
+        }));
+
+        return iterationsData;
+      } else {
+        console.log(`No iterations found for trajectory with ID ${trajectoryId}.`);
+        return [];
+      }
+    } else {
+      console.log('No user is currently logged in.');
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching iterations:", error);
+    return [];
+  }
+};
+
+
 
 // Function to upload a new iteration
 export const uploadIteration = async (trajectoryId, stateSlice, commitMessage) => {

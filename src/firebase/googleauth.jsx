@@ -18,7 +18,7 @@ const GoogleAuth = () => {
   };
 
   return (
-    <button onClick={handleGoogleAuth}>Sign Up / Log In with Google</button>
+    <button onClick={handleGoogleAuth} >Sign Up / Log In with Google</button>
   );
 };
 

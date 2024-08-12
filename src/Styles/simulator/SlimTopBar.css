@@ -1,51 +1,43 @@
+
+
 .slim-top-bar {
   background: linear-gradient(145deg, #000428, #004e92); /* Space-themed gradient */
-  border-bottom: 2px solid #00ffcc; /* Neon border */
+  /*border-bottom: 2px solid #00ffcc;  Neon border */
   height: 40px; /* Adjust height as needed */
   z-index: 900;
-  box-shadow: 0 2px 10px rgba(0, 255, 204, 0.5); /* Neon glow effect */
+  /*box-shadow: 0 2px 10px rgba(0, 255, 204, 0.5);  Neon glow effect */
 }
 
 .top-bar-items {
   display: flex;
-  align-items: center;
-  padding: 0 10px;
-  height: 100%;
-  color: #00ffcc; /* Neon text color */
-  background: linear-gradient(145deg, #001f3f, #003f7f); /* Space-themed gradient */
+  /*align-items: center;
+  padding: 0 0px;
+  height: 100%;*/
+  /*color: #00ffcc; /* Neon text color */
+  /*background: linear-gradient(145deg, #001f3f, #003f7f);  Space-themed gradient */
 }
 
 .top-bar-item {
-  margin-right: 10px; /* Adjust spacing between items */
-  padding: 8px 12px;
-  background-color: #00ffcc; /* Neon background */
-  border: 1px solid #004e92; /* Neon border */
-  border-radius: 10px;
+  /*margin-right: 10px;  Adjust spacing between items */
+
   color: #000428; /* Contrasting text color */
   cursor: pointer;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  padding: 0;
+  margin: 0;
 }
 
 .top-bar-item:hover {
-  background-color: #004e92; /* Darker background on hover */
-  color: #00ffcc; /* Contrasting text color on hover */
-  box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); /* Neon glow effect on hover */
+  /*color: #00ffcc; /* Contrasting text color on hover */
+  text-overflow: ellipsis;
 }
 
 /* No specific styling for buttons to keep them minimalist */
 .top-bar-button {
   padding: 0;
   margin: 0;
-  border: none;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  font-size: inherit;
+  background-color: #003f7f;
 }
 
-.top-bar-button:hover {
-  text-decoration: underline;
-}
 
 .loading-indicator {
   display: inline-block;
@@ -62,3 +54,71 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.auth-section {
+  display: flex;
+  /*align-items: center;*/
+  margin-left: auto; 
+}
+
+.auth-container {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Space between welcome message and buttons */
+}
+
+.welcome-message {
+  font-size: 14px;
+  color: #000000; /* Neon text color */
+}
+
+.auth-button {
+  background-color: #004e92; /* Matching background for buttons */
+  border: none;
+  padding: 0px 0px;
+  color: #000000;
+  border-radius: 0px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.auth-button:hover {
+  background-color: #003f7f;
+}
+
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: #000000;
+  padding: 20px;
+  border-radius: 8px;
+  width: 50%;
+  max-width: 600px;
+  max-height: 80%;
+  overflow-y: auto;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
