@@ -95,6 +95,25 @@ const TopBar = () => {
           dispatch(updatetrajectoryID(newTrajectoryId));
           dispatch(updateitterationName(newTrajMessage));
         }
+        const InitialCommitMessage = 'InitialCommit';
+
+        if (user && InitialCommitMessage) {
+          setUploading(true);
+          try {
+            const newIterationId = await uploadIteration(newTrajectoryId, state, InitialCommitMessage);
+            if (newIterationId) {
+              dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux store
+            }
+            console.log('Upload successful');
+          } catch (error) {
+            console.error('Upload failed:', error);
+          } finally {
+            setUploading(false);
+          }
+        } else {
+          console.log('User not authenticated or save message is empty. Upload operation not allowed.');
+        }
+
         console.log('Upload successful');
         setNewTrajMessage(''); // Clear the input field after saving
         setShowNewTrajInput(false); // Hide the input field after saving
@@ -196,10 +215,11 @@ const TopBar = () => {
     <div className="slim-top-bar">
       <div className="top-bar-items">
         <p style={{ marginRight: '10px' }}>{ProjectName}</p>
+        {user && (
+        <>
         <div className="top-bar-item" onClick={handleOpenClick}>Open</div>
         <div className="top-bar-item" onClick={handleVersionClick}>Version</div>
-        {user && (
-          <>
+
             <div className="top-bar-item">
               <button className="top-bar-button" onClick={handleNewTrajClick} disabled={uploading}>
                 New

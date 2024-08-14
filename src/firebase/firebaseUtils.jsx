@@ -173,7 +173,6 @@ export const updateIteration = async (trajectoryId, iterationId, stateSlice) => 
       const trajectoryDocRef = doc(db, "trajectories", trajectoryId);
       const iterationDocRef = doc(trajectoryDocRef, "iterations", iterationId);
       const serializedState = serializeState(stateSlice);
-      collectioncollection
       await updateDoc(iterationDocRef, {
         State: serializedState,
         timestamp: new Date() // Optionally update timestamp
