@@ -7,6 +7,8 @@ import moment from 'moment';
 import { updateSatellite, updateSatellites, togglePreview  } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState} from '../../Store/CurrentState';
+import { keplerianToCartesian } from './Functions';
+import * as THREE from 'three';
 import './SatelliteConfig.css';
 
 const AddSatellite = () => {
@@ -66,8 +68,35 @@ const AddSatellite = () => {
     //dispatch(updateSatellites(newConfig));
     //const updatedParams = { ...newSatelliteParams, preview: false };
     //setNewSatelliteParams(updatedParams);
+    const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
+    const SM = newSatelliteParams.semimajoraxis
+
+    const inclination = THREE.MathUtils.degToRad(newSatelliteParams.inclination);//Angles in Radian
+    const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.argumentOfPeriapsis);
+    const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.assendingnode);
+    const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.trueanomly);
+
+    const elements = {
+      a: SM, // Semi-major axis in km
+      e: newSatelliteParams.eccentricity, // Eccentricity
+      M: trueanomly, // Mean anomaly in radians
+      Ω: assendingnode, // Longitude of ascending node in degrees
+      ω: argumentOfPeriapsis, // Argument of periapsis in degrees
+      i: inclination // Inclination in degrees
+      };
+
+    const [position, velocity] = keplerianToCartesian(elements);
+    let newX, newY, newZ;
+    [newX, newY, newZ] = position;
+    console.log(elements)
+    console.log('randy')
+    console.log(position)
+    newX /= 3185.5;
+    newY /= 3185.5;
+    newZ /= 3185.5;
+
     dispatch(togglePreview({id: ID, preview: false}));
-    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }] }));
     //dispatch(updateCoordinate({ id: ID, coordinates: [] }));
     setNewSatelliteName('');
     setSelectedOption('');

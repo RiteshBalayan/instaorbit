@@ -7,6 +7,7 @@ import moment from 'moment';
 import { updateSatellites } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../Store/CurrentState';
+import { keplerianToCartesian } from './Functions';
 import './SatelliteConfig.css';
 
 const SatelliteConfig = () => {
@@ -59,7 +60,20 @@ const SatelliteConfig = () => {
     //const newSatellite = { id: newId, name: newSatelliteName, ...newSatelliteParams, propagator: selectedOption, time: time.format() };
     //const newConfig = [...satellitesConfig, newSatellite];
     //dispatch(updateSatellites(newConfig));
-    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+    const elements = {
+      a: newSatelliteParams.semimajoraxis, // Semi-major axis in km
+      e: newSatelliteParams.eccentricity, // Eccentricity
+      M: newSatelliteParams.meananomly, // Mean anomaly in radians
+      Ω: newSatelliteParams.assendingnode, // Longitude of ascending node in degrees
+      ω: newSatelliteParams.argumentOfPeriapsis, // Argument of periapsis in degrees
+      i: newSatelliteParams.inclination // Inclination in degrees
+      };
+
+    const [position, velocity] = keplerianToCartesian(elements);
+    let newX, newY, newZ;
+    [newX, newY, newZ] = position;
+
+    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: 10, z: newZ, mapX: 0, mapY: 0 }] }));
     dispatch(updateCoordinate({ id: newId, coordinates: [] }));
     setNewSatelliteName('');
     setSelectedOption('');

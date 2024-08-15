@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import StackSatellites from './StackSatellites';
 import VonAllenBelt from './VonAllenBelt';
 import { useLoader } from '@react-three/fiber';
+import SimuStackSatellites from './SimulateStackSatellite';
 
 // Vertex Shader for Glow
 const vertexShader = `
@@ -143,6 +144,8 @@ const GlobeRender = () => {
             }
 
             <StackSatellites />
+            <SimuStackSatellites />
+
 
             {view.Grid &&
                 <gridHelper

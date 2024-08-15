@@ -9,6 +9,7 @@ const timerSlice = createSlice({
     isRunning: false,
     starttime: Date.now(),
     elapsedTime: 0,
+    RenderTime: 0,
     timePoints: [],
   },
   reducers: {
@@ -25,6 +26,9 @@ const timerSlice = createSlice({
     },
     updateElapsedTime(state, action) {
       state.elapsedTime = roundToThreeDecimals(action.payload);
+    },
+    updateRenderTime(state, action) {
+      state.RenderTime = roundToThreeDecimals(action.payload);
     },
     addTimePoint(state, action) {
       state.timePoints.push(roundToThreeDecimals(action.payload));
@@ -51,7 +55,8 @@ export const {
   addTimePoint,
   goToTimePoint,
   setElapsedTime,
-  setstarttime
+  setstarttime,
+  updateRenderTime,
 } = timerSlice.actions;
 
 export default timerSlice.reducer;

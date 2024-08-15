@@ -7,6 +7,7 @@ import {
   startPauseTimer,
   resetTimer,
   updateElapsedTime,
+  updateRenderTime,
   addTimePoint,
   setstarttime,
 } from '../../Store/timeSlice';
@@ -14,7 +15,6 @@ import { DataSet, Timeline } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../../Styles/simulator/Timer.css';
 import { format } from 'date-fns';
-import { Center } from '@react-three/drei';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
@@ -22,17 +22,26 @@ const Timer = () => {
   const dispatch = useDispatch();
   const isRunning = useSelector((state) => state.timer.isRunning);
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
+  const [RenderRunning, setRenderRunning] = useState(false);
+  const RenderTime = useSelector((state) => state.timer.RenderTime);
   const timePoints = useSelector((state) => state.timer.timePoints);
   const starttime = useSelector((state) => state.timer.starttime);
   const formattedStartTime = format(starttime, "dd MMM yyyy hh:mm a");
   const particles = useSelector((state) => state.particles.particles);
   const intervalRef = useRef(null);
   const timelineRef = useRef(null);
-  const [timeStep, setTimeStep] = useState(10);
-  const [timeUnit, setTimeUnit] = useState('s'); // 's' for seconds, 'm' for minutes, 'h' for hours
+  const renderIntervalRef = useRef(null);
+  const [timeStep, setTimeStep] = useState(30);
+  const [simStep, setSimStep] = useState(30);
+  const [timeUnit, setTimeUnit] = useState('s');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const currentTime = new Date(starttime + elapsedTime*1000)
+
+  // State to store zoom start and end times
+  const [zoomStartTime, setZoomStartTime] = useState(null);
+  const [zoomEndTime, setZoomEndTime] = useState(null);
+
+  const currentTime = new Date(starttime + elapsedTime * 1000);
   const formattedCurrentTime = format(currentTime, "dd MMM yyyy hh:mm a");
 
   useEffect(() => {
@@ -41,7 +50,7 @@ const Timer = () => {
         const newTime = roundToThreeDecimals(elapsedTime + timeStep);
         dispatch(updateElapsedTime(newTime));
         dispatch(addTimePoint(newTime));
-      }, 1); // Update every 1ms for accurate timing
+      }, 100);
     } else if (!isRunning && intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -49,62 +58,77 @@ const Timer = () => {
   }, [isRunning, elapsedTime, timeStep, dispatch]);
 
   useEffect(() => {
+    if (RenderRunning) {
+      renderIntervalRef.current = setInterval(() => {
+        const newTime = roundToThreeDecimals(RenderTime + simStep);
+        dispatch(updateRenderTime(newTime));
+      }, 1000 / simStep);
+    } else if (!RenderRunning && renderIntervalRef.current) {
+      clearInterval(renderIntervalRef.current);
+    }
+    return () => clearInterval(renderIntervalRef.current);
+  }, [RenderRunning, RenderTime, simStep, dispatch]);
+
+  useEffect(() => {
     const now = starttime || Date.now();
     const minTime = now;
     const maxTime = now + (timePoints.length > 0 ? timePoints[timePoints.length - 1] * 1000 : 0);
-    const currentTime = new Date(now + elapsedTime*1000)
-    const formattedCurrentTime = format(currentTime, "dd MMM yyyy hh:mm a");
+    const currentTime = new Date(now + elapsedTime * 1000);
+    const currentRenderTime = new Date(now + RenderTime * 1000);
 
-      // Define groups
-      const groups = new DataSet([
-        { id: 1, content: 'Satellite', className: 'events-group'},
-        { id: 2, content: 'Events', className: 'Satellite-group' }
-      ]);
+    const groups = new DataSet([
+      { id: 1, content: 'Satellite', className: 'events-group' },
+      { id: 2, content: 'Events', className: 'Satellite-group' }
+    ]);
 
-  // Map particles to items
-  const particleItems = particles
-    .map((particle, index) => {
-      const tracePoints = particle.tracePoints;
-      
-      // Check if tracePoints exist and have at least two points
-      if (tracePoints && tracePoints.length >= 2) {
-        const start = new Date(minTime + tracePoints[1].time * 1000);
-        const end = new Date(minTime + tracePoints[tracePoints.length - 1].time * 1000);
-        
-        return {
-          id: index + 1,
-          content: particle.name,
-          start: start,
-          end: end,
-          type: 'range',
-          group: 1,
-        };
-      }
-      return undefined; // Return undefined if conditions are not met
-    })
-    .filter(item => item !== undefined); // Remove undefined values from the array
+    const particleItems = particles
+      .map((particle, index) => {
+        const tracePoints = particle.tracePoints;
+        if (tracePoints && tracePoints.length >= 2) {
+          const start = new Date(minTime + tracePoints[1].time * 1000);
+          const end = new Date(minTime + tracePoints[tracePoints.length - 1].time * 1000);
+          return {
+            id: index + 1,
+            content: particle.name,
+            start: start,
+            end: end,
+            type: 'range',
+            group: 1,
+          };
+        }
+        return undefined;
+      })
+      .filter(item => item !== undefined);
 
-    // Add the current time point item
     const currentTimePoint = {
       id: 'current-time',
-      content: 'Current Time',
-      start: currentTime,
-      type: 'box',
+      content: 'Simulated Time',
+      start: minTime,
+      end: currentTime,
+      type: 'background',
       className: 'current-time-point',
-      style: "color: white; background-color: black; height: '100%'; weight: '2px'",
       editable: false,
       group: 2,
     };
 
-    const items = new DataSet([...particleItems, currentTimePoint]);
+    const RenderTimePoint = {
+      id: 'Render-time',
+      content: 'O',
+      start: currentRenderTime,
+      type: 'box',
+      className: 'current-time-point',
+      editable: true,
+      group: 2,
+    };
+
+    const items = new DataSet([...particleItems, currentTimePoint, RenderTimePoint]);
 
     const options = {
       stack: true,
-      align: 'left',
+      align: 'centre',
       showCurrentTime: false,
-      autoResize: false,
-      min: new Date(minTime),
-      //minHeight: '100%',
+      autoResize: true,
+      minHeight: '200px',
       orientation: 'top',
       horizontalScroll: true,
       verticalScroll: true,
@@ -113,6 +137,8 @@ const Timer = () => {
       editable: false,
       showMajorLabels: true,
       showMinorLabels: true,
+      start: zoomStartTime, // Apply zoom start time
+      end: zoomEndTime, // Apply zoom end time
       format: {
         minorLabels: {
           second: 's',
@@ -120,40 +146,46 @@ const Timer = () => {
           hour: 'h',
         },
         majorLabels: {
-          millisecond:'HH:mm:ss',
-          second:     'D MMMM HH:mm',
-          minute:     'ddd D MMMM',
-          hour:       'ddd D MMMM',
-          weekday:    'MMMM YYYY',
-          day:        'MMMM YYYY',
-          week:       'MMMM YYYY',
-          month:      'YYYY',
-          year:       ''      
+          millisecond: 'HH:mm:ss',
+          second: 'D MMMM HH:mm',
+          minute: 'ddd D MMMM',
+          hour: 'ddd D MMMM',
+          weekday: 'MMMM YYYY',
+          day: 'MMMM YYYY',
+          week: 'MMMM YYYY',
+          month: 'YYYY',
+          year: ''
         },
       },
-      //height: '100%',
+      onRangeChange: (properties) => {
+        // Update the state when the user zooms or scrolls
+        setZoomStartTime(properties.start);
+        setZoomEndTime(properties.end);
+      }
     };
+
     if (timelineRef.current) {
-      if (!timelineRef.current.timeline) {
+      const currentTimeline = timelineRef.current.timeline;
+
+      if (!currentTimeline) {
         const newTimeline = new Timeline(timelineRef.current, items, groups, options);
         timelineRef.current.timeline = newTimeline;
       } else {
-        timelineRef.current.timeline.setItems(items);
-        timelineRef.current.timeline.setGroups(groups); // Set groups
-        timelineRef.current.timeline.setOptions(options);
+        // Update the timeline with new items and options
+        currentTimeline.setItems(items);
+        currentTimeline.setGroups(groups);
+        currentTimeline.setOptions(options);
       }
     }
 
-    return () => {
-      if (timelineRef.current && timelineRef.current.timeline) {
-        timelineRef.current.timeline.destroy();
-        timelineRef.current.timeline = null;
-      }
-    };
-  }, [timePoints, starttime, particles]);
+  }, [timePoints, starttime, particles, RenderTime, elapsedTime, zoomStartTime, zoomEndTime]);
 
   const handleStartPause = () => {
     dispatch(startPauseTimer());
+  };
+
+  const handleRenderStartPause = () => {
+    setRenderRunning(prevState => !prevState);
   };
 
   const handleReset = () => {
@@ -183,21 +215,21 @@ const Timer = () => {
   };
 
   const handleSetStartTime = () => {
-    dispatch(setstarttime(selectedDate.valueOf())); // Use moment's valueOf
+    dispatch(setstarttime(selectedDate.valueOf()));
     setShowDatePicker(false);
   };
 
   const handleSetCurrentTime = () => {
-    setSelectedDate(moment()); // Update with current time
+    setSelectedDate(moment());
   };
 
   return (
     <div className="exptimer-container">
       <div className="time-controller">
         <div className="controller-content">
-        <p style={{ color: 'white', textAlign: 'center', margin: 0, padding: 0  }}>{formattedCurrentTime}</p>
+          <p style={{ color: 'white', textAlign: 'center', margin: 0, padding: 0 }}>{formattedCurrentTime}</p>
           <div className="time-display">
-          <p style={{ color: 'white' }}>{formatElapsedTime()}</p>
+            <p style={{ color: 'white' }}>{formatElapsedTime()}</p>
             <div className="time-unit-controls">
               <button onClick={() => handleTimeUnitChange('s')} className="time-unit-btn">s</button>
               <button onClick={() => handleTimeUnitChange('m')} className="time-unit-btn">m</button>
@@ -207,6 +239,9 @@ const Timer = () => {
           <div className="control-buttons-container">
             <button className="control-btn" onClick={handleStartPause}>
               {isRunning ? '⏸️' : '▶️'}
+            </button>
+            <button className="control-btn" onClick={handleRenderStartPause}>
+              {RenderRunning ? '⏸️' : '▶️'}
             </button>
             <button className="control-btn" onClick={handleReset}>🔄</button>
             <input
@@ -231,18 +266,18 @@ const Timer = () => {
       </div>
       {showDatePicker && (
         <div className="datepicker-popup">
-        <Datetime 
-          value={selectedDate} 
-          onChange={(date) => setSelectedDate(moment(date))} // Use moment for handling date
-          dateFormat="YYYY-MM-DD" 
-          timeFormat="HH:mm:ss"
-          closeOnSelect={true}
-          inputProps={{ placeholder: 'Select date and time' }}
-        />
-        <button onClick={handleSetStartTime}>Set Start Time</button>
-        <button onClick={handleSetCurrentTime}>Set Time to Now</button>
-        <button onClick={() => setShowDatePicker(false)}>Cancel</button>
-      </div>
+          <Datetime 
+            value={selectedDate} 
+            onChange={(date) => setSelectedDate(moment(date))}
+            dateFormat="YYYY-MM-DD"
+            timeFormat="HH:mm:ss"
+            closeOnSelect={true}
+            inputProps={{ placeholder: 'Select date and time' }}
+          />
+          <button onClick={handleSetStartTime}>Set Start Time</button>
+          <button onClick={handleSetCurrentTime}>Set Time to Now</button>
+          <button onClick={() => setShowDatePicker(false)}>Cancel</button>
+        </div>
       )}
     </div>
   );
