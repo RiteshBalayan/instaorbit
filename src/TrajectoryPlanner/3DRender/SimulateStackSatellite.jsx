@@ -11,12 +11,12 @@ const SimuStackSatellites = () => {
         <RealSimulator
           key={index}
           particleId={config.id}
-          argumentOfPeriapsis={config.argumentOfPeriapsis}
-          inclination={config.inclination}
-          eccentricity={config.eccentricity}
-          semimajoraxis={config.semimajoraxis}
-          assendingnode={config.assendingnode}
-          trueanomly={config.trueanomly}
+          argumentOfPeriapsis={config.InitialCondition.argumentOfPeriapsis}
+          inclination={config.InitialCondition.inclination}
+          eccentricity={config.InitialCondition.eccentricity}
+          semimajoraxis={config.InitialCondition.semimajoraxis}
+          assendingnode={config.InitialCondition.assendingnode}
+          trueanomly={config.InitialCondition.trueanomly}
           propagator={config.propagator}
           time={config.time}
         />

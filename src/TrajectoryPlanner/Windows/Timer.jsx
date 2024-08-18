@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import Datetime from 'react-datetime';
 import moment from 'moment';
+import { FaClock, FaCalendarAlt, FaHourglassStart, FaRegCalendarCheck } from 'react-icons/fa';
+import { AccessAlarm, AccessTime, HourglassFull } from '@mui/icons-material';
 import 'react-datetime/css/react-datetime.css';
 import {
   startPauseTimer,
@@ -15,6 +17,11 @@ import { DataSet, Timeline } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../../Styles/simulator/Timer.css';
 import { format } from 'date-fns';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
+import ReplayIcon from '@mui/icons-material/Replay';
+import LinkIcon from '@mui/icons-material/Link';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
@@ -36,13 +43,31 @@ const Timer = () => {
   const [timeUnit, setTimeUnit] = useState('s');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [coupled, setCoupled] = useState(true); // New state to track if times are coupled
 
-  // State to store zoom start and end times
   const [zoomStartTime, setZoomStartTime] = useState(null);
   const [zoomEndTime, setZoomEndTime] = useState(null);
 
   const currentTime = new Date(starttime + elapsedTime * 1000);
   const formattedCurrentTime = format(currentTime, "dd MMM yyyy hh:mm a");
+
+  const formatFancyTime = (time) => {
+    const day = format(time, 'dd');
+    const month = format(time, 'MMM');
+    const year = format(time, 'yyyy');
+    const hour = format(time, 'HH');
+    const minute = format(time, 'mm');
+    const second = format(time, 'ss');
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', color: 'white', justifyContent: 'center' }}>
+        <FaRegCalendarCheck style={{ fontSize: '16px', marginRight: '8px' }} />
+        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{`${day} ${month} ${year}`}</span>
+        <FaClock style={{ fontSize: '16px', margin: '0 8px' }} />
+        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{`${hour}:${minute}:${second}`}</span>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (isRunning) {
@@ -51,14 +76,26 @@ const Timer = () => {
         dispatch(updateElapsedTime(newTime));
         dispatch(addTimePoint(newTime));
       }, 100);
-    } else if (!isRunning && intervalRef.current) {
+
+      if (coupled) {
+        renderIntervalRef.current = setInterval(() => {
+          const newTime = roundToThreeDecimals(RenderTime + simStep);
+          dispatch(updateRenderTime(newTime));
+        }, 1000 / simStep);
+      }
+    } else {
       clearInterval(intervalRef.current);
+      clearInterval(renderIntervalRef.current);
     }
-    return () => clearInterval(intervalRef.current);
-  }, [isRunning, elapsedTime, timeStep, dispatch]);
+
+    return () => {
+      clearInterval(intervalRef.current);
+      clearInterval(renderIntervalRef.current);
+    };
+  }, [isRunning, elapsedTime, timeStep, simStep, RenderTime, dispatch, coupled]);
 
   useEffect(() => {
-    if (RenderRunning) {
+    if (!coupled && RenderRunning) {
       renderIntervalRef.current = setInterval(() => {
         const newTime = roundToThreeDecimals(RenderTime + simStep);
         dispatch(updateRenderTime(newTime));
@@ -67,8 +104,9 @@ const Timer = () => {
       clearInterval(renderIntervalRef.current);
     }
     return () => clearInterval(renderIntervalRef.current);
-  }, [RenderRunning, RenderTime, simStep, dispatch]);
+  }, [RenderRunning, RenderTime, simStep, dispatch, coupled]);
 
+  // Timeline effect remains the same
   useEffect(() => {
     const now = starttime || Date.now();
     const minTime = now;
@@ -116,9 +154,17 @@ const Timer = () => {
       content: 'O',
       start: currentRenderTime,
       type: 'box',
-      className: 'current-time-point',
-      editable: true,
+      className: 'render-time-point',
+      editable: {
+        remove: false,
+        updateTime: true,
+      },
       group: 2,
+      onMove: (item, callback) => {
+        const newRenderTime = (item.start - starttime) / 1000;
+        dispatch(updateRenderTime(roundToThreeDecimals(newRenderTime)));
+        callback(item);
+      },
     };
 
     const items = new DataSet([...particleItems, currentTimePoint, RenderTimePoint]);
@@ -137,8 +183,8 @@ const Timer = () => {
       editable: false,
       showMajorLabels: true,
       showMinorLabels: true,
-      start: zoomStartTime, // Apply zoom start time
-      end: zoomEndTime, // Apply zoom end time
+      start: zoomStartTime,
+      end: zoomEndTime,
       format: {
         minorLabels: {
           second: 's',
@@ -158,7 +204,6 @@ const Timer = () => {
         },
       },
       onRangeChange: (properties) => {
-        // Update the state when the user zooms or scrolls
         setZoomStartTime(properties.start);
         setZoomEndTime(properties.end);
       }
@@ -171,7 +216,6 @@ const Timer = () => {
         const newTimeline = new Timeline(timelineRef.current, items, groups, options);
         timelineRef.current.timeline = newTimeline;
       } else {
-        // Update the timeline with new items and options
         currentTimeline.setItems(items);
         currentTimeline.setGroups(groups);
         currentTimeline.setOptions(options);
@@ -185,7 +229,9 @@ const Timer = () => {
   };
 
   const handleRenderStartPause = () => {
-    setRenderRunning(prevState => !prevState);
+    if (!coupled) {
+      setRenderRunning(prevState => !prevState);
+    }
   };
 
   const handleReset = () => {
@@ -201,6 +247,13 @@ const Timer = () => {
 
   const handleTimeUnitChange = (unit) => {
     setTimeUnit(unit);
+  };
+
+  const handleCoupleToggle = () => {
+    setCoupled(prevState => !prevState);
+    if (coupled) {
+      setRenderRunning(false);
+    }
   };
 
   const formatElapsedTime = () => {
@@ -227,39 +280,86 @@ const Timer = () => {
     <div className="exptimer-container">
       <div className="time-controller">
         <div className="controller-content">
-          <p style={{ color: 'white', textAlign: 'center', margin: 0, padding: 0 }}>{formattedCurrentTime}</p>
+            {formatFancyTime(currentTime)}
           <div className="time-display">
-            <p style={{ color: 'white' }}>{formatElapsedTime()}</p>
-            <div className="time-unit-controls">
-              <button onClick={() => handleTimeUnitChange('s')} className="time-unit-btn">s</button>
-              <button onClick={() => handleTimeUnitChange('m')} className="time-unit-btn">m</button>
-              <button onClick={() => handleTimeUnitChange('h')} className="time-unit-btn">h</button>
+          <div style={{ textAlign: 'left', fontFamily: 'Arial, sans-serif', display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <p style={{ color: 'white', fontSize: '14px', margin: '0' }}>
+                Elapsed time: 
+                <span style={{ fontSize: '18px', fontWeight: 'bold', background: '#333', padding: '2px 8px', borderRadius: '4px' }}>
+                  {formatElapsedTime()}
+                </span>
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <button onClick={() => handleTimeUnitChange('h')} className="time-unit-btn" style={{ fontSize: '16px', fontWeight: 'bold', color: 'white', background: 'none', border: 'none' }}>
+                    H
+                  </button>
+                  <p style={{ fontSize: '10px', color: 'white', margin: '0' }}>hour</p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <button onClick={() => handleTimeUnitChange('m')} className="time-unit-btn" style={{ fontSize: '16px', fontWeight: 'bold', color: 'white', background: 'none', border: 'none' }}>
+                    M
+                  </button>
+                  <p style={{ fontSize: '10px', color: 'white', margin: '0' }}>minute</p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <button onClick={() => handleTimeUnitChange('s')} className="time-unit-btn" style={{ fontSize: '16px', fontWeight: 'bold', color: 'white', background: 'none', border: 'none' }}>
+                    S
+                  </button>
+                  <p style={{ fontSize: '10px', color: 'white', margin: '0' }}>second</p>
+                </div>
+              </div>
             </div>
+
           </div>
           <div className="control-buttons-container">
-            <button className="control-btn" onClick={handleStartPause}>
-              {isRunning ? '⏸️' : '▶️'}
-            </button>
-            <button className="control-btn" onClick={handleRenderStartPause}>
-              {RenderRunning ? '⏸️' : '▶️'}
-            </button>
-            <button className="control-btn" onClick={handleReset}>🔄</button>
-            <input
-              type="number"
-              step="0.001"
-              min="0"
-              max="50"
-              value={timeStep}
-              onChange={handleTimeStepChange}
-              className="time-step-input"
-            />
-            <p style={{ color: 'white' }}>Seconds/Step</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '10px', color: 'white' }}>Play/Pause</span>
+              <button className="control-btn" onClick={handleStartPause}>
+                {isRunning ? <PauseIcon /> : <PlayArrowIcon />}
+              </button>
+            </div>
+            {!coupled && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '10px', color: 'white' }}>Play Render</span>
+              <button className="control-btn" onClick={handleRenderStartPause}>
+                {RenderRunning ? <PauseIcon /> : <PlayArrowIcon />}
+              </button>
+            </div>
+            )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', color: 'white' }}>Reset</span>
+                <button className="control-btn" onClick={handleReset}>
+                  <ReplayIcon />
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '10px', color: 'white' }}>Decouple</span>
+              <button className="control-btn" onClick={handleCoupleToggle}>
+                {coupled ? <LinkOffIcon /> : <LinkIcon />}
+              </button>
+            </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '10px', color: 'white' }}>Seconds/Step</span>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max="50"
+                  value={timeStep}
+                  onChange={handleTimeStepChange}
+                  className="time-step-input"
+                  style={{ width: '50px', textAlign: 'center' }}
+                />
+                <span style={{ fontSize: '8px', color: 'white' }}>Simulation Steps</span>
+              </div>
           </div>
         </div>
         <div className='starttime-container'>
-          <p className="starttime-display"> {formattedStartTime} </p>
+          <p className="starttime-display"> {formatFancyTime(formattedStartTime)} </p>
           <button className="starttime-btn" onClick={() => setShowDatePicker(true)}>Change Start Time</button>
         </div>
+        
       </div>
       <div className="timeline-panel">
         <div ref={timelineRef} className="timeline-container"></div>

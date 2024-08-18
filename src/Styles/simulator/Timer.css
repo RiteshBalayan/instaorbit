@@ -252,3 +252,50 @@
   background-color: var(--highlight-color);
   color: var(--text-color);
 }
+
+
+
+.render-time-point {
+  background-color: #1e90ff; /* Bright blue for visibility */
+  color: #ffffff; /* White text for contrast */
+  border: 2px solid #1c75d8; /* Slightly darker border */
+  border-radius: 4px; /* Rounded corners */
+  padding: 4px 8px; /* Padding for a more substantial look */
+}
+
+.vis-timeline .vis-item {
+  transition: background-color 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+}
+
+.vis-timeline .vis-item:hover {
+  background-color: #1c75d8; /* Darker background on hover */
+  border-color: #145a99; /* Darker border on hover */
+}
+
+.vis-timeline {
+  background-color: #2e2e2e; /* Dark background for the timeline */
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Subtle shadow for depth */
+  padding: 10px; /* Padding around the timeline */
+}
+
+.vis-timeline .vis-label {
+  color: #d3d3d3; /* Light grey for labels */
+}
+
+.vis-timeline .vis-grid.vis-minor {
+  border-color: #555; /* Dark grey for minor grid lines */
+}
+
+.vis-timeline .vis-grid.vis-major {
+  border-color: #888; /* Lighter grey for major grid lines */
+}
+
+.vis-timeline .vis-time-axis .vis-text {
+  color: #c0c0c0; /* Light grey for time axis text */
+}
+
+.vis-timeline .vis-time-axis .vis-text.vis-minor {
+  color: #a0a0a0; /* Slightly darker grey for minor time axis text */
+}
+

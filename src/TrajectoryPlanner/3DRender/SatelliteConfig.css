@@ -29,10 +29,9 @@ body, html, #root {
   height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--highlight-color);
-  border-radius: 15px;
+  align-items: top;
+  justify-content: top;
+  overflow-y: auto;
 }
 
 .satellite-item {

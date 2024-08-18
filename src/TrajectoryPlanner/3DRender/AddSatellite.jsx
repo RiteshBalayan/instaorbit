@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import DateTime from 'react-datetime';
 import "react-datetime/css/react-datetime.css";
 import moment from 'moment';
-import { updateSatellite, updateSatellites, togglePreview  } from '../../Store/satelliteSlice';
+import { updateSatellite, togglePreview, addSatellite } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState} from '../../Store/CurrentState';
 import { keplerianToCartesian } from './Functions';
@@ -21,12 +21,13 @@ const AddSatellite = () => {
   const [showParameterInput, setShowParameterInput] = useState(false);
   const [ID, setID] = useState(null);
   const [newSatelliteParams, setNewSatelliteParams] = useState({
+    InitialCondition: {
     argumentOfPeriapsis: 0,
     inclination: 0,
     eccentricity: 0,
     semimajoraxis: 0,
     assendingnode: 0,
-    trueanomly: 0,
+    trueanomly: 0 }
   });
   const [activeSatellite, setActiveSatellite] = useState(null);
   const satelliteConfigRef = useRef(null);
@@ -46,19 +47,20 @@ const AddSatellite = () => {
     const newSatellite = {
       id: newId,
       name: newSatelliteName,
-      argumentOfPeriapsis: 0,
-      trueanomly: 0,
-      eccentricity: 0,
-      semimajoraxis: 0,
-      assendingnode: 0,
-      inclination: 0,
       propagator: selectedOption,
-      time: time.format(),
       preview: true,
+      InitialCondition: {      
+        argumentOfPeriapsis: 0,
+        trueanomly: 0,
+        eccentricity: 0,
+        semimajoraxis: 0,
+        assendingnode: 0,
+        inclination: 0,
+        time: time.format(),
+      },
     };
     setNewSatelliteParams(newSatellite)
-    const newConfig = [...satellitesConfig, newSatellite];
-    dispatch(updateSatellites(newConfig));
+    dispatch(addSatellite(newSatellite));
   };
 
   const handleAddSatellite = () => {
@@ -88,9 +90,6 @@ const AddSatellite = () => {
     const [position, velocity] = keplerianToCartesian(elements);
     let newX, newY, newZ;
     [newX, newY, newZ] = position;
-    console.log(elements)
-    console.log('randy')
-    console.log(position)
     newX /= 3185.5;
     newY /= 3185.5;
     newZ /= 3185.5;
@@ -106,9 +105,21 @@ const AddSatellite = () => {
   };
 
   const handleParameterChange = (field, value) => {
-    const updatedParams = { ...newSatelliteParams, [field]: parseFloat(value) };
+    // Directly update the field within the InitialCondition object
+    const updatedInitialCondition = {
+      ...newSatelliteParams.InitialCondition, // Assuming InitialCondition is an object
+      [field]: parseFloat(value), // Update the specific field
+    };
+  
+    // Update the newSatelliteParams with the updated InitialCondition
+    const updatedParams = {
+      ...newSatelliteParams,
+      InitialCondition: updatedInitialCondition, // Directly replace the InitialCondition object
+    };
+  
+    // Update the state and dispatch the update to Redux
     setNewSatelliteParams(updatedParams);
-    dispatch(updateSatellite({id: ID, conf: newSatelliteParams}));
+    dispatch(updateSatellite({ id: ID, conf: updatedParams }));
   };
 
   return (
