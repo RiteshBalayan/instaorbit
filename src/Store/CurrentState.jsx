@@ -11,16 +11,16 @@ const CurrentState = createSlice({
   initialState,
   reducers: {
     updateCoordinate: (state, action) => {
-      const { id, coordinates, visibility } = action.payload;
+      const { id, coordinates, elements } = action.payload;
       const existingsatelite = state.satelite.find(p => p.id === id);
 
       if (existingsatelite) {
         // Update existing satelite's coordinates
         existingsatelite.coordinates = coordinates;
-        existingsatelite.visibility = visibility;
+        existingsatelite.elements = elements;
       } else {
         // Add new satelite with coordinates
-        state.satelite.push({ id, coordinates, visibility });
+        state.satelite.push({ id, coordinates, elements });
       }
     },
     deleteState: (state, action) => {

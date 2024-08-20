@@ -38,14 +38,10 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
             const newZ = satellitecurrentcoordinate.coordinates.z
             const newTracePoint = particle.tracePoints.filter(p => p.time < RenderTime)
             .sort((a, b) => b.time - a.time) // Sort in descending order by time
- // Find the first point with time less than or equal to 1000
-            console.log("randi kesh")
-            console.log(newTracePoint)
 
             satelliteRef.current.position.set(newX, newY, newZ);
 
             const tracePoint = {time: RenderTime, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0};
-            dispatch(updateCoordinate({id: particleId, coordinates: tracePoint })) //Update current coordinate
             const newTracePoints = particle.tracePoints.filter(p => p.time < RenderTime).flatMap(p => [p.x, p.y, p.z]);
 
             if (lineRef.current) {
@@ -56,11 +52,10 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
             }
           }
     }
-
       // Update previous elapsedTime
       prevRenderTime.current = RenderTime;
     }
-  }, [dispatch, RenderTime, particleId, particle, inclination, trueanomly ]);
+  }, [RenderTime, particleId, particle, inclination, trueanomly ]);
 
   const satelliteconfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
   const ellipseRef = useRef();

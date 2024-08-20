@@ -31,6 +31,19 @@ export function meanToEccentricAnomaly(M, e, tolerance = 1e-6) {
     return nu;
 }
 
+export function trueToEccentricAnomaly(nu, e) {
+    // Calculate the eccentric anomaly (E) from true anomaly (ν) and eccentricity (e)
+    const tanEOver2 = Math.sqrt((1 - e) / (1 + e)) * Math.tan(nu / 2);
+    let E = 2 * Math.atan(tanEOver2);
+
+    // Adjust E to be within 0 to 2π
+    if (E < 0) {
+        E += 2 * Math.PI;
+    }
+
+    return E;
+}
+
 export function applyZ_X_Z_Rotation(vector, thetaZ1, thetaX, thetaZ2) {
     // https://www.mecademic.com/academic_articles/space-orientation-euler-angles/
     // Convert degrees to radians
@@ -122,6 +135,35 @@ export function keplerianToCartesian({a, e, M, Ω, ω, i}) {
     return [Position, Velocity];
 }
 
+export function keplerianToCartesianTrueAnomly({a, e, ν, Ω, ω, i}) {
+    // Constants
+    const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
+
+    // Calculate Eccentric Anomaly (E)
+    const E = trueToEccentricAnomaly(ν, e);
+
+    // Calculate the distance (r) from the focus to the satellite
+    const r = a * (1 - e * Math.cos(E));
+
+    // Calculate position in the orbital plane (x', y', 0)
+    const x_prime = r * Math.cos(ν);
+    const y_prime = r * Math.sin(ν);
+    const z_prime = 0;
+
+    // Calculate velocity in the orbital plane (vx', vy', 0)
+    const h = Math.sqrt(mu * a * (1 - e * e)); // Specific angular momentum
+    const vx_prime = -mu / h * Math.sin(E);
+    const vy_prime = mu / h * Math.sqrt(1 - e * e) * Math.cos(E);
+    const vz_prime = 0;
+
+    const Position_prime = [x_prime, y_prime, z_prime];
+    const Velocity_prime = [vx_prime, vy_prime, vz_prime];
+
+    const Position = applyZ_X_Z_Rotation(Position_prime, Ω, i, ω);
+    const Velocity = applyZ_X_Z_Rotation(Velocity_prime, Ω, i, ω);
+
+    return [Position, Velocity];
+}
 
 
 export function cartesianToKeplerian({position, velocity}) {

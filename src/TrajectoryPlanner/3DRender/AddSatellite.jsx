@@ -7,7 +7,7 @@ import moment from 'moment';
 import { updateSatellite, togglePreview, addSatellite } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState} from '../../Store/CurrentState';
-import { keplerianToCartesian } from './Functions';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly } from './Functions';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
 
@@ -71,23 +71,24 @@ const AddSatellite = () => {
     //const updatedParams = { ...newSatelliteParams, preview: false };
     //setNewSatelliteParams(updatedParams);
     const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
-    const SM = newSatelliteParams.semimajoraxis
+    const SM = newSatelliteParams.InitialCondition.semimajoraxis
 
-    const inclination = THREE.MathUtils.degToRad(newSatelliteParams.inclination);//Angles in Radian
-    const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.argumentOfPeriapsis);
-    const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.assendingnode);
-    const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.trueanomly);
+    const inclination = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.inclination);//Angles in Radian
+    const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.argumentOfPeriapsis);
+    const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
+    const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.trueanomly);
+
 
     const elements = {
       a: SM, // Semi-major axis in km
-      e: newSatelliteParams.eccentricity, // Eccentricity
-      M: trueanomly, // Mean anomaly in radians
+      e: newSatelliteParams.InitialCondition.eccentricity, // Eccentricity
+      ν: trueanomly, // Mean anomaly in radians
       Ω: assendingnode, // Longitude of ascending node in degrees
       ω: argumentOfPeriapsis, // Argument of periapsis in degrees
       i: inclination // Inclination in degrees
       };
 
-    const [position, velocity] = keplerianToCartesian(elements);
+    const [position, velocity] = keplerianToCartesianTrueAnomly(elements);
     let newX, newY, newZ;
     [newX, newY, newZ] = position;
     newX /= 3185.5;
@@ -96,6 +97,7 @@ const AddSatellite = () => {
 
     dispatch(togglePreview({id: ID, preview: false}));
     dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }] }));
+    dispatch(updateCoordinate({ id: ID, coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, elements: elements }))
     //dispatch(updateCoordinate({ id: ID, coordinates: [] }));
     setNewSatelliteName('');
     setSelectedOption('');
