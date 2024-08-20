@@ -1,12 +1,12 @@
-// src/components/SatelliteConfig.js
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import DateTime from 'react-datetime';
-import "react-datetime/css/react-datetime.css";
-import moment from 'moment';
+import { Button, IconButton } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import DoneIcon from '@mui/icons-material/Done';
 import { updateSatellite, togglePreview, addSatellite } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
-import { updateCoordinate, deleteState} from '../../Store/CurrentState';
+import { updateCoordinate, deleteState } from '../../Store/CurrentState';
 import { keplerianToCartesian, keplerianToCartesianTrueAnomly } from './Functions';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
@@ -22,12 +22,13 @@ const AddSatellite = () => {
   const [ID, setID] = useState(null);
   const [newSatelliteParams, setNewSatelliteParams] = useState({
     InitialCondition: {
-    argumentOfPeriapsis: 0,
-    inclination: 0,
-    eccentricity: 0,
-    semimajoraxis: 0,
-    assendingnode: 0,
-    trueanomly: 0 }
+      argumentOfPeriapsis: 0,
+      inclination: 0,
+      eccentricity: 0,
+      semimajoraxis: 0,
+      assendingnode: 0,
+      trueanomly: 0
+    }
   });
   const [activeSatellite, setActiveSatellite] = useState(null);
   const satelliteConfigRef = useRef(null);
@@ -43,7 +44,7 @@ const AddSatellite = () => {
     }
     setShowParameterInput(true);
     const newId = satellitesConfig.length > 0 ? satellitesConfig[satellitesConfig.length - 1].id + 1 : 0;
-    setID(newId)
+    setID(newId);
     const newSatellite = {
       id: newId,
       name: newSatelliteName,
@@ -56,37 +57,31 @@ const AddSatellite = () => {
         semimajoraxis: 0,
         assendingnode: 0,
         inclination: 0,
-        time: time.format(),
+        time: time, // Time in seconds
       },
     };
-    setNewSatelliteParams(newSatellite)
+    setNewSatelliteParams(newSatellite);
     dispatch(addSatellite(newSatellite));
+    dispatch(updateCoordinate({ id: newId, elements: { a:0 ,e:0 ,i:0 ,Ω:0 ,ω:0 ,ν: 0} }));
   };
 
   const handleAddSatellite = () => {
-    //const newId = satellitesConfig.length > 0 ? satellitesConfig[satellitesConfig.length - 1].id + 1 : 0;
-    //const newSatellite = { id: newId, name: newSatelliteName, ...newSatelliteParams, propagator: selectedOption, time: time.format() };
-    //const newConfig = [...satellitesConfig, newSatellite];
-    //dispatch(updateSatellites(newConfig));
-    //const updatedParams = { ...newSatelliteParams, preview: false };
-    //setNewSatelliteParams(updatedParams);
     const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
-    const SM = newSatelliteParams.InitialCondition.semimajoraxis
+    const SM = newSatelliteParams.InitialCondition.semimajoraxis;
 
-    const inclination = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.inclination);//Angles in Radian
+    const inclination = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.inclination);
     const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.argumentOfPeriapsis);
     const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
     const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.trueanomly);
 
-
     const elements = {
-      a: SM, // Semi-major axis in km
-      e: newSatelliteParams.InitialCondition.eccentricity, // Eccentricity
-      ν: trueanomly, // Mean anomaly in radians
-      Ω: assendingnode, // Longitude of ascending node in degrees
-      ω: argumentOfPeriapsis, // Argument of periapsis in degrees
-      i: inclination // Inclination in degrees
-      };
+      a: SM,
+      e: newSatelliteParams.InitialCondition.eccentricity,
+      ν: trueanomly,
+      Ω: assendingnode,
+      ω: argumentOfPeriapsis,
+      i: inclination
+    };
 
     const [position, velocity] = keplerianToCartesianTrueAnomly(elements);
     let newX, newY, newZ;
@@ -97,8 +92,14 @@ const AddSatellite = () => {
 
     dispatch(togglePreview({id: ID, preview: false}));
     dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }] }));
-    dispatch(updateCoordinate({ id: ID, coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, elements: elements }))
-    //dispatch(updateCoordinate({ id: ID, coordinates: [] }));
+    dispatch(updateCoordinate({ id: ID, coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, elements: {
+      a: SM,
+      e: newSatelliteParams.InitialCondition.eccentricity,
+      ν: trueanomly,
+      Ω: assendingnode,
+      ω: argumentOfPeriapsis,
+      i: inclination 
+    } }));
     setNewSatelliteName('');
     setSelectedOption('');
     setTime(null);
@@ -107,29 +108,26 @@ const AddSatellite = () => {
   };
 
   const handleParameterChange = (field, value) => {
-    // Directly update the field within the InitialCondition object
     const updatedInitialCondition = {
-      ...newSatelliteParams.InitialCondition, // Assuming InitialCondition is an object
-      [field]: parseFloat(value), // Update the specific field
+      ...newSatelliteParams.InitialCondition,
+      [field]: parseFloat(value),
     };
   
-    // Update the newSatelliteParams with the updated InitialCondition
     const updatedParams = {
       ...newSatelliteParams,
-      InitialCondition: updatedInitialCondition, // Directly replace the InitialCondition object
+      InitialCondition: updatedInitialCondition,
     };
   
-    // Update the state and dispatch the update to Redux
     setNewSatelliteParams(updatedParams);
     dispatch(updateSatellite({ id: ID, conf: updatedParams }));
   };
 
   return (
     <div className="satellite-config" ref={satelliteConfigRef}>
-
       <div className="input-container">
         {showNameInput && !showParameterInput && (
           <>
+            <h3>Satellite Name</h3>
             <input
               type="text"
               placeholder="Satellite Name"
@@ -158,16 +156,23 @@ const AddSatellite = () => {
                 SGP4 Propagator
               </label>
             </div>
-            <div className="time-input">
-              <DateTime
-                value={time}
-                onChange={setTime}
-                inputProps={{ placeholder: 'Select Time' }}
+            <h3>Initialization Time</h3>
+              <input
+                type="number"
+                value={time || ''}
+                onChange={(e) => setTime(e.target.value)}
+                placeholder="Enter Time in Seconds"
+                className="name-input"
               />
-            </div>
-            <button className="next-button" onClick={handleNextStep}>
+            <Button
+              variant="contained"
+              color="primary"
+              endIcon={<ArrowForwardIcon />}
+              onClick={handleNextStep}
+              style={{ marginTop: '10px' }}
+            >
               Next
-            </button>
+            </Button>
           </>
         )}
         {showParameterInput && (
@@ -182,7 +187,7 @@ const AddSatellite = () => {
                 min='6400'
                 max='50000'
                 step='1000'
-                value={newSatelliteParams['semimajoraxis']}
+                value={newSatelliteParams.InitialCondition['semimajoraxis']}
                 onChange={(e) => handleParameterChange('semimajoraxis', e.target.value)}
                 className="detail-input"
               />
@@ -196,7 +201,7 @@ const AddSatellite = () => {
                 min='0'
                 max='1'
                 step='0.05'
-                value={newSatelliteParams['eccentricity']}
+                value={newSatelliteParams.InitialCondition['eccentricity']}
                 onChange={(e) => handleParameterChange('eccentricity', e.target.value)}
                 className="detail-input"
               />
@@ -210,7 +215,7 @@ const AddSatellite = () => {
                 min='0'
                 max='360'
                 step='1'
-                value={newSatelliteParams['trueanomly']}
+                value={newSatelliteParams.InitialCondition['trueanomly']}
                 onChange={(e) => handleParameterChange('trueanomly', e.target.value)}
                 className="detail-input"
               />
@@ -224,7 +229,7 @@ const AddSatellite = () => {
                 min='0'
                 max='360'
                 step='1'
-                value={newSatelliteParams['inclination']}
+                value={newSatelliteParams.InitialCondition['inclination']}
                 onChange={(e) => handleParameterChange('inclination', e.target.value)}
                 className="detail-input"
               />
@@ -238,7 +243,7 @@ const AddSatellite = () => {
                 min='0'
                 max='360'
                 step='1'
-                value={newSatelliteParams['argumentOfPeriapsis']}
+                value={newSatelliteParams.InitialCondition['argumentOfPeriapsis']}
                 onChange={(e) => handleParameterChange('argumentOfPeriapsis', e.target.value)}
                 className="detail-input"
               />
@@ -252,20 +257,31 @@ const AddSatellite = () => {
                 min='0'
                 max='360'
                 step='1'
-                value={newSatelliteParams['assendingnode']}
+                value={newSatelliteParams.InitialCondition['assendingnode']}
                 onChange={(e) => handleParameterChange('assendingnode', e.target.value)}
                 className="detail-input"
               />
             </div>
-            <button className="add-button" onClick={handleAddSatellite}>
+            <Button
+              variant="contained"
+              color="secondary"
+              endIcon={<DoneIcon />}
+              onClick={handleAddSatellite}
+              style={{ marginTop: '10px' }}
+            >
               Done
-            </button>
+            </Button>
           </>
         )}
         {!showNameInput && !showParameterInput && (
-          <button className="add-button" onClick={handleAddSatelliteClick}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={handleAddSatelliteClick}
+          >
             Add Satellite
-          </button>
+          </Button>
         )}
       </div>
     </div>

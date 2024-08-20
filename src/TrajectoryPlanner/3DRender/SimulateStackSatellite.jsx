@@ -12,7 +12,6 @@ const SimuStackSatellites = () => {
           key={index}
           particleId={config.id}
           propagator={config.propagator}
-          initialCoordinates={config.InitialCondition}
           burn={config.burns}
         />
       ))}

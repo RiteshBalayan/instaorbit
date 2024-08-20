@@ -6,24 +6,32 @@ import { keplerianToCartesian, cartesianToKeplerian, getTLE } from './Functions'
 import * as THREE from 'three';
 import { Sgp4 } from 'ootk';
 
-const RealSimulator = ({ particleId, propagator, initialCoordinates, burn }) => {
+const RealSimulator = ({ particleId, propagator, burn }) => {
 
   const dispatch = useDispatch();
   const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
+  const orbitalelements = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const prevElapsedTime = useRef(elapsedTime);
 
   const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
 
   // Separate state for each Keplerian element
-  let a = initialCoordinates.semimajoraxis;
-  let e = initialCoordinates.eccentricity;
-  let i = THREE.MathUtils.degToRad(initialCoordinates.inclination);
-  let Ω = THREE.MathUtils.degToRad(initialCoordinates.assendingnode);
-  let ω = THREE.MathUtils.degToRad(initialCoordinates.argumentOfPeriapsis);
-  let M = null; // Mean anomaly, to be calculated
+  let a = orbitalelements.elements.a;  
+  let e = orbitalelements.elements.e;
+  let i = orbitalelements.elements.i;
+  let Ω = orbitalelements.elements.Ω;
+  let ω = orbitalelements.elements.ω;
+  let trueanomly = orbitalelements.elements.ν;
+  //let M = null; // Mean anomaly, to be calculated
 
-  let trueanomly = THREE.MathUtils.degToRad(initialCoordinates.trueanomly);
+  // Calculate Mean anomaly
+  let timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
+  let perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
+  let firstperigeetime = perigeetoanomlytime - timeperiod;
+  let timesinceperigee = (elapsedTime + firstperigeetime) % timeperiod;
+  let meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
+  let M = meananomly
 
   useEffect(() => {
     // Check if elapsedTime has changed
@@ -36,7 +44,7 @@ const RealSimulator = ({ particleId, propagator, initialCoordinates, burn }) => 
           if (prevElapsedTime.current <= b.time && elapsedTime >= b.time) {
             // Apply burn by adjusting Keplerian parameters
             // Convert current orbital elements to Cartesian coordinates
-            let [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M });
+            const [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
             
             // Apply burn to velocity
             velocity[0] += b.x;
@@ -47,25 +55,41 @@ const RealSimulator = ({ particleId, propagator, initialCoordinates, burn }) => 
 
             // Convert updated Cartesian coordinates back to Keplerian elements
             const newElements = cartesianToKeplerian({ position, velocity });
+            console.log(newElements)
+            console.log("free the matrix")
 
             // Update states with new elements
-            a = newElements.a;
+            dispatch(updateCoordinate({
+              id: particleId,
+              elements: {
+                a : newElements.a , 
+                e : newElements.e ,
+                i : newElements.i ,
+                Ω : newElements.Ω ,
+                ω : newElements.ω ,
+                ν : newElements.ν ,
+              }
+            }))
+
+            //Update coordonates in console
+            a = newElements.a;  
             e = newElements.e;
             i = newElements.i;
             Ω = newElements.Ω;
             ω = newElements.ω;
-            M = newElements.M;
+            trueanomly = newElements.ν;
+
+              // Calculate Mean anomaly
+            timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
+            perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
+            firstperigeetime = perigeetoanomlytime - timeperiod;
+            timesinceperigee = (b.time + firstperigeetime) % timeperiod;
+            meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
+            M = meananomly
+
           }
         });
       }
-
-      // Calculate Mean anomaly
-      const timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
-      const perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
-      const firstperigeetime = perigeetoanomlytime - timeperiod;
-      const timesinceperigee = (elapsedTime + firstperigeetime) % timeperiod;
-      const meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
-      M = meananomly
 
       // Update Mean anomaly
       //setM(meananomly);
@@ -75,11 +99,6 @@ const RealSimulator = ({ particleId, propagator, initialCoordinates, burn }) => 
       if (propagator === 'InstaOrbit') {
         const [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
         [newX, newY, newZ] = position;
-        console.log('Bhai Roi Rand')
-        console.log({ a, e, i, Ω, ω, M: meananomly });
-        console.log(initialCoordinates.semimajoraxis)
-        console.log(perigeetoanomlytime);
-        console.log(initialCoordinates);
       } else if (propagator === 'SGP4') {
         const [tleLine1, tleLine2] = getTLE({ a, e, i, Ω, ω, M: meananomly }, elapsedTime);
         const satrec = Sgp4.createSatrec(tleLine1, tleLine2);
@@ -102,12 +121,20 @@ const RealSimulator = ({ particleId, propagator, initialCoordinates, burn }) => 
       const tracePoint = { time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY };
 
       dispatch(addTracePoint({ id: particleId, tracePoint }));
-      dispatch(updateCoordinate({ id: particleId, coordinates: tracePoint, elements: { a, e, i, Ω, ω, M } }));
+      dispatch(updateCoordinate({ id: particleId, coordinates: tracePoint, 
+        elements: {
+        a: a, // Semi-major axis in km
+        e: e, // Eccentricity
+        ν: trueanomly, // Mean anomaly in radians
+        Ω: Ω, // Longitude of ascending node in degrees
+        ω: ω, // Argument of periapsis in degrees
+        i: i
+      } }))
 
       // Update previous elapsedTime
       prevElapsedTime.current = elapsedTime;
     }
-  }, [dispatch, elapsedTime, particleId, a, e, i, Ω, ω, M, burn, propagator]);
+  }, [dispatch, elapsedTime, particleId, a, e, i, Ω, ω, burn, propagator]);
 
   return null;
 };

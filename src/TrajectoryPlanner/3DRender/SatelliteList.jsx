@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment';
+import { Button, IconButton, Typography } from '@mui/material';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { updateSatellites, deleteSatellite } from '../../Store/satelliteSlice';
 import { deleteParticle } from '../../Store/StateTimeSeries';
 import { deleteState } from '../../Store/CurrentState';
@@ -14,7 +18,7 @@ const SatelliteList = () => {
   const [burnData, setBurnData] = useState({ x: '', y: '', z: '', time: '' });
   const satelliteConfigRef = useRef(null);
 
-  const deleteSatellite = (id) => {
+  const handleDeleteSatellite = (id) => {
     const newConfig = satellitesConfig.filter(s => s.id !== id);
     dispatch(updateSatellites(newConfig));
     dispatch(deleteParticle(id));
@@ -109,47 +113,106 @@ const SatelliteList = () => {
                     <div key={index} className="burn-item">
                       <h5>Burn {index + 1}</h5>
                       <div className="burn-details">
-                        <div>X: {burn.x}</div>
-                        <div>Y: {burn.y}</div>
-                        <div>Z: {burn.z}</div>
-                        <div>Time: {burn.time}</div>
+                        <div className="detail-row">
+                          <label className="detail-label">X:</label>
+                          <div className="fixed-value">{burn.x}</div>
+                        </div>
+                        <div className="detail-row">
+                          <label className="detail-label">Y:</label>
+                          <div className="fixed-value">{burn.y}</div>
+                        </div>
+                        <div className="detail-row">
+                          <label className="detail-label">Z:</label>
+                          <div className="fixed-value">{burn.z}</div>
+                        </div>
+                        <div className="detail-row">
+                          <label className="detail-label">Time:</label>
+                          <div className="fixed-value">{burn.time}</div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              <button className="delete-button" onClick={() => deleteSatellite(satellite.id)}>🗑️</button>
-              <button className="add-burn-button" onClick={() => handleAddBurnClick(satellite.id)}>Add Burn</button>
+              <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
+                <IconButton 
+                  color="primary" 
+                  onClick={() => handleAddBurnClick(satellite.id)} 
+                >
+                  <LocalFireDepartmentIcon /> 
+                </IconButton>
+                <Typography variant="body2">add burn</Typography>
+              </div>
+
               {burnInputVisible[satellite.id] && (
                 <div className="burn-inputs">
-                  <input
-                    type="number"
-                    placeholder="x"
-                    value={burnData.x}
-                    onChange={(e) => handleBurnDataChange('x', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="y"
-                    value={burnData.y}
-                    onChange={(e) => handleBurnDataChange('y', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="z"
-                    value={burnData.z}
-                    onChange={(e) => handleBurnDataChange('z', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="time"
-                    value={burnData.time}
-                    onChange={(e) => handleBurnDataChange('time', e.target.value)}
-                  />
-                  <button className="done-button" onClick={() => handleDoneClick(satellite.id)}>Done</button>
+                  <div className='detail-row'> 
+                    <label className='detail-label'>
+                      Vx
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Vx"
+                      value={burnData.x}
+                      onChange={(e) => handleBurnDataChange('x', e.target.value)}
+                      className="detail-input"
+                    />
+                  </div>
+                  <div className='detail-row'> 
+                    <label className='detail-label'>
+                      Vy
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Vy"
+                      value={burnData.y}
+                      onChange={(e) => handleBurnDataChange('y', e.target.value)}
+                      className="detail-input"
+                    />
+                  </div>
+                  <div className='detail-row'> 
+                    <label className='detail-label'>
+                      Vz
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Vz"
+                      value={burnData.z}
+                      onChange={(e) => handleBurnDataChange('z', e.target.value)}
+                      className="detail-input"
+                    />
+                  </div>
+                  <div className='detail-row'> 
+                    <label className='detail-label'>
+                      Burn Time
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="time"
+                      value={burnData.time}
+                      onChange={(e) => handleBurnDataChange('time', e.target.value)}
+                      className="detail-input"
+                    />
+                  </div>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<CheckCircleIcon />}
+                    onClick={() => handleDoneClick(satellite.id)}
+                    style={{ marginTop: '10px' }}
+                  >
+                    Done
+                  </Button>
                 </div>
               )}
+                <IconButton
+                  color="secondary"
+                  onClick={() => handleDeleteSatellite(satellite.id)}
+                  style={{ marginTop: '10px' }}
+                >
+                  <DeleteIcon />
+                </IconButton>
             </div>
           )}
         </div>

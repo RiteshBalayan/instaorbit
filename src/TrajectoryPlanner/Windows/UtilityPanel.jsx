@@ -36,10 +36,14 @@ const UtilityPanel = () => {
           <IconButton className="collapse-button" onClick={togglePanel}>
             <ChevronRight />
           </IconButton>
-          <div className="top-panel" style={{ height: `${topHeight}%` }}>
-            <AddSatellite />
+          <div className="top-panel" style={{ display: 'flex', flexDirection: 'column', height: `${topHeight}%`, overflowY: 'auto' }}>
+          <div style={{ flex: '0 1 auto' }}>
+            <AddSatellite style={{ height: 'auto' }} />
+          </div>
+          <div style={{ flex: 1 }}>
             <SatelliteList />
           </div>
+        </div>
           <div
             className="drag-line"
             onMouseDown={(e) => {
