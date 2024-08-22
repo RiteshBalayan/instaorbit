@@ -8,6 +8,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { updateSatellites, deleteSatellite } from '../../Store/satelliteSlice';
 import { deleteParticle } from '../../Store/StateTimeSeries';
 import { deleteState } from '../../Store/CurrentState';
+import Timeline from '@mui/lab/Timeline';
+import TimelineItem, { timelineItemClasses } from '@mui/lab/TimelineItem';
+import TimelineSeparator from '@mui/lab/TimelineSeparator';
+import TimelineConnector from '@mui/lab/TimelineConnector';
+import TimelineContent from '@mui/lab/TimelineContent';
+import TimelineDot from '@mui/lab/TimelineDot';
 import './SatelliteConfig.css';
 
 const SatelliteList = () => {
@@ -96,7 +102,23 @@ const SatelliteList = () => {
             {satellite.name}
           </h3>
           {activeSatellite === satellite.id && (
+                <Timeline
+                sx={{
+                  [`& .${timelineItemClasses.root}:before`]: {
+                    flex: 0,
+                    padding: 0,
+                  },
+                }}
+              >
+
             <div className="satellite-details">
+            <TimelineItem>
+                <TimelineSeparator>
+                  <TimelineDot />
+                  <TimelineConnector />
+                </TimelineSeparator>
+                <TimelineContent>
+              <h4>Initail Elements</h4>
               {['trueanomly', 'argumentOfPeriapsis', 'assendingnode', 'inclination', 'semimajoraxis', 'eccentricity', 'propagator', 'time'].map((field) => (
                 <div key={field} className="detail-row">
                   <label className="detail-label">
@@ -105,24 +127,32 @@ const SatelliteList = () => {
                   <div className="fixed-value">{field === 'time' ? moment(satellite.InitialCondition[field]).format('YYYY-MM-DD HH:mm:ss') : satellite.InitialCondition[field]}</div>
                 </div>
               ))}
+              </TimelineContent>
+              </TimelineItem>
 
               {satellite.burns && satellite.burns.length > 0 && (
                 <div className="burns-section">
-                  <h4>Burn Data</h4>
+                  {/*<h4>Burn Data</h4>*/}
                   {satellite.burns.map((burn, index) => (
+                                <TimelineItem>
+                                <TimelineSeparator>
+                                  <TimelineDot />
+                                  <TimelineConnector />
+                                </TimelineSeparator>
+                                <TimelineContent>
                     <div key={index} className="burn-item">
-                      <h5>Burn {index + 1}</h5>
+                      <h4>Burn {index + 1}</h4>
                       <div className="burn-details">
                         <div className="detail-row">
-                          <label className="detail-label">X:</label>
+                          <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>x</sub></label>
                           <div className="fixed-value">{burn.x}</div>
                         </div>
                         <div className="detail-row">
-                          <label className="detail-label">Y:</label>
+                        <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>y</sub></label>
                           <div className="fixed-value">{burn.y}</div>
                         </div>
                         <div className="detail-row">
-                          <label className="detail-label">Z:</label>
+                        <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>z</sub></label>
                           <div className="fixed-value">{burn.z}</div>
                         </div>
                         <div className="detail-row">
@@ -131,6 +161,8 @@ const SatelliteList = () => {
                         </div>
                       </div>
                     </div>
+                    </TimelineContent>
+                    </TimelineItem>
                   ))}
                 </div>
               )}
@@ -214,6 +246,7 @@ const SatelliteList = () => {
                   <DeleteIcon />
                 </IconButton>
             </div>
+            </Timeline>
           )}
         </div>
       ))}
