@@ -87,7 +87,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       const timeperiod = 2*Math.PI*Math.sqrt((semimajoraxis**3)/mu);
       const perigeetoanomlytime = (trueanomly / ( 2*(Math.PI) ) )*timeperiod
       const firstperigeetime = perigeetoanomlytime - timeperiod
-      const timesinceperigee = (t + firstperigeetime) % timeperiod
+      const timesinceperigee = (0 + firstperigeetime) % timeperiod
       const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
 
       const elements = {

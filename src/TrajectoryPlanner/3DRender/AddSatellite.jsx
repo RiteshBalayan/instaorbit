@@ -73,17 +73,25 @@ const AddSatellite = () => {
     const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.argumentOfPeriapsis);
     const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
     const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.trueanomly);
+      // Calculate Mean anomaly
+  let timeperiod = 2 * Math.PI * Math.sqrt((SM ** 3) / mu);
+  let perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
+  let firstperigeetime = perigeetoanomlytime - timeperiod;
+  let timesinceperigee = ((0) + firstperigeetime) % timeperiod;
+  let meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
+  let M = meananomly
+
 
     const elements = {
       a: SM,
       e: newSatelliteParams.InitialCondition.eccentricity,
-      ν: trueanomly,
+      M: meananomly,
       Ω: assendingnode,
       ω: argumentOfPeriapsis,
       i: inclination
     };
 
-    const [position, velocity] = keplerianToCartesianTrueAnomly(elements);
+    const [position, velocity] = keplerianToCartesian(elements);
     let newX, newY, newZ;
     [newX, newY, newZ] = position;
     newX /= 3185.5;

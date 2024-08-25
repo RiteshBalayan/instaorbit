@@ -102,7 +102,7 @@ const SatelliteList = () => {
             {satellite.name}
           </h3>
           {activeSatellite === satellite.id && (
-                <Timeline
+          <Timeline
                 sx={{
                   [`& .${timelineItemClasses.root}:before`]: {
                     flex: 0,
@@ -134,33 +134,33 @@ const SatelliteList = () => {
                 <div className="burns-section">
                   {/*<h4>Burn Data</h4>*/}
                   {satellite.burns.map((burn, index) => (
-                                <TimelineItem>
-                                <TimelineSeparator>
-                                  <TimelineDot />
-                                  <TimelineConnector />
-                                </TimelineSeparator>
-                                <TimelineContent>
-                    <div key={index} className="burn-item">
-                      <h4>Burn {index + 1}</h4>
-                      <div className="burn-details">
-                        <div className="detail-row">
-                          <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>x</sub></label>
-                          <div className="fixed-value">{burn.x}</div>
-                        </div>
-                        <div className="detail-row">
-                        <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>y</sub></label>
-                          <div className="fixed-value">{burn.y}</div>
-                        </div>
-                        <div className="detail-row">
-                        <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>z</sub></label>
-                          <div className="fixed-value">{burn.z}</div>
-                        </div>
-                        <div className="detail-row">
-                          <label className="detail-label">Time:</label>
-                          <div className="fixed-value">{burn.time}</div>
+                    <TimelineItem>
+                    <TimelineSeparator>
+                        <TimelineDot />
+                        <TimelineConnector />
+                    </TimelineSeparator>
+                    <TimelineContent>
+                      <div key={index} className="burn-item">
+                        <h4>Burn {index + 1}</h4>
+                        <div className="burn-details">
+                          <div className="detail-row">
+                            <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>x</sub></label>
+                            <div className="fixed-value">{burn.x}</div>
+                          </div>
+                          <div className="detail-row">
+                          <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>y</sub></label>
+                            <div className="fixed-value">{burn.y}</div>
+                          </div>
+                          <div className="detail-row">
+                          <label className="detail-label"><span style={{ fontStyle: 'italic' }}>v</span><sub>z</sub></label>
+                            <div className="fixed-value">{burn.z}</div>
+                          </div>
+                          <div className="detail-row">
+                            <label className="detail-label">Time:</label>
+                            <div className="fixed-value">{burn.time}</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
                     </TimelineContent>
                     </TimelineItem>
                   ))}

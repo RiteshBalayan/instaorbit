@@ -79,7 +79,7 @@ const Timer = () => {
 
       if (coupled) {
         renderIntervalRef.current = setInterval(() => {
-          const newTime = roundToThreeDecimals(RenderTime + simStep);
+          const newTime = roundToThreeDecimals(elapsedTime + timeStep);
           dispatch(updateRenderTime(newTime));
         }, 1000 / simStep);
       }
@@ -158,12 +158,21 @@ const Timer = () => {
       editable: {
         remove: false,
         updateTime: true,
+        updateGroup: true,
       },
+      selectable: true,
       group: 2,
       onMove: (item, callback) => {
-        const newRenderTime = (item.start - starttime) / 1000;
-        dispatch(updateRenderTime(roundToThreeDecimals(newRenderTime)));
-        callback(item);
+        const newRenderTime = (item.start - now) / 1000;
+        dispatch(updateRenderTime(newRenderTime));
+        console.log('hi rime shifted')
+        callback(item); // Apply the move
+      },
+      onMoving: (item, callback) => {
+        const newRenderTime = (item.start - now) / 1000;
+        dispatch(updateRenderTime(newRenderTime));
+        console.log('hi time is shifting')
+        callback(item); // Continue the move
       },
     };
 
@@ -180,11 +189,28 @@ const Timer = () => {
       verticalScroll: true,
       zoomable: true,
       zoomFriction: 20,
-      editable: false,
+      editable: {
+        remove: false,
+        updateTime: true,
+        updateGroup: true,
+      },
+      selectable: true,
       showMajorLabels: true,
       showMinorLabels: true,
-      start: zoomStartTime,
-      end: zoomEndTime,
+      onMove: (item, callback) => {
+        const newRenderTime = (item.start - now) / 1000;
+        dispatch(updateRenderTime(newRenderTime));
+        console.log('hi rime shifted')
+        callback(item); // Apply the move
+      },
+      onMoving: (item, callback) => {
+        const newRenderTime = (item.start - now) / 1000;
+        dispatch(updateRenderTime(newRenderTime));
+        console.log('hi time is shifting')
+        callback(item); // Continue the move
+      },
+      //start: zoomStartTime,
+      //end: zoomEndTime,
       format: {
         minorLabels: {
           second: 's',
@@ -203,10 +229,7 @@ const Timer = () => {
           year: ''
         },
       },
-      onRangeChange: (properties) => {
-        setZoomStartTime(properties.start);
-        setZoomEndTime(properties.end);
-      }
+
     };
 
     if (timelineRef.current) {
@@ -215,11 +238,15 @@ const Timer = () => {
       if (!currentTimeline) {
         const newTimeline = new Timeline(timelineRef.current, items, groups, options);
         timelineRef.current.timeline = newTimeline;
+
+
       } else {
         currentTimeline.setItems(items);
         currentTimeline.setGroups(groups);
         currentTimeline.setOptions(options);
+
       }
+
     }
 
   }, [timePoints, starttime, particles, RenderTime, elapsedTime, zoomStartTime, zoomEndTime]);
@@ -242,6 +269,13 @@ const Timer = () => {
     const value = parseFloat(e.target.value);
     if (!isNaN(value)) {
       setTimeStep(value);
+    }
+  };
+
+  const handleRenderStepChange = (e) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      setSimStep(value);
     }
   };
 
@@ -325,7 +359,7 @@ const Timer = () => {
               <button className="control-btn" onClick={handleRenderStartPause}>
                 {RenderRunning ? <PauseIcon /> : <PlayArrowIcon />}
               </button>
-            </div>
+            </div> 
             )}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{ fontSize: '10px', color: 'white' }}>Reset</span>
@@ -343,7 +377,7 @@ const Timer = () => {
               <span style={{ fontSize: '10px', color: 'white' }}>Seconds/Step</span>
                 <input
                   type="number"
-                  step="0.001"
+                  step="1"
                   min="0"
                   max="50"
                   value={timeStep}
@@ -351,8 +385,24 @@ const Timer = () => {
                   className="time-step-input"
                   style={{ width: '50px', textAlign: 'center' }}
                 />
-                <span style={{ fontSize: '8px', color: 'white' }}>Simulation Steps</span>
+                <span style={{ fontSize: '8px', color: 'white' }}>Sim Steps</span>
               </div>
+              {!coupled && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <span style={{ fontSize: '10px', color: 'white' }}>Seconds/Step</span>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  max="50"
+                                    value={simStep}
+                                  onChange={handleRenderStepChange}
+                                  className="time-step-input"
+                                  style={{ width: '50px', textAlign: 'center' }}
+                                />
+                                <span style={{ fontSize: '8px', color: 'white' }}>Render Steps</span>
+                              </div>
+              )}
           </div>
         </div>
         <div className='starttime-container'>
