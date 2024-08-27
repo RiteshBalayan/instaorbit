@@ -19,6 +19,7 @@ const StackSatellites = () => {
           trueanomly={config.InitialCondition.trueanomly}
           propagator={config.propagator}
           time={config.time}
+          burn={config.burn}
         />
       ))}
     </>

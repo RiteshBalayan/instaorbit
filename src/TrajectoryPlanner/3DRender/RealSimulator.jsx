@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
-import { keplerianToCartesian, keplerianToCartesianTrueAnomly, cartesianToKeplerian, getTLE } from './Functions';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, cartesianToKeplerian, getTLE, eccentricToMeanAnomaly } from './Functions';
 import * as THREE from 'three';
 import { Sgp4 } from 'ootk';
 
@@ -13,7 +13,8 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
   const orbitalelements = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const prevElapsedTime = useRef(elapsedTime);
-  const [Timefix, setTimefix] = useState(0);
+  let Timefix = orbitalelements.timefix;
+  //const [Timefix, setTimefix] = useState(null);
 
   const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
 
@@ -26,18 +27,29 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
   let trueanomly = orbitalelements.elements.ν;
   //let M = null; // Mean anomaly, to be calculated
 
-  // Calculate Mean anomaly
-  let timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
-  let perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
-  let firstperigeetime = perigeetoanomlytime - timeperiod;
-  let timesinceperigee = ((elapsedTime-Timefix) + firstperigeetime) % timeperiod;
-  let meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
-  let M = meananomly
 
   useEffect(() => {
     // Check if elapsedTime has changed
     if (elapsedTime !== prevElapsedTime.current) {
 
+      // Calculate Mean anomaly
+      let eccentricanomly = trueToEccentricAnomaly(trueanomly, e);
+      let meananomly = eccentricToMeanAnomaly(eccentricanomly, e);
+      let timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
+
+      // If Timefix is not set, calculate it and dispatch it to Redux
+      if (!Timefix) {
+        Timefix = (meananomly / (2 * Math.PI)) * timeperiod;
+        console.log('Timefix is bening called')
+        dispatch(updateCoordinate({
+            id: particleId,
+            timefix: Timefix,
+        }));
+      }
+
+      let timesincePerigee = (elapsedTime + Timefix) % timeperiod;
+      // Update mean anomaly based on elapsed time
+      meananomly = (2 * Math.PI * timesincePerigee) / timeperiod;
 
       // Apply burns if any burn time is passed
       if (burn && burn.length > 0) {
@@ -55,20 +67,6 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
             // Convert updated Cartesian coordinates back to Keplerian elements
             const newElements = cartesianToKeplerian({ position, velocity });
 
-
-            // Update states with new elements
-            dispatch(updateCoordinate({
-              id: particleId,
-              elements: {
-                a : newElements.a , 
-                e : newElements.e ,
-                i : newElements.i ,
-                Ω : newElements.Ω ,
-                ω : newElements.ω ,
-                ν : newElements.ν ,
-              }
-            }))
-
             //Update coordonates in console
             a = newElements.a;  
             e = newElements.e;
@@ -77,16 +75,34 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
             ω = newElements.ω;
             trueanomly = newElements.ν;
 
-            setTimefix(b.time)
+            //trueanomly = meanToTrueAnomaly(mean, e)
+
+            //setTimefix(b.time)
 
             // Calculate Mean anomaly
+            eccentricanomly = trueToEccentricAnomaly(trueanomly, e);
+            meananomly = eccentricToMeanAnomaly(eccentricanomly, e);
             timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
-            perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
-            firstperigeetime = perigeetoanomlytime - timeperiod;
-            timesinceperigee = ((elapsedTime-b.time) + firstperigeetime) % timeperiod;
-            meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
-            M = meananomly;
 
+            Timefix = (((meananomly / (2 * Math.PI)) * timeperiod) - b.time)
+
+            timesincePerigee = (elapsedTime + Timefix) % timeperiod;
+            // Update mean anomaly based on elapsed time
+            meananomly = (2 * Math.PI * timesincePerigee) / timeperiod;
+
+            // Update states with new elements
+            dispatch(updateCoordinate({
+              id: particleId,
+              elements: {
+                  a : newElements.a , 
+                  e : newElements.e ,
+                  i : newElements.i ,
+                  Ω : newElements.Ω ,
+                  ω : newElements.ω ,
+                  ν : newElements.ν ,
+                    },
+              timefix: Timefix,
+            }))
           }
         });
       }
@@ -121,7 +137,7 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
       const tracePoint = { time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY };
 
       dispatch(addTracePoint({ id: particleId, tracePoint }));
-      dispatch(updateCoordinate({ id: particleId, coordinates: tracePoint, 
+      dispatch(updateCoordinate({ id: particleId, timefix: Timefix, coordinates: tracePoint, 
         elements: {
         a: a, // Semi-major axis in km
         e: e, // Eccentricity

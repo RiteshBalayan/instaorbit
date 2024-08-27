@@ -8,6 +8,7 @@ import 'react-datetime/css/react-datetime.css';
 import {
   startPauseTimer,
   resetTimer,
+  toggleCoupled,
   updateElapsedTime,
   updateRenderTime,
   addTimePoint,
@@ -43,7 +44,7 @@ const Timer = () => {
   const [timeUnit, setTimeUnit] = useState('s');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [coupled, setCoupled] = useState(true); // New state to track if times are coupled
+  const coupled = useSelector((state) => state.timer.coupled);
 
   const [zoomStartTime, setZoomStartTime] = useState(null);
   const [zoomEndTime, setZoomEndTime] = useState(null);
@@ -284,7 +285,7 @@ const Timer = () => {
   };
 
   const handleCoupleToggle = () => {
-    setCoupled(prevState => !prevState);
+    dispatch(toggleCoupled()); // Dispatch the toggleCoupled action
     if (coupled) {
       setRenderRunning(false);
     }

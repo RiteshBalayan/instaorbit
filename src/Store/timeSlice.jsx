@@ -8,6 +8,7 @@ const timerSlice = createSlice({
   initialState: {
     isRunning: false,
     starttime: Date.now(),
+    coupled: true, 
     elapsedTime: 0,
     RenderTime: 0,
     timePoints: [],
@@ -18,6 +19,9 @@ const timerSlice = createSlice({
     },
     setstarttime(state, action) {
       state.starttime = action.payload;
+    },
+    toggleCoupled(state) { // Add this reducer
+      state.coupled = !state.coupled;
     },
     resetTimer(state) {
       state.isRunning = false;
@@ -51,6 +55,7 @@ const timerSlice = createSlice({
 export const {
   startPauseTimer,
   resetTimer,
+  toggleCoupled,
   updateElapsedTime,
   addTimePoint,
   goToTimePoint,

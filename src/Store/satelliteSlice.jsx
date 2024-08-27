@@ -32,6 +32,16 @@ const satelliteSlice = createSlice({
         satelliteToUpdate.preview = preview;
       } 
     },
+    updateBurn: (state, action) => {
+      const { id, burnID, data } = action.payload;
+      const satelliteToUpdate = state.satellitesConfig.find(s => s.id === id);
+      if (satelliteToUpdate) {
+        const burnToUpdate = satelliteToUpdate.burns.find(b => b.id === burnID);
+        if (burnToUpdate) {
+          Object.assign(burnToUpdate, data);
+        }
+      }
+    },
     deleteSatellite: (state, action) => {
       const idToDelete = action.payload;
       state.satellitesConfig = state.satellitesConfig.filter(s => s.id !== idToDelete);
@@ -44,6 +54,6 @@ const satelliteSlice = createSlice({
   },
 });
 
-export const { updateSatellites, addSatellite, updateSatellite, deleteSatellite, togglePreview } = satelliteSlice.actions;
+export const { updateSatellites, addSatellite, updateSatellite, deleteSatellite, togglePreview, updateBurn } = satelliteSlice.actions;
 
 export default satelliteSlice.reducer;

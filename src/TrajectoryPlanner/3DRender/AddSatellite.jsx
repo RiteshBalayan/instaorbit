@@ -7,7 +7,7 @@ import DoneIcon from '@mui/icons-material/Done';
 import { updateSatellite, togglePreview, addSatellite } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../Store/CurrentState';
-import { keplerianToCartesian, keplerianToCartesianTrueAnomly } from './Functions';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, eccentricToMeanAnomaly } from './Functions';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
 
@@ -62,7 +62,7 @@ const AddSatellite = () => {
     };
     setNewSatelliteParams(newSatellite);
     dispatch(addSatellite(newSatellite));
-    dispatch(updateCoordinate({ id: newId, elements: { a:0 ,e:0 ,i:0 ,Ω:0 ,ω:0 ,ν: 0} }));
+    dispatch(updateCoordinate({ id: newId, timefix: null, elements: { a:0 ,e:0 ,i:0 ,Ω:0 ,ω:0 ,ν: 0} }));
   };
 
   const handleAddSatellite = () => {
@@ -74,12 +74,8 @@ const AddSatellite = () => {
     const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
     const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.trueanomly);
       // Calculate Mean anomaly
-  let timeperiod = 2 * Math.PI * Math.sqrt((SM ** 3) / mu);
-  let perigeetoanomlytime = (trueanomly / (2 * Math.PI)) * timeperiod;
-  let firstperigeetime = perigeetoanomlytime - timeperiod;
-  let timesinceperigee = ((0) + firstperigeetime) % timeperiod;
-  let meananomly = (2 * Math.PI * timesinceperigee) / timeperiod;
-  let M = meananomly
+    let eccentricanomly = trueToEccentricAnomaly(trueanomly, newSatelliteParams.InitialCondition.eccentricity);
+    let meananomly = eccentricToMeanAnomaly(eccentricanomly, newSatelliteParams.InitialCondition.eccentricity);
 
 
     const elements = {
@@ -100,7 +96,7 @@ const AddSatellite = () => {
 
     dispatch(togglePreview({id: ID, preview: false}));
     dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }] }));
-    dispatch(updateCoordinate({ id: ID, coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, elements: {
+    dispatch(updateCoordinate({ id: ID, timefix: null, coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, elements: {
       a: SM,
       e: newSatelliteParams.InitialCondition.eccentricity,
       ν: trueanomly,

@@ -45,38 +45,90 @@ const SatelliteList = () => {
   };
 
   const handleAddBurnClick = (id) => {
-    setBurnInputVisible(prevState => ({
-      ...prevState,
-      [id]: !prevState[id],
-    }));
-  };
+    // Find the specific satellite based on its id
+    const thisSatellite = satellitesConfig.find(s => s.id === id);
 
-  const handleBurnDataChange = (field, value) => {
-    setBurnData(prevState => ({
-      ...prevState,
-      [field]: value,
-    }));
-  };
+    // Ensure the burns array exists, or initialize it
+    const burns = thisSatellite.burns || [];
 
-  const handleDoneClick = (id) => {
-    const newBurn = {
-      x: parseFloat(burnData.x),
-      y: parseFloat(burnData.y),
-      z: parseFloat(burnData.z),
-      time: parseFloat(burnData.time),
+    // Calculate the new id for the burn
+    const newId = burns.length > 0 ? burns[burns.length - 1].id + 1 : 0;
+
+    // Create and dispatch the initial burn with default values and previewMode true
+    const initialBurn = {
+      id: newId,
+      x: 0,
+      y: 0,
+      z: 0,
+      time: 0,
+      previewMode: true,
     };
 
     const newConfig = satellitesConfig.map(satellite => {
       if (satellite.id === id) {
         return {
           ...satellite,
-          burns: [...(satellite.burns || []), newBurn],
+          burns: [...burns, initialBurn],
         };
       }
       return satellite;
     });
 
     dispatch(updateSatellites(newConfig));
+
+    // Set the burn input visibility
+    setBurnInputVisible(prevState => ({
+      ...prevState,
+      [id]: true,
+    }));
+
+    // Initialize burn data state
+    setBurnData(initialBurn);
+  };
+
+  const handleBurnDataChange = (field, value) => {
+    setBurnData(prevState => {
+      const updatedBurn = {
+        ...prevState,
+        [field]: parseFloat(value),
+      };
+
+      // Find the satellite and update the burn in the state
+      const updatedConfig = satellitesConfig.map(satellite => {
+        if (satellite.id === activeSatellite) {
+          return {
+            ...satellite,
+            burns: satellite.burns.map(burn => burn.id === updatedBurn.id ? updatedBurn : burn),
+          };
+        }
+        return satellite;
+      });
+
+      dispatch(updateSatellites(updatedConfig));
+
+      return updatedBurn;
+    });
+  };
+
+  const handleDoneClick = (id) => {
+    // Update the burn to set previewMode to false
+    const updatedConfig = satellitesConfig.map(satellite => {
+      if (satellite.id === id) {
+        return {
+          ...satellite,
+          burns: satellite.burns.map(burn =>
+            burn.id === burnData.id
+              ? { ...burn, previewMode: false }
+              : burn
+          ),
+        };
+      }
+      return satellite;
+    });
+
+    dispatch(updateSatellites(updatedConfig));
+
+    // Finalize the burn by keeping the state as is (no additional action needed)
     setBurnInputVisible(prevState => ({
       ...prevState,
       [id]: false,
@@ -90,6 +142,7 @@ const SatelliteList = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+  
 
   return (
     <div className="satellite-config" ref={satelliteConfigRef}>
@@ -133,7 +186,7 @@ const SatelliteList = () => {
               {satellite.burns && satellite.burns.length > 0 && (
                 <div className="burns-section">
                   {/*<h4>Burn Data</h4>*/}
-                  {satellite.burns.map((burn, index) => (
+                  {satellite.burns.filter(burn => burn.previewMode === false).map((burn, index) => (
                     <TimelineItem>
                     <TimelineSeparator>
                         <TimelineDot />

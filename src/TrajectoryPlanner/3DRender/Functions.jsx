@@ -31,6 +31,12 @@ export function meanToEccentricAnomaly(M, e, tolerance = 1e-6) {
     return nu;
 }
 
+export function eccentricToMeanAnomaly(E, e) {
+    // Calculate the mean anomaly using Kepler's equation
+    const M = E - e * Math.sin(E);
+    return M;
+}
+
 export function trueToEccentricAnomaly(nu, e) {
     // Calculate the eccentric anomaly (E) from true anomaly (ν) and eccentricity (e)
     const tanEOver2 = Math.sqrt((1 - e) / (1 + e)) * Math.tan(nu / 2);
