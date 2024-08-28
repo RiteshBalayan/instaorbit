@@ -128,12 +128,14 @@ export function keplerianToCartesian({a, e, M, Ω, ω, i}) {
 
     // Calculate velocity in the orbital plane (vx', vy', 0)
     const h = Math.sqrt(mu * a * (1 - e * e)); // Specific angular momentum
-    const vx_prime = -mu / h * Math.sin(E);
-    const vy_prime = mu / h * Math.sqrt(1 - e * e) * Math.cos(E);
+    const vx_prime = -(mu / h) * Math.sin(ν);
+    const vy_prime = (mu / h) * (e + Math.cos(ν));
     const vz_prime = 0;
 
     const Position_prime = [x_prime, y_prime, z_prime];
     const Velocity_prime = [vx_prime, vy_prime, vz_prime];
+    console.log("velocity without rotation")
+    console.log(Math.sqrt(Velocity_prime[0]**2 + Velocity_prime[1]**2 + Velocity_prime[2]**2))
 
     const Position = applyZ_X_Z_Rotation(Position_prime, Ω, i, ω);
     const Velocity = applyZ_X_Z_Rotation(Velocity_prime, Ω, i, ω);
@@ -172,73 +174,68 @@ export function keplerianToCartesianTrueAnomly({a, e, ν, Ω, ω, i}) {
 }
 
 
-export function cartesianToKeplerian({position, velocity}) {
-    // Constants
+export function cartesianToKeplerian({ position, velocity }) {
     const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
+    const epsilon = 1e-8; // Small threshold to avoid division by zero
 
-    // Extract position and velocity components
-    const x = position[0];
-    const y = position[1];
-    const z = position[2];
-    const vx = velocity[0];
-    const vy = velocity[1];
-    const vz = velocity[2];
+    const [x, y, z] = position;
+    const [vx, vy, vz] = velocity;
 
-    // Calculate the distance (r) and speed (v)
-    const r = Math.sqrt(x*x + y*y + z*z);
-    const v = Math.sqrt(vx*vx + vy*vy + vz*vz);
+    const r = Math.sqrt(x * x + y * y + z * z);
+    const v = Math.sqrt(vx * vx + vy * vy + vz * vz);
 
-    // Specific angular momentum vector (h = r x v)
-    const hx = y*vz - z*vy;
-    const hy = z*vx - x*vz;
-    const hz = x*vy - y*vx;
-    const h = Math.sqrt(hx*hx + hy*hy + hz*hz);
+    const hx = y * vz - z * vy;
+    const hy = z * vx - x * vz;
+    const hz = x * vy - y * vx;
+    const h = Math.sqrt(hx * hx + hy * hy + hz * hz);
 
-    // Inclination (i)
-    const i = Math.acos(hz / h);
+    let i = 0;
+    if (h > epsilon) {
+        i = Math.acos(hz / h);
+    }
 
-    // Node line (N = k x h)
     const Nx = -hy;
     const Ny = hx;
-    const Nz = 0;
-    const N = Math.sqrt(Nx*Nx + Ny*Ny);
+    const N = Math.sqrt(Nx * Nx + Ny * Ny);
 
-    // Longitude of ascending node (Ω)
-    let Ω = Math.acos(Nx / N);
-    if (Ny < 0) {
-        Ω = 2 * Math.PI - Ω;
+    let Ω = 0;
+    if (i > epsilon && N > epsilon) { // Inclination not zero
+        Ω = Math.acos(Nx / N);
+        if (Ny < 0) Ω = 2 * Math.PI - Ω;
     }
 
-    // Eccentricity vector (e = (v x h)/mu - r/r)
-    const ex = (vy*hz - vz*hy) / mu - x / r;
-    const ey = (vz*hx - vx*hz) / mu - y / r;
-    const ez = (vx*hy - vy*hx) / mu - z / r;
-    const e = Math.sqrt(ex*ex + ey*ey + ez*ez);
+    const ex = (vy * hz - vz * hy) / mu - x / r;
+    const ey = (vz * hx - vx * hz) / mu - y / r;
+    const ez = (vx * hy - vy * hx) / mu - z / r;
+    const e = Math.sqrt(ex * ex + ey * ey + ez * ez);
 
-    // Argument of periapsis (ω)
-    let ω = Math.acos((Nx*ex + Ny*ey) / (N * e));
-    if (ez < 0) {
-        ω = 2 * Math.PI - ω;
+    let ω = 0;
+    let ν = 0;
+    if (e > epsilon) { // Non-circular orbit
+        if (N > epsilon) {
+            ω = Math.acos((Nx * ex + Ny * ey) / (N * e));
+            if (ez < 0) ω = 2 * Math.PI - ω;
+        }
+        ν = Math.acos((ex * x + ey * y + ez * z) / (e * r));
+        if ((x * vx + y * vy + z * vz) < 0) ν = 2 * Math.PI - ν;
+    } else { // Circular orbit
+        if (N > epsilon) { // Circular inclined orbit
+            ν = Math.acos((Nx * x + Ny * y) / (N * r));
+            if (z < 0) ν = 2 * Math.PI - ν;
+            ω = 0;
+        } else { // Equatorial circular orbit
+            ν = Math.acos(x / r);
+            if (y < 0) ν = 2 * Math.PI - ν;
+            Ω = 0;
+        }
     }
 
-    // True anomaly (ν)
-    let ν = Math.acos((ex*x + ey*y + ez*z) / (e * r));
-    if ((x*vx + y*vy + z*vz) < 0) {
-        ν = 2 * Math.PI - ν;
-    }
+    const a = 1 / (2 / r - (v * v) / mu);
 
-    // Semi-major axis (a)
-    const a = 1 / (2/r - v*v/mu);
-
-    return {
-        a: a,
-        e: e,
-        i: i,
-        Ω: Ω,
-        ω: ω, 
-        ν: ν   
-    };
+    return { a, e, i, Ω, ω, ν };
 }
+
+
 
 function ensureDate(input) {
     if (!(input instanceof Date)) {

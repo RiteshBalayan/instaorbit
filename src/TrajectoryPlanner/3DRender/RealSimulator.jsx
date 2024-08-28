@@ -57,7 +57,7 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
           if (prevElapsedTime.current <= b.time && elapsedTime >= b.time) {
             // Apply burn by adjusting Keplerian parameters
             // Convert current orbital elements to Cartesian coordinates
-            const [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
+            let [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
             
             // Apply burn to velocity
             velocity[0] += b.x;
@@ -100,6 +100,7 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
                   Ω : newElements.Ω ,
                   ω : newElements.ω ,
                   ν : newElements.ν ,
+                  M : meananomly,
                     },
               timefix: Timefix,
             }))
@@ -118,7 +119,7 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
       } else if (propagator === 'SGP4') {
         const [tleLine1, tleLine2] = getTLE({ a, e, i, Ω, ω, M: meananomly }, elapsedTime);
         const satrec = Sgp4.createSatrec(tleLine1, tleLine2);
-        const state = Sgp4.propagate(satrec, elapsedTime / 60);
+        const state = Sgp4.propagate(satrec, elapsedTime / 60);//defailt propogation unit is minutes
         newX = state.position.x;
         newY = state.position.y;
         newZ = state.position.z;
@@ -144,7 +145,8 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
         ν: trueanomly, 
         Ω: Ω, // Longitude of ascending node in degrees
         ω: ω, // Argument of periapsis in degrees
-        i: i
+        i: i,
+        M: meananomly,
       } }))
 
       // Update previous elapsedTime

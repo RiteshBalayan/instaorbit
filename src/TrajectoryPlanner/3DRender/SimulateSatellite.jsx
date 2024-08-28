@@ -8,6 +8,7 @@ import { meanToEccentricAnomaly, trueToEccentricAnomaly, eccentricToMeanAnomaly,
 
 
 import { Sgp4, Satellite as sat } from 'ootk';
+import { PositionPoint } from '@react-three/drei';
 
 
 const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burn }) => {
@@ -136,7 +137,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       let eccentricanomly = trueToEccentricAnomaly(trueanomly, e);
       let meananomly = eccentricToMeanAnomaly(eccentricanomly, e);
       let timeperiod = 2 * Math.PI * Math.sqrt((a ** 3) / mu);
-      let Timefix = (((meananomly / (2 * Math.PI)) * timeperiod))
+      let Timefix = orbitalelements.timefix;
       let timesincePerigee = (elapsedTime + Timefix) % timeperiod;
       // Update mean anomaly based on elapsed time
       meananomly = (2 * Math.PI * timesincePerigee) / timeperiod;
@@ -144,6 +145,15 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   
       // Convert current orbital elements to Cartesian coordinates
       let [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
+      console.log('elements before feeding');
+      console.log({ a, e, i, Ω, ω, M: meananomly })
+      console.log(position)
+      console.log(Math.sqrt(position[0]**2 + position[1]**2 + position[2]**2))
+      console.log(velocity)
+      console.log(Math.sqrt(velocity[0]**2 + velocity[1]**2 + velocity[2]**2))
+      const ele = cartesianToKeplerian({ position, velocity });
+      console.log('elements after feeding');
+      console.log(ele)
       
 
       if (previewBurn) {
