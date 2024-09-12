@@ -84,7 +84,7 @@ const GlobeRender = () => {
                 const radius = 5;
                 let speed = 0;
                 if (referenceSystem == 'EarthFixed') {
-                    speed = -(2 * Math.PI) / (24 * 60 * 60); // Adjust the speed of revolution
+                    speed = (2 * Math.PI) / (24 * 60 * 60); // Adjust the speed of revolution
                 }
                 const x = radius * Math.cos((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
                 const y = radius * Math.sin((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);

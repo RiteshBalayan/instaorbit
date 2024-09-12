@@ -204,3 +204,23 @@ body, html, #root {
   margin-left: 10px; /* Adjust as needed */
   border: 1px solid #ccc; /* Optional border */
 }
+
+.drag-number-input-container {
+  display: inline-block;
+  position: relative;
+  width: 100px; /* Adjust width as needed */
+  cursor: pointer;
+}
+
+.drag-number-input-container input {
+  width: 100%; 
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.drag-number-input-container:active {
+  cursor: ew-resize; /* Shows the dragging cursor */
+}

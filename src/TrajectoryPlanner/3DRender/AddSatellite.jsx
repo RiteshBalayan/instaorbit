@@ -12,6 +12,81 @@ import * as THREE from 'three';
 import './SatelliteConfig.css';
 // Import the necessary components from react-color
 import { SketchPicker } from 'react-color';
+import NumericInput from 'react-numeric-input';
+import { useDrag } from '@use-gesture/react';
+
+
+
+const DragNumberInput = ({ min = 6400, max = 50000, step = 1000, value, onChange }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [currentValue, setCurrentValue] = useState(value);
+  const initialValueRef = useRef(value); // Store initial value on drag start
+  const lastMouseXRef = useRef(null); // Store the last mouse X position
+
+  // Start dragging
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    initialValueRef.current = currentValue; // Store the initial value
+    lastMouseXRef.current = e.clientX; // Store initial mouse position
+    document.body.style.cursor = 'ew-resize'; // Change cursor to indicate dragging
+  };
+
+  // Handle dragging (mouse movement)
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - lastMouseXRef.current; // Calculate horizontal mouse movement
+    const changeValue = Math.round(deltaX / 5) * step; // Adjust sensitivity (dividing by 5)
+    const newValue = Math.min(Math.max(initialValueRef.current + changeValue, min), max);
+
+    setCurrentValue(newValue);
+    onChange(newValue);
+  };
+
+  // Stop dragging
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    document.body.style.cursor = 'default'; // Reset cursor
+  };
+
+  // Handle mouse scroll
+  const handleWheel = (e) => {
+    const delta = Math.sign(e.deltaY) * step;
+    const newValue = Math.min(Math.max(currentValue + delta, min), max);
+    setCurrentValue(newValue);
+    onChange(newValue);
+  };
+
+  return (
+    <div
+      className="drag-number-input-container"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onWheel={handleWheel}
+    >
+      <input
+        className="detail-input"
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={currentValue}
+        onChange={(e) => {
+          const newValue = Math.min(Math.max(Number(e.target.value), min), max);
+          setCurrentValue(newValue);
+          onChange(newValue);
+        }}
+      />
+    </div>
+  );
+};
+
+
+
+
+
+
 
 const AddSatellite = () => {
   const dispatch = useDispatch();
@@ -94,7 +169,7 @@ const AddSatellite = () => {
 
     const inclination = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.inclination);
     const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.argumentOfPeriapsis);
-    let assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
+    const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
     const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.trueanomly);
       // Calculate Mean anomaly
     let eccentricanomly = trueToEccentricAnomaly(trueanomly, newSatelliteParams.InitialCondition.eccentricity);
@@ -103,12 +178,6 @@ const AddSatellite = () => {
     const radiansPerSecond = 2 * Math.PI / (24 * 60 * 60);  // Radians per second for a 24-hour cycle
     const radiansPerMicrosecond = radiansPerSecond;   // Convert to radians per microsecond
 
-    if (referenceSystem == 'EarthFixed') {
-      // Update Ω by the elapsed time in microseconds
-      const dΩ = (radiansPerMicrosecond * elapsedTime)% (2 * Math.PI);
-      // Wrap Ω within the range [0, 2π] to ensure it stays within a single cycle
-      assendingnode = -(dΩ)% (2 * Math.PI) + assendingnode;
-  }
 
 
     const elements = {
@@ -235,87 +304,75 @@ const AddSatellite = () => {
           <>
             <h3>Add Initial Condition</h3>
             <div key={'semimajoraxis'} className='detail-row'>
-              <label className='detail-label'>
-                Semi-major Axis
-              </label>
-              <input 
-                type='number'
-                min='6400'
-                max='50000'
-                step='1000'
-                value={newSatelliteParams.InitialCondition['semimajoraxis']}
-                onChange={(e) => handleParameterChange('semimajoraxis', e.target.value)}
-                className="detail-input"
-              />
-            </div>
+            <label className='detail-label'>
+              Semi-major Axis
+            </label>
+            <DragNumberInput className="detail-input"
+            min={6400}
+            max={50000}
+            step={100}
+            value={newSatelliteParams.InitialCondition.semimajoraxis}
+            onChange={(newValue) => handleParameterChange('semimajoraxis', newValue)}
+          />
+          </div>
             <div key={'eccentricity'} className='detail-row'>
               <label className='detail-label'>
                 Eccentricity
               </label>
-              <input 
-                type='number'
-                min='0'
-                max='1'
-                step='0.05'
+              <DragNumberInput className="detail-input"
+                min={0}
+                max={1}
+                step={0.01}
                 value={newSatelliteParams.InitialCondition['eccentricity']}
-                onChange={(e) => handleParameterChange('eccentricity', e.target.value)}
-                className="detail-input"
+                onChange={(newValue) => handleParameterChange('eccentricity', newValue)}
               />
             </div>
             <div key={'trueanomly'} className='detail-row'>
               <label className='detail-label'>
-                TRUE ANOMLY
+                True Anomaly
               </label>
-              <input 
-                type='number'
-                min='0'
-                max='360'
-                step='1'
+              <DragNumberInput className="detail-input"
+                min={0}
+                max={360}
+                step={1}
                 value={newSatelliteParams.InitialCondition['trueanomly']}
-                onChange={(e) => handleParameterChange('trueanomly', e.target.value)}
-                className="detail-input"
+                onChange={(newValue) => handleParameterChange('trueanomly', newValue)}
               />
             </div>
             <div key={'inclination'} className='detail-row'>
               <label className='detail-label'>
                 Inclination
               </label>
-              <input 
-                type='number'
-                min='0'
-                max='360'
-                step='1'
+              <DragNumberInput className="detail-input"
+                min={0}
+                max={360}
+                step={1}
                 value={newSatelliteParams.InitialCondition['inclination']}
-                onChange={(e) => handleParameterChange('inclination', e.target.value)}
-                className="detail-input"
+                onChange={(newValue) => handleParameterChange('inclination', newValue)}
               />
             </div>
             <div key={'argumentOfPeriapsis'} className='detail-row'>
               <label className='detail-label'>
                 Argument of Periapsis
               </label>
-              <input 
-                type='number'
-                min='0'
-                max='360'
-                step='1'
+              <DragNumberInput className="detail-input"
+                min={0}
+                max={360}
+                step={1}
                 value={newSatelliteParams.InitialCondition['argumentOfPeriapsis']}
-                onChange={(e) => handleParameterChange('argumentOfPeriapsis', e.target.value)}
-                className="detail-input"
+                onChange={(newValue) => handleParameterChange('argumentOfPeriapsis', newValue)}
               />
             </div>
             <div key={'assendingnode'} className='detail-row'>
               <label className='detail-label'>
                 Assending Node
               </label>
-              <input 
-                type='number'
-                min='0'
-                max='360'
-                step='1'
+              <DragNumberInput className="detail-input"
+                min={0}
+                max={360}
+                step={1}
                 value={newSatelliteParams.InitialCondition['assendingnode']}
-                onChange={(e) => handleParameterChange('assendingnode', e.target.value)}
-                className="detail-input"
+                onChange={(newValue) => handleParameterChange('assendingnode', newValue)}
               />
             </div>
             <Button
