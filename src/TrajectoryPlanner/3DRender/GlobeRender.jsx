@@ -60,8 +60,9 @@ const GlobeRender = () => {
     const nightTexture = useLoader(THREE.TextureLoader, '/8081_earthlights2k.jpg');
     const cloudsTexture = useLoader(THREE.TextureLoader, '/earthcloudmap.jpg');
     const starttime = useSelector((state) => state.timer.starttime);
-    const elapsedTime = useSelector((state) => state.timer.elapsedTime);
+    const elapsedTime = useSelector((state) => state.timer.RenderTime);
     const view = useSelector((state) => state.view);
+    const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
 
     // Get sun direction initial condition
     const initialtime = new Date(starttime);
@@ -72,16 +73,24 @@ const GlobeRender = () => {
 
     useFrame(() => {
         if (earthRef.current) {
-            earthRef.current.rotation.y += 0.000;
+            const rotationSpeed = 0.0001; // Adjust the rotation speed if needed
+            if (referenceSystem == 'EarthInertial') {
+                earthRef.current.rotation.y = rotationSpeed * elapsedTime;
+            }
+            
         }
         if (lightRef.current && sunRef.current && haloRef.current) {
-            const radius = 5;
-            const speed = (2 * Math.PI) / (24 * 60 * 60); // Adjust the speed of revolution
-            const x = radius * Math.cos((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
-            const y = radius * Math.sin((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
-            lightRef.current.position.set(x, y, 0);
-            sunRef.current.position.set(x * 100, y * 100, 0);
-            haloRef.current.position.set(x * 100, y * 100, 0);
+            
+                const radius = 5;
+                let speed = 0;
+                if (referenceSystem == 'EarthFixed') {
+                    speed = -(2 * Math.PI) / (24 * 60 * 60); // Adjust the speed of revolution
+                }
+                const x = radius * Math.cos((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
+                const y = radius * Math.sin((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
+                lightRef.current.position.set(x, y, 0);
+                sunRef.current.position.set(x * 100, y * 100, 0);
+                haloRef.current.position.set(x * 100, y * 100, 0);
         }
     });
 

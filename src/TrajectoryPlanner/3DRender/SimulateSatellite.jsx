@@ -4,14 +4,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
 import { Shape } from 'three';
-import { meanToEccentricAnomaly, trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from './Functions';
+import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from './Functions';
 
 
 import { Sgp4, Satellite as sat } from 'ootk';
 import { PositionPoint } from '@react-three/drei';
 
 
-const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burn }) => {
+const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burn, color }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
   const dispatch = useDispatch();
@@ -215,7 +215,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
             itemSize={3}
           />
         </bufferGeometry>
-        <lineBasicMaterial color="yellow" linewidth={0.5} />
+        <lineBasicMaterial color={color} linewidth={0.5} />
       </line>
       {satelliteconfig.preview &&
         <line ref={ellipseRef} >

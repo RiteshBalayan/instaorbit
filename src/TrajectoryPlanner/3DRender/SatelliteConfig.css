@@ -191,3 +191,16 @@ body, html, #root {
 .add-button:hover {
   background-color: var(--highlight-hover);
 }
+
+.color-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; /* Adjust as needed */
+}
+
+.color-strip {
+  height: 20px; /* Adjust as needed */
+  width: 50px; /* Adjust as needed */
+  margin-left: 10px; /* Adjust as needed */
+  border: 1px solid #ccc; /* Optional border */
+}

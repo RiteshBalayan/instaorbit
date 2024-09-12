@@ -63,7 +63,7 @@ const LeafletMap = () => {
                     circle: false,
                     marker: false,
                     polyline: false,
-                    polygon:false,
+                    polygon:true,
                   }}
                   edit={{
                     edit: {

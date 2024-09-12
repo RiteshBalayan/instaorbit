@@ -76,13 +76,13 @@ const Timer = () => {
         const newTime = roundToThreeDecimals(elapsedTime + timeStep);
         dispatch(updateElapsedTime(newTime));
         dispatch(addTimePoint(newTime));
-      }, 100);
+      }, 10);
 
       if (coupled) {
         renderIntervalRef.current = setInterval(() => {
           const newTime = roundToThreeDecimals(elapsedTime + timeStep);
           dispatch(updateRenderTime(newTime));
-        }, 1000 / simStep);
+        }, 1 / simStep);
       }
     } else {
       clearInterval(intervalRef.current);
@@ -100,7 +100,7 @@ const Timer = () => {
       renderIntervalRef.current = setInterval(() => {
         const newTime = roundToThreeDecimals(RenderTime + simStep);
         dispatch(updateRenderTime(newTime));
-      }, 1000 / simStep);
+      }, 1 / simStep);
     } else if (!RenderRunning && renderIntervalRef.current) {
       clearInterval(renderIntervalRef.current);
     }

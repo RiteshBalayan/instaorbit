@@ -12,8 +12,12 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
   const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
   const orbitalelements = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId))
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
+  const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
+  const orignalomega = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId)).InitialCondition.assendingnode
+
   const prevElapsedTime = useRef(elapsedTime);
   let Timefix = orbitalelements.timefix;
+  const starttime = useSelector((state) => state.timer.starttime);
   //const [Timefix, setTimefix] = useState(null);
 
   const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
@@ -26,6 +30,21 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
   let ω = orbitalelements.elements.ω;
   let trueanomly = orbitalelements.elements.ν;
   //let M = null; // Mean anomaly, to be calculated
+  const currentTime = new Date(starttime + elapsedTime * 1000);
+  // Calculate angular rate for Ω to complete 360 degrees in 24 hours
+  // Calculate angular rate for Ω to complete 2π radians in 24 hours
+  const radiansPerSecond = 2 * Math.PI / (24 * 60 * 60);  // Radians per second for a 24-hour cycle
+  const radiansPerMicrosecond = radiansPerSecond;   // Convert to radians per microsecond
+
+  if (referenceSystem == 'EarthFixed') {
+      // Update Ω by the elapsed time in microseconds
+      const dΩ = (radiansPerMicrosecond * elapsedTime)% (2 * Math.PI);
+      // Wrap Ω within the range [0, 2π] to ensure it stays within a single cycle
+      Ω = +(dΩ)% (2 * Math.PI) + orignalomega;
+  }
+  console.log('earth system is: ', referenceSystem )
+
+
 
 
   useEffect(() => {
@@ -112,9 +131,34 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
       //setM(meananomly);
 
       let newX, newY, newZ;
+      let position;
+      let velocity;
+      let kineticEnergy;
+      let potentialEnergy;
+      let totalEnergy;
+
 
       if (propagator === 'InstaOrbit') {
-        const [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
+        [position, velocity] = keplerianToCartesian({ a, e, i, Ω, ω, M: meananomly });
+
+        console.log('energy')
+        // Calculate total energy
+        // Calculate kinetic energy
+        const v_squared = velocity.reduce((acc, val) => acc + (val * val), 0);
+        kineticEnergy = (v_squared / 2);
+
+        // Calculate potential energy
+        const r = Math.sqrt((position[0] ** 2) + (position[1] ** 2) + (position[2] ** 2));
+        potentialEnergy = -mu / r;
+
+        // Calculate total energy
+        totalEnergy = kineticEnergy + potentialEnergy;
+
+        // Log the energies
+        console.log('Kinetic Energy:', kineticEnergy);
+        console.log('Potential Energy:', potentialEnergy);
+        console.log('Total Energy:', totalEnergy);
+
         [newX, newY, newZ] = position;
       } else if (propagator === 'SGP4') {
         const [tleLine1, tleLine2] = getTLE({ a, e, i, Ω, ω, M: meananomly }, elapsedTime);
@@ -139,6 +183,10 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
 
       dispatch(addTracePoint({ id: particleId, tracePoint }));
       dispatch(updateCoordinate({ id: particleId, timefix: Timefix, coordinates: tracePoint, 
+        velocity: velocity,
+        kineticEnergy: kineticEnergy,
+        potentialEnergy: potentialEnergy,
+        totalEnergy: totalEnergy,
         elements: {
         a: a, // Semi-major axis in km
         e: e, // Eccentricity

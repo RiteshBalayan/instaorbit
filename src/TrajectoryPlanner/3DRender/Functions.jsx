@@ -18,6 +18,7 @@ export function meanToEccentricAnomaly(M, e, tolerance = 1e-6) {
       return E;
   }
 
+
   export function eccentricToTrueAnomaly(E, e) {
     // Calculate the true anomaly (ν) from eccentric anomaly (E) and eccentricity (e)
     const tanNuOver2 = Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2);
@@ -105,7 +106,6 @@ export function applyZ_X_Z_Rotation(vector, thetaZ1, thetaX, thetaZ2) {
 
     return result;
 }
-
 
 
 export function keplerianToCartesian({a, e, M, Ω, ω, i}) {

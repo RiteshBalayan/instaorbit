@@ -172,6 +172,14 @@ const SatelliteList = () => {
                 </TimelineSeparator>
                 <TimelineContent>
               <h4>Initail Elements</h4>
+                        {/* Display color in a row */}
+          <div className="color-row">
+            <span>Color:</span>
+            <div 
+              className="color-strip" 
+              style={{ backgroundColor: satellite.color }} 
+            />
+          </div>
               {['trueanomly', 'argumentOfPeriapsis', 'assendingnode', 'inclination', 'semimajoraxis', 'eccentricity', 'propagator', 'time'].map((field) => (
                 <div key={field} className="detail-row">
                   <label className="detail-label">

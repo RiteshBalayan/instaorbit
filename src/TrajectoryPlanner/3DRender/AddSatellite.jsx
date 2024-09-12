@@ -10,6 +10,8 @@ import { updateCoordinate, deleteState } from '../../Store/CurrentState';
 import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, eccentricToMeanAnomaly } from './Functions';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
+// Import the necessary components from react-color
+import { SketchPicker } from 'react-color';
 
 const AddSatellite = () => {
   const dispatch = useDispatch();
@@ -32,10 +34,30 @@ const AddSatellite = () => {
   });
   const [activeSatellite, setActiveSatellite] = useState(null);
   const satelliteConfigRef = useRef(null);
+  // State to manage the selected color
+  const [color, setColor] = useState('#fff'); // Default color is white
+  const [displayColorPicker, setDisplayColorPicker] = useState(false);
+  const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
+  const elapsedTime = useSelector((state) => state.timer.elapsedTime);
 
   const handleAddSatelliteClick = () => {
     setShowNameInput(true);
   };
+
+    // Function to handle color changes
+    const handleColorChange = (color) => {
+      setColor(color.hex);
+    };
+    // Function to toggle the color picker
+    const handleClick = () => {
+      setDisplayColorPicker(!displayColorPicker);
+    };
+  
+    // Function to close the color picker
+    const handleClose = () => {
+      setDisplayColorPicker(false);
+    };
+
 
   const handleNextStep = () => {
     if (newSatelliteName.trim() === '' || selectedOption === '' || time === null) {
@@ -59,6 +81,7 @@ const AddSatellite = () => {
         inclination: 0,
         time: time, // Time in seconds
       },
+      color: color,
     };
     setNewSatelliteParams(newSatellite);
     dispatch(addSatellite(newSatellite));
@@ -71,11 +94,21 @@ const AddSatellite = () => {
 
     const inclination = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.inclination);
     const argumentOfPeriapsis = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.argumentOfPeriapsis);
-    const assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
+    let assendingnode = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.assendingnode);
     const trueanomly = THREE.MathUtils.degToRad(newSatelliteParams.InitialCondition.trueanomly);
       // Calculate Mean anomaly
     let eccentricanomly = trueToEccentricAnomaly(trueanomly, newSatelliteParams.InitialCondition.eccentricity);
     let meananomly = eccentricToMeanAnomaly(eccentricanomly, newSatelliteParams.InitialCondition.eccentricity);
+
+    const radiansPerSecond = 2 * Math.PI / (24 * 60 * 60);  // Radians per second for a 24-hour cycle
+    const radiansPerMicrosecond = radiansPerSecond;   // Convert to radians per microsecond
+
+    if (referenceSystem == 'EarthFixed') {
+      // Update Ω by the elapsed time in microseconds
+      const dΩ = (radiansPerMicrosecond * elapsedTime)% (2 * Math.PI);
+      // Wrap Ω within the range [0, 2π] to ensure it stays within a single cycle
+      assendingnode = -(dΩ)% (2 * Math.PI) + assendingnode;
+  }
 
 
     const elements = {
@@ -95,14 +128,19 @@ const AddSatellite = () => {
     newZ /= 3185.5;
 
     dispatch(togglePreview({id: ID, preview: false}));
-    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }] }));
-    dispatch(updateCoordinate({ id: ID, timefix: null, coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, elements: {
-      a: SM,
-      e: newSatelliteParams.InitialCondition.eccentricity,
-      ν: trueanomly,
-      Ω: assendingnode,
-      ω: argumentOfPeriapsis,
-      i: inclination 
+    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: null, y: null, z: null, mapX: 0, mapY: 0 }] }));
+    dispatch(updateCoordinate({ 
+      id: ID, 
+      timefix: null, 
+      coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, 
+      velocity: null,
+      elements: {
+        a: SM,
+        e: newSatelliteParams.InitialCondition.eccentricity,
+        ν: trueanomly,
+        Ω: assendingnode,
+        ω: argumentOfPeriapsis,
+        i: inclination 
     } }));
     setNewSatelliteName('');
     setSelectedOption('');
@@ -125,6 +163,8 @@ const AddSatellite = () => {
     setNewSatelliteParams(updatedParams);
     dispatch(updateSatellite({ id: ID, conf: updatedParams }));
   };
+
+
 
   return (
     <div className="satellite-config" ref={satelliteConfigRef}>
@@ -168,6 +208,18 @@ const AddSatellite = () => {
                 placeholder="Enter Time in Seconds"
                 className="name-input"
               />
+            <h3>Select Color</h3>
+              <div>
+                <div onClick={handleClick} style={{ backgroundColor: color, width: '30px', height: '30px', border: '1px solid black' }}></div>
+                {displayColorPicker && (
+                  <div style={{ position: 'absolute', zIndex: 2 }}>
+                    <div onClick={handleClose} style={{ position: 'fixed', top: '0px', right: '0px', bottom: '0px', left: '0px' }} />
+                    <SketchPicker color={color}  
+                    onChange={handleColorChange}  
+                    />
+                  </div>
+                )}
+              </div>
             <Button
               variant="contained"
               color="primary"

@@ -20,6 +20,7 @@ const StackSatellites = () => {
           propagator={config.propagator}
           time={config.time}
           burn={config.burn}
+          color={config.color}
         />
       ))}
     </>
