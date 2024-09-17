@@ -1,6 +1,6 @@
 import React from 'react';
 import '../../Styles/simulator/Globe.css';
-import GlobeRender from '../3DRender/GlobeRender';
+import GlobeRender from '../Render/GlobeRender';
 import SlimTopBar from './TopBar';
 import GroundTrack from './GroundTrack';
 import { Canvas } from '@react-three/fiber';

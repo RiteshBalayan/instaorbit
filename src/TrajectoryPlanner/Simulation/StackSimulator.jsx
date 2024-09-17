@@ -1,5 +1,5 @@
 import React from 'react';
-import RealSimulator from './RealSimulator';
+import RealSimulator from './Simulator';
 import { useSelector } from 'react-redux';
 
 const SimuStackSatellites = () => {

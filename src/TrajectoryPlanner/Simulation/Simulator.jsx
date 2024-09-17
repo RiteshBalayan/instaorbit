@@ -39,14 +39,11 @@ const RealSimulator = ({ particleId, propagator, burn }) => {
   if (referenceSystem == 'EarthFixed') {
       // Update Ω by the elapsed time in microseconds
       let dΩ;
-      if (elapsedTime == 0){
-        dΩ = 0;
-      }
-      else {
+
         dΩ = (radiansPerMicrosecond * elapsedTime)% (2 * Math.PI);
-      }
+
       // Wrap Ω within the range [0, 2π] to ensure it stays within a single cycle
-      Ω = -(dΩ + orignalomega)% (2 * Math.PI) ;
+      Ω = -(dΩ - orignalomega)% (2 * Math.PI);
   }
   console.log('earth system is: ', referenceSystem )
 

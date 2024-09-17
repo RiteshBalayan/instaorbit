@@ -1,5 +1,5 @@
 import React from 'react';
-import Map from './Map';
+import Map from './2DMap';
 import { useSelector } from 'react-redux';
 
 const Maps = () => {

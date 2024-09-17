@@ -7,7 +7,7 @@ import DoneIcon from '@mui/icons-material/Done';
 import { updateSatellite, togglePreview, addSatellite } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../Store/CurrentState';
-import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, eccentricToMeanAnomaly } from './Functions';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, eccentricToMeanAnomaly } from '../Simulation/Functions';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
 // Import the necessary components from react-color

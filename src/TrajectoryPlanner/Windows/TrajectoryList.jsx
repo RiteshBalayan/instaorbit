@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTrajectories, fetchIterations, downloadIterationState } from '../firebase/firebaseUtils';
+import { fetchTrajectories, fetchIterations, downloadIterationState } from '../../firebase/firebaseUtils';
 import { Button, List, ListItem, ListItemText, Paper, Typography, Alert } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 

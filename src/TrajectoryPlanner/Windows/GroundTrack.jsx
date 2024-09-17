@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import '../../Styles/simulator/GroundTrack.css';
-import MapRender from '../2DRender/MapRender'
+import MapRender from '../Render/2DMapRender'
 
 const GroundTrack = () => {
   const [isExpanded, setIsExpanded] = useState(false);

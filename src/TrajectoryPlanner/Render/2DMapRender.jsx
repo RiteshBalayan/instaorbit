@@ -2,7 +2,7 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
-import Maps from './Maps';
+import Maps from './Stack2DMaps';
 import { useLoader, useFrame } from '@react-three/fiber';
 import '../../Styles/App.css';
 import { TextureLoader } from 'three';

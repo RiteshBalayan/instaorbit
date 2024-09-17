@@ -1,5 +1,5 @@
 import React from 'react';
-import Satellite from './SimulateSatellite';
+import Satellite from './SatelliteRender';
 import { useSelector } from 'react-redux';
 
 const StackSatellites = () => {

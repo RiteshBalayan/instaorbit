@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
 import { Shape } from 'three';
-import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from './Functions';
+import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from '../Simulation/Functions';
 
 
 import { Sgp4, Satellite as sat } from 'ootk';

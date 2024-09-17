@@ -6,8 +6,8 @@ import { auth } from '../../firebase/firebase';
 import { updateitterationID, updatetrajectoryID, updateitterationName } from '../../Store/workingProject';
 import GoogleAuth from '../../firebase/googleauth';
 import SignOut from '../../firebase/signout';
-import TrajectoriesList from '../TrajectoryList';
-import ItterationList from '../ItterationList'
+import TrajectoriesList from './TrajectoryList';
+import ItterationList from './ItterationList'
 
 const Popup = ({ onClose, trajectories, iterations, type }) => {
   const popupRef = useRef(null);
