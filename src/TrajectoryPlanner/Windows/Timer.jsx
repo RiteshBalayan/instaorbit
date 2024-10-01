@@ -23,6 +23,9 @@ import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
 import LinkIcon from '@mui/icons-material/Link';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
+import Button from '@mui/material/Button'; 
+import FitScreenIcon from '@mui/icons-material/FitScreen';
+
 
 const roundToThreeDecimals = (num) => Math.round(num * 1000) / 1000;
 
@@ -166,13 +169,11 @@ const Timer = () => {
       onMove: (item, callback) => {
         const newRenderTime = (item.start - now) / 1000;
         dispatch(updateRenderTime(newRenderTime));
-        console.log('hi rime shifted')
         callback(item); // Apply the move
       },
       onMoving: (item, callback) => {
         const newRenderTime = (item.start - now) / 1000;
         dispatch(updateRenderTime(newRenderTime));
-        console.log('hi time is shifting')
         callback(item); // Continue the move
       },
     };
@@ -190,6 +191,7 @@ const Timer = () => {
       verticalScroll: true,
       zoomable: true,
       zoomFriction: 20,
+      //start: new Date(minTime),
       editable: {
         remove: false,
         updateTime: true,
@@ -311,6 +313,13 @@ const Timer = () => {
     setSelectedDate(moment());
   };
 
+    // Function to handle zoom to fit
+    const handleZoomToFit = () => {
+      if (timelineRef.current && timelineRef.current.timeline) {
+        timelineRef.current.timeline.fit(); // Use the fit method to zoom to fit all items
+      }
+    };
+
   return (
     <div className="exptimer-container">
       <div className="time-controller">
@@ -412,9 +421,23 @@ const Timer = () => {
         </div>
         
       </div>
-      <div className="timeline-panel">
-        <div ref={timelineRef} className="timeline-container"></div>
-      </div>
+
+    <div className="timeline-panel">
+      <div ref={timelineRef} className="timeline-container"></div>
+
+      <Button
+        variant="contained"
+        onClick={handleZoomToFit}
+        startIcon={<FitScreenIcon />}
+        sx={{
+          backgroundColor: 'black', // Add black background color
+        }}
+      >
+        Zoom to Fit
+      </Button>
+    </div>
+
+
       {showDatePicker && (
         <div className="datepicker-popup">
           <Datetime 

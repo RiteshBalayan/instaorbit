@@ -26,6 +26,7 @@
     "drei": "^2.2.21",
     "firebase": "^10.12.3",
     "framer-motion": "^11.3.0",
+    "html2canvas": "^1.4.1",
     "leaflet": "^1.9.4",
     "ooth": "^2.12.0",
     "ootk": "^4.0.1",

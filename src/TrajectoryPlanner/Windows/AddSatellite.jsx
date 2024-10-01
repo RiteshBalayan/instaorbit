@@ -91,10 +91,10 @@ const DragNumberInput = ({ min = 6400, max = 50000, step = 1000, value, onChange
 const AddSatellite = () => {
   const dispatch = useDispatch();
   const satellitesConfig = useSelector(state => state.satellites.satellitesConfig);
-  const [newSatelliteName, setNewSatelliteName] = useState('');
+  const [newSatelliteName, setNewSatelliteName] = useState('New_Satelite');
   const [showNameInput, setShowNameInput] = useState(false);
-  const [selectedOption, setSelectedOption] = useState('');
-  const [time, setTime] = useState(null);
+  const [selectedOption, setSelectedOption] = useState('InstaOrbit');
+  const [time, setTime] = useState('0');
   const [showParameterInput, setShowParameterInput] = useState(false);
   const [ID, setID] = useState(null);
   const [newSatelliteParams, setNewSatelliteParams] = useState({
@@ -160,7 +160,12 @@ const AddSatellite = () => {
     };
     setNewSatelliteParams(newSatellite);
     dispatch(addSatellite(newSatellite));
-    dispatch(updateCoordinate({ id: newId, timefix: null, elements: { a:0 ,e:0 ,i:0 ,Ω:0 ,ω:0 ,ν: 0} }));
+    dispatch(updateCoordinate({ 
+      id: newId, 
+      timefix: null, 
+      elements: { a:0 ,e:0 ,i:0 ,Ω:0 ,ω:0 ,ν: 0},
+      
+     }));
   };
 
   const handleAddSatellite = () => {
@@ -211,9 +216,6 @@ const AddSatellite = () => {
         ω: argumentOfPeriapsis,
         i: inclination 
     } }));
-    setNewSatelliteName('');
-    setSelectedOption('');
-    setTime(null);
     setShowNameInput(false);
     setShowParameterInput(false);
   };

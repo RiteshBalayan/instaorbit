@@ -7,6 +7,7 @@ const workingProject = createSlice({
     trajectoryID: null,
     trajectoryName: 'Unsaved Project',
     itterationID: null,
+    itterationImage: null,
   },
   reducers: {
     updatetrajectoryID(state, action) {
@@ -18,6 +19,14 @@ const workingProject = createSlice({
     updateitterationName(state, action) {
       state.trajectoryName = action.payload;
     },
+    updateIterationImage(state, action) {
+      state.itterationImage = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase('SETworkingProject', (state, action) => {
+      return action.payload;
+    });
   },
 });
 
@@ -25,6 +34,7 @@ export const {
   updatetrajectoryID,
   updateitterationID,
   updateitterationName,
+  updateIterationImage,
 } = workingProject.actions;
 
 export default workingProject.reducer;

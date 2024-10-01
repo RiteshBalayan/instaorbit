@@ -9,6 +9,7 @@ import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly
 
 import { Sgp4, Satellite as sat } from 'ootk';
 import { PositionPoint } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 
 
 const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burn, color }) => {
@@ -199,6 +200,9 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       burnlineRef.current.geometry = geometry;
     }
   }, [dispatch, elapsedTime, particleId, satelliteconfig.burns, propagator]);
+
+
+    
 
   return (
     <>

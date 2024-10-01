@@ -1,86 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import { fetchIterations, downloadIterationState } from '../../firebase/firebaseUtils';
-import { useSelector, useDispatch } from 'react-redux';
-import { List, ListItem, ListItemText, Typography, Box } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { Box, Card, CardContent, CardMedia, Typography, Button, CircularProgress, Grid } from '@mui/material';
 
 const ItterationsList = () => {
-  const [itteration, setItteration] = useState([]);
+  const [iterations, setIterations] = useState([]);
   const [error, setError] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const TrajectoryID = useSelector((state) => state.workingProject.trajectoryID);
   const user = useSelector((state) => state.auth.user);
-  const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const itterationData = await fetchIterations(TrajectoryID);
-        if (itterationData.length === 0) {
-          setError('No trajectories found or an error occurred.');
+        const iterationData = await fetchIterations(TrajectoryID);
+        if (iterationData.length === 0) {
+          setError('No iterations found.');
         } else {
-          setItteration(itterationData);
+          setIterations(iterationData);
         }
       } catch (err) {
         setError('Failed to fetch iterations.');
       }
     };
 
-    fetchData();
+    if (TrajectoryID) {
+      fetchData();
+    }
   }, [TrajectoryID]);
 
   const handleClick = async (id) => {
     if (user) {
       setDownloading(true);
       try {
-        const fields = ['timer','particles', 'CurrentState', 'satellites','workingProject']; // Add more fields if necessary
-        for (const field of fields) {
-          const downloadedState = await downloadIterationState(TrajectoryID, id, field);
-          if (downloadedState) {
-            dispatch({ type: `SET_${field.toUpperCase()}`, payload: downloadedState });
-          }
-        }
-        alert('Program synced to this iteration data.');
-        console.log('Download successful');
-      } catch (error) {
-        console.error('Download failed:', error);
+        const state = await downloadIterationState(id, user.uid);
+        console.log('Downloaded iteration state:', state);
+      } catch (err) {
+        console.error('Failed to download iteration:', err);
       } finally {
         setDownloading(false);
       }
     } else {
-      console.log('User not authenticated. Download operation not allowed.');
+      console.log('User not authenticated.');
     }
   };
 
-  if (error) {
-    return <Typography color="error">Error: {error}</Typography>;
-  }
-
   return (
-    <Box sx={{ maxWidth: 400, margin: 'auto', padding: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        Iteration List
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Iterations
       </Typography>
-      <List sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-        {itteration.map((itt) => (
-          <ListItem 
-            key={itt.id} 
-            button 
-            onClick={() => handleClick(itt.id)} 
-            sx={{ 
-              marginBottom: 1, 
-              borderRadius: 1, 
-              '&:hover': { backgroundColor: '#e0e0e0' } 
-            }}
-          >
-            <ListItemText 
-              primary={`Commit Message: ${itt.name}`} 
-              secondary={`ID: ${itt.id}`} 
-              primaryTypographyProps={{ style: { color: 'black' } }} 
-              secondaryTypographyProps={{ style: { color: 'black' } }}
-            />
-          </ListItem>
-        ))}
-      </List>
+
+      {error && <Typography color="error">{error}</Typography>}
+
+      {downloading && <CircularProgress />}
+
+      {!downloading && iterations.length > 0 && (
+        <Grid container spacing={3}>
+          {iterations.map((iteration) => (
+            <Grid item xs={12} sm={6} md={4} key={iteration.id}>
+              <Card sx={{ maxWidth: 345 }}>
+                {iteration.image ? (
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={iteration.itterationImage}
+                    alt={`Iteration ${iteration.name}`}
+                  />
+                ) : (
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image="placeholder-image-url.jpg" // A placeholder if no image is available
+                    alt="No image available"
+                  />
+                )}
+
+                <CardContent>
+                  <Typography variant="h6" component="div">
+                    {iteration.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Created on: {new Date(iteration.createdAt).toLocaleDateString()}
+                  </Typography>
+
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{ mt: 2 }}
+                    onClick={() => handleClick(iteration.id)}
+                  >
+                    Load Iteration
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {iterations.length === 0 && !error && <Typography>No iterations available.</Typography>}
     </Box>
   );
 };

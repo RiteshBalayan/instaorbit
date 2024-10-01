@@ -1,13 +1,14 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import StackSatellites from './StackSatellites';
 import VonAllenBelt from './VonAllenBelt';
 import { useLoader } from '@react-three/fiber';
 import SimuStackSatellites from '../Simulation/StackSimulator';
+import { toggleCentralObject } from '../../Store/View';
 
 // Vertex Shader for Glow
 const vertexShader = `
@@ -63,6 +64,8 @@ const GlobeRender = () => {
     const elapsedTime = useSelector((state) => state.timer.RenderTime);
     const view = useSelector((state) => state.view);
     const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
+    const cameraRef = useRef();
+    const dispatch = useDispatch();
 
     // Get sun direction initial condition
     const initialtime = new Date(starttime);
@@ -94,6 +97,56 @@ const GlobeRender = () => {
         }
     });
 
+
+    const satellitecurrentcoordinate = useSelector(state => state.CurrentState.satelite.find(p => p.id === 0));
+    const centralObject = useSelector((state) => state.view.centralObject);
+
+    useFrame(() => {
+        if (cameraRef.current && satellitecurrentcoordinate) {
+            if (centralObject !== 'Earth') {
+                const satellitePos = satellitecurrentcoordinate.coordinates || { x: 0, y: 0, z: 0 };
+                console.log('Current satellite coordinates:', satellitePos);
+        
+                const distance = Math.sqrt(satellitePos.x**2 + satellitePos.y**2 + satellitePos.z**2);
+                
+                // Position the camera slightly away from the satellite
+                cameraRef.current.position.set(
+                    satellitePos.x + (satellitePos.x / distance) * 1,
+                    satellitePos.y + (satellitePos.y / distance) * 1,
+                    satellitePos.z + (satellitePos.z / distance) * 1
+                );
+                
+                // Make the camera look at the satellite's position
+                cameraRef.current.lookAt(satellitePos.x, satellitePos.y, satellitePos.z);
+                
+                console.log('Camera updated to follow satellite:', { x: satellitePos.x, y: satellitePos.y, z: satellitePos.z });
+            }
+        }
+    });
+
+    const handleClick = () => {
+        dispatch(toggleCentralObject('Earth'));
+        console.log('object cliked')
+        if (cameraRef.current && satellitecurrentcoordinate) {
+            const satellitePos = satellitecurrentcoordinate.coordinates || { x: 0, y: 0, z: 0 };
+            console.log('Current satellite coordinates:', satellitePos);
+    
+            //const distance = Math.sqrt(satellitePos.x**2 + satellitePos.y**2 + satellitePos.z**2);
+            
+            // Position the camera slightly away from the satellite
+            
+            // Make the camera look at the satellite's position
+            cameraRef.current.position.set(5, 0, 0); // Set default position
+            cameraRef.current.up.set(0, 0, 1); // Set default up direction
+            cameraRef.current.makeDefault
+            //cameraRef.current.lookAt(0, 0, 0); // Reset target look at origin
+            //cameraRef.current.updateProjectionMatrix(); // Update projection matrix after changes
+            
+            console.log('Camera updated to follow satellite:', { x: satellitePos.x, y: satellitePos.y, z: satellitePos.z });
+        }
+      };
+    
+
     return (
         <>
             { view.AmbientLight &&
@@ -103,13 +156,13 @@ const GlobeRender = () => {
             <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
 
             { !view.HDEarth &&
-                <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
+                <mesh ref={earthRef} onClick={handleClick} rotation={[Math.PI / 2, 0, 0]}>
                     <sphereGeometry args={[2, 32, 32]} />
                     <meshStandardMaterial map={texture} />
                 </mesh>
             }
             { view.HDEarth &&     
-            <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh ref={earthRef} onClick={handleClick} rotation={[Math.PI / 2, 0, 0]}>
                 <sphereGeometry args={[2, 64, 64]} />
                 <meshStandardMaterial>
                     <primitive attach="map" object={texture} />
@@ -119,7 +172,7 @@ const GlobeRender = () => {
             }
             
             { view.HDEarth &&  
-            <mesh ref={haloRef} scale={[1.01, 1.01, 1.01]}>
+            <mesh ref={haloRef} onClick={handleClick} scale={[1.01, 1.01, 1.01]}>
                 <sphereGeometry args={[2, 64, 64]} />
                 <shaderMaterial
                     vertexShader={vertexShader}
@@ -164,11 +217,13 @@ const GlobeRender = () => {
             {view.VonAllenBelt && <VonAllenBelt />}
             {view.Axis && <axesHelper args={[5]} />}
             <OrbitControls />
-            <PerspectiveCamera
+            
+            <PerspectiveCamera ref={cameraRef}
                 makeDefault
                 position={[5, 0, 0]}
                 up={[0, 0, 1]}
             />
+            
         </>
     );
 };

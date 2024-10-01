@@ -3,11 +3,12 @@ import '../../Styles/simulator/SlimTopBar.css';
 import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { auth } from '../../firebase/firebase'; 
-import { updateitterationID, updatetrajectoryID, updateitterationName } from '../../Store/workingProject';
+import { updateitterationID, updatetrajectoryID, updateitterationName, updateIterationImage } from '../../Store/workingProject';
 import GoogleAuth from '../../firebase/googleauth';
 import SignOut from '../../firebase/signout';
 import TrajectoriesList from './TrajectoryList';
-import ItterationList from './ItterationList'
+import ItterationList from './ItterationList';
+import html2canvas from 'html2canvas';
 
 const Popup = ({ onClose, trajectories, iterations, type }) => {
   const popupRef = useRef(null);
@@ -65,6 +66,8 @@ const TopBar = () => {
 
   const saveAsInputRef = useRef(null);
   const newTrajInputRef = useRef(null);
+
+  const screenshotRef = useRef(null);
 
 
 
@@ -151,11 +154,20 @@ const TopBar = () => {
   const handleSaveAs = async () => {
     if (user && saveAsMessage) {
       setUploading(true);
+      const canvas = await html2canvas(screenshotRef.current, {
+        scale: 0.5, // lower the scale for a lower quality image
+      });
+  
+      // Convert the canvas to a data URL (base64 image format)
+      const imgData = canvas.toDataURL('image/jpeg', 0.5); // Set quality to 0.5 for low quality
+      // Dispatch the image data to Redux store
+      dispatch(updateIterationImage(imgData));
       try {
         const newIterationId = await uploadIteration(trajectoryID, state, saveAsMessage);
         if (newIterationId) {
-          dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux store
+          dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux stor
         }
+
         console.log('Upload successful');
         setSaveAsMessage(''); // Clear the input field after saving
         setShowSaveAsInput(false); // Hide the input field after saving
@@ -169,30 +181,7 @@ const TopBar = () => {
     }
   };
   
-  const handleDownload = async () => {
-    if (user) {
-      setDownloading(true);
-      try {
-        const iterationId = "dW4qDJXKVQAE5ojDKMzv"; // Replace with the specific iteration ID or logic to get the latest
 
-        const fields = ['timer']; // add more if necessary
-        for (const field of fields) {
-          const downloadedState = await downloadIterationState(trajectoryID, iterationId, field);
-          if (downloadedState) {
-            dispatch({ type: `SET_${field.toUpperCase()}`, payload: downloadedState });
-          }
-        }
-
-        console.log('Download successful');
-      } catch (error) {
-        console.error('Download failed:', error);
-      } finally {
-        setDownloading(false);
-      }
-    } else {
-      console.log('User not authenticated. Download operation not allowed.');
-    }
-  };
 
   const handleClickOutside = (event) => {
     if (showSaveAsInput && saveAsInputRef.current && !saveAsInputRef.current.contains(event.target)) {
@@ -213,6 +202,7 @@ const TopBar = () => {
 
   return (
     <div className="slim-top-bar">
+      <div ref={screenshotRef} ></div>
       <div className="top-bar-items">
         <p style={{ marginRight: '10px' }}>{ProjectName}</p>
         {user && (

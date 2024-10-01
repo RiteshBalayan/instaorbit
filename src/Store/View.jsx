@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 // Initial state for satellite configurations
 const initialRefrenceSystem = 'EarthInertial';
+const InitialCentralObject = 'Moon';
 
 const initialState = {
   Grid: false,
@@ -11,6 +12,7 @@ const initialState = {
   Sun: true,
   AmbientLight: false,
   ReferenceSystem: initialRefrenceSystem,
+  CentralObject: InitialCentralObject,
 };
 
 const viewSlice = createSlice({
@@ -38,6 +40,9 @@ const viewSlice = createSlice({
     toggleRefrenaceSystem: (state, action) => {
       state.ReferenceSystem = action.payload;
       }, 
+    toggleCentralObject: (state, action) => {
+      state.CentralObject = action.payload;
+      }, 
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
@@ -46,6 +51,6 @@ const viewSlice = createSlice({
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject } = viewSlice.actions;
 
 export default viewSlice.reducer;
