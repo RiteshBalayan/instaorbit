@@ -58,7 +58,7 @@ const GlobeRender = () => {
     const sunRef = useRef();
     const haloRef = useRef();
     const texture = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
-    const nightTexture = useLoader(THREE.TextureLoader, '/8081_earthlights2k.jpg');
+    const nightTexture = useLoader(THREE.TextureLoader, '/8081_earthlights10k.jpg');
     const cloudsTexture = useLoader(THREE.TextureLoader, '/earthcloudmap.jpg');
     const starttime = useSelector((state) => state.timer.starttime);
     const elapsedTime = useSelector((state) => state.timer.RenderTime);
@@ -101,6 +101,7 @@ const GlobeRender = () => {
     const satellitecurrentcoordinate = useSelector(state => state.CurrentState.satelite.find(p => p.id === 0));
     const centralObject = useSelector((state) => state.view.centralObject);
 
+    {/** 
     useFrame(() => {
         if (cameraRef.current && satellitecurrentcoordinate) {
             if (centralObject !== 'Earth') {
@@ -145,6 +146,7 @@ const GlobeRender = () => {
             console.log('Camera updated to follow satellite:', { x: satellitePos.x, y: satellitePos.y, z: satellitePos.z });
         }
       };
+      */}
     
 
     return (
@@ -156,13 +158,13 @@ const GlobeRender = () => {
             <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
 
             { !view.HDEarth &&
-                <mesh ref={earthRef} onClick={handleClick} rotation={[Math.PI / 2, 0, 0]}>
+                <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
                     <sphereGeometry args={[2, 32, 32]} />
                     <meshStandardMaterial map={texture} />
                 </mesh>
             }
             { view.HDEarth &&     
-            <mesh ref={earthRef} onClick={handleClick} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
                 <sphereGeometry args={[2, 64, 64]} />
                 <meshStandardMaterial>
                     <primitive attach="map" object={texture} />
@@ -172,7 +174,7 @@ const GlobeRender = () => {
             }
             
             { view.HDEarth &&  
-            <mesh ref={haloRef} onClick={handleClick} scale={[1.01, 1.01, 1.01]}>
+            <mesh ref={haloRef} scale={[1.01, 1.01, 1.01]}>
                 <sphereGeometry args={[2, 64, 64]} />
                 <shaderMaterial
                     vertexShader={vertexShader}

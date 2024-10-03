@@ -202,7 +202,7 @@ const AddSatellite = () => {
     newZ /= 3185.5;
 
     dispatch(togglePreview({id: ID, preview: false}));
-    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: null, y: null, z: null, mapX: 0, mapY: 0 }] }));
+    dispatch(initializeParticles({ id: ID, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
     dispatch(updateCoordinate({ 
       id: ID, 
       timefix: null, 

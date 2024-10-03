@@ -5,6 +5,7 @@ import SatelliteConfig from '../Render/ConfigSatellite';
 import AddSatellite from './AddSatellite'
 import SatelliteList from './SatelliteList';
 import UtilityControl from './UtilityControl';
+import UTControl from './UtilityControlMain';
 import '../../Styles/simulator/UtilityPanel.css';
 
 const UtilityPanel = () => {
@@ -55,7 +56,7 @@ const UtilityPanel = () => {
             }}
           />
           <div className="bottom-panel" style={{ height: `${100 - topHeight}%` }}>
-            <UtilityControl />
+            <UTControl />
           </div>
         </div>
       )}

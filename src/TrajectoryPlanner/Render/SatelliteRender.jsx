@@ -3,9 +3,8 @@ import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
-import { Shape } from 'three';
 import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from '../Simulation/Functions';
-
+import { Shape, TubeGeometry } from 'three'; 
 
 import { Sgp4, Satellite as sat } from 'ootk';
 import { PositionPoint } from '@react-three/drei';
@@ -15,6 +14,7 @@ import { useFrame } from '@react-three/fiber';
 const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burn, color }) => {
   const satelliteRef = useRef();
   const lineRef = useRef();
+  const tubeRef = useRef();
   const dispatch = useDispatch();
   const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
   const RenderTime = useSelector((state) => state.timer.RenderTime);
@@ -28,6 +28,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   trueanomly = THREE.MathUtils.degToRad(trueanomly);
 
 
+  //To Render the orbit tracks and Satellite
   useEffect(() => {
     // Check if elapsedTime has changed
     if (RenderTime !== prevRenderTime.current) {
@@ -50,6 +51,27 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
                 new THREE.Float32BufferAttribute(newTracePoints, 3)
               );
             }
+
+            const new2TracePoints = particle.tracePoints
+              .filter(p => p.time < RenderTime)
+              .map(p => new THREE.Vector3(p.x, p.y, p.z));
+            // Update tube geometry
+            if (tubeRef.current && new2TracePoints.length >= 2) {
+              // Check for null values in points before creating the curve
+              if (new2TracePoints.some(point => !point || point.x === null || point.y === null || point.z === null)) {
+                console.error("Invalid points found in newTracePoints:", newTracePoints);
+              } else {
+                const tubeGeometry = new TubeGeometry(
+                  new THREE.CatmullRomCurve3(new2TracePoints),
+                  new2TracePoints.length * 10,
+                  0.02, // Adjust radius as needed
+                  16,
+                  false
+                );
+                tubeRef.current.geometry = tubeGeometry;
+              }
+            }
+
           }
     }
       // Update previous elapsedTime
@@ -61,6 +83,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const ellipseRef = useRef();
   const satellitepreviewRef = useRef();
 
+  //Preview of Orbit (visible when satelite parameters are being added)
+  // To be added - (A button to show preview at any instance)
   useEffect(() => {
     if (ellipseRef.current && satellitepreviewRef.current && satelliteconfig) {
       // Quick Preview of ellipse for current parameter
@@ -119,6 +143,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const previewBurn = satelliteconfig?.burns?.find(burn => burn.previewMode);
 
 
+  //For Burn preview visualisation (Orbit if the burn is applied at given time)
   useEffect(() => {
     if (orbitalelements && orbitalelements.elements && previewBurn && burnlineRef.current) {
       // Filter out the burn with previewMode set to true
@@ -207,9 +232,11 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   return (
     <>
       <mesh ref={satelliteRef}>
-        <sphereGeometry args={[0.05, 4, 4]} />
+        <sphereGeometry args={[0.01, 4, 4]} />
         <meshStandardMaterial color="red" />
       </mesh>
+
+      
       <line ref={lineRef}>
         <bufferGeometry>
           <bufferAttribute
@@ -221,6 +248,12 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         </bufferGeometry>
         <lineBasicMaterial color={color} linewidth={0.5} />
       </line>
+      
+
+      <mesh ref={tubeRef}> 
+        <meshStandardMaterial color="red" transparent opacity={0.3}/> 
+      </mesh>
+
       {satelliteconfig.preview &&
         <line ref={ellipseRef} >
           <lineBasicMaterial color="red" linewidth={3} />
