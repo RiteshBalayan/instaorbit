@@ -157,6 +157,10 @@ const AddSatellite = () => {
         time: time, // Time in seconds
       },
       color: color,
+      Simulation: true,
+      Tracktail: 1000,
+      FutureTrack: false,
+      Tube: false,
     };
     setNewSatelliteParams(newSatellite);
     dispatch(addSatellite(newSatellite));

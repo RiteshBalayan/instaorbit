@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, Button, Switch } from '@mui/material';
 import { Home, Settings, Info, ContactMail } from '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import './UTControl.css'; // Import custom CSS
 import UtilityControl from './UtilityControl'; // First fixed window
-import { useSelector } from 'react-redux'; // To access the Redux store
+import { useSelector, useDispatch } from 'react-redux'; // To access the Redux store
+import { toggleSimulation, togglePreview } from '../../Store/satelliteSlice';
 
 // Create a dark theme
 const theme = createTheme({
@@ -20,16 +21,42 @@ const theme = createTheme({
   },
 });
 
-// Window contents for each icon
-const windowsData = {
-  home: 'This is the Home window content. Write your content here.',
-  settings: 'This is the Settings window content. Write your content here.',
-  info: 'This is the Info window content. Write your content here.',
-  contact: 'This is the Contact window content. Write your content here.',
+const SatelliteControl = ({ satelliteId }) => {
+
+  const dispatch = useDispatch();
+  const SimulationActive = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === satelliteId));
+
+  const handleSimulationToggle = () => {
+    dispatch(toggleSimulation({ id: parseFloat(satelliteId) , Simulation: !SimulationActive.Simulation})); 
+  };
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', my: 1 }}>
+      <Typography variant="body1">
+        Satellite ID: {satelliteId}
+      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Switch 
+          checked={SimulationActive.Simulation} 
+          onChange={handleSimulationToggle} 
+          color="primary" 
+        />
+        <Button 
+          variant="contained" 
+          onClick={handleSimulationToggle} 
+          sx={{ ml: 2 }}
+        >
+          {SimulationActive.Simulation ? 'Simulation Active' : 'Simulation Inactive'}
+        </Button>
+      </Box>
+    </Box>
+  );
 };
 
+
+
 const UTControl = () => {
-  const [activeWindow, setActiveWindow] = useState('home');
+  const [activeWindow, setActiveWindow] = useState('fixed');
   // Fetch the dynamic config from Redux store
   const satellitesConfig = useSelector((state) => state.satellites.satellitesConfig);
 
@@ -49,22 +76,20 @@ const UTControl = () => {
             sx: { width: 60, bgcolor: 'background.paper', position: 'relative' },
           }}
         >
-<List>
+          <List>
             {/* First fixed icon */}
             <ListItem button onClick={() => handleIconClick('fixed')} selected={activeWindow === 'fixed'}>
               <ListItemIcon>
                 <Home style={{ color: activeWindow === 'fixed' ? '#fff' : '#bbb' }} />
               </ListItemIcon>
-              <ListItemText primary="Fixed" />
             </ListItem>
 
             {/* Dynamically add more icons based on satellitesConfig */}
             {satellitesConfig.map((satellite, index) => (
-              <ListItem button key={satellite.id} onClick={() => handleIconClick(`satellite-${index}`)} selected={activeWindow === `satellite-${index}`}>
+              <ListItem button key={satellite.id} onClick={() => handleIconClick(index)} selected={activeWindow === index}>
                 <ListItemIcon>
-                  <Settings style={{ color: activeWindow === `satellite-${index}` ? '#fff' : '#bbb' }} />
+                  <Settings style={{ color: activeWindow === index ? '#fff' : '#bbb' }} />
                 </ListItemIcon>
-                <ListItemText primary={`Sat ${index + 1}`} />
               </ListItem>
             ))}
           </List>
@@ -80,18 +105,7 @@ const UTControl = () => {
                 </Box>
             )}
             {/* Render dynamic windows based on satellitesConfig */}
-            {satellitesConfig.map((satellite, index) => (
-                activeWindow === `satellite-${index}` && (
-                <Box key={satellite.id} className="content-box">
-                    <Typography variant="h5" gutterBottom>
-                    {satellite.name}
-                    </Typography>
-                    <Typography variant="body1">
-                    {satellite.description}
-                    </Typography>
-                </Box>
-                )
-            ))}
+            { activeWindow !== 'fixed' && <SatelliteControl satelliteId={activeWindow} /> } 
           </div>
         </Box>
       </Box>
