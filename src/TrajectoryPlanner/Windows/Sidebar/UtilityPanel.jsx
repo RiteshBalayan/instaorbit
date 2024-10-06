@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { IconButton, Box } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
-import SatelliteConfig from '../Render/ConfigSatellite';
+import SatelliteConfig from '../../Render/ConfigSatellite';
 import AddSatellite from './AddSatellite'
 import SatelliteList from './SatelliteList';
 import UtilityControl from './UtilityControl';
 import UTControl from './UtilityControlMain';
-import '../../Styles/simulator/UtilityPanel.css';
+import '../../../Styles/simulator/UtilityPanel.css';
 
 const UtilityPanel = () => {
   const [topHeight, setTopHeight] = useState(60);

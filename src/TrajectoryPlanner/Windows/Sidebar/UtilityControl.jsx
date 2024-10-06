@@ -1,7 +1,7 @@
 import React , { useState, useEffect } from 'react';
-import '../../Styles/simulator/UtilityControl.css';
+import '../../../Styles/simulator/UtilityControl.css';
 import { useSelector, useDispatch } from 'react-redux';
-import { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem } from '../../Store/View';
+import { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem } from '../../../Store/View';
 import Toggle from 'react-toggle';
 import "react-toggle/style.css" 
 import styled from 'styled-components';

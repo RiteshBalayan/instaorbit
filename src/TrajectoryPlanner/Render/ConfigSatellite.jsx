@@ -8,7 +8,7 @@ import { updateSatellites } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../Store/CurrentState';
 import { keplerianToCartesian } from '../Simulation/Functions';
-import '../Windows/SatelliteConfig.css';
+import './SatelliteConfig.css';
 
 const SatelliteConfig = () => {
   const dispatch = useDispatch();

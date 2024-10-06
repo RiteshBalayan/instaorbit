@@ -3,7 +3,7 @@ import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, Bu
 import { Home, Settings, Info, ContactMail } from '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import './UTControl.css'; // Import custom CSS
-import UtilityControl from '../UtilityControl'; // First fixed window
+import UtilityControl from './UtilityControl'; // First fixed window
 import { useSelector, useDispatch } from 'react-redux'; // To access the Redux store
 import { toggleSimulation, togglePreview } from '../../../Store/satelliteSlice';
 
