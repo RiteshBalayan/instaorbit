@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import '../../Styles/simulator/SlimTopBar.css'; 
-import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../firebase/firebaseUtils';
+import '../../../Styles/simulator/SlimTopBar.css'; 
+import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
-import { auth } from '../../firebase/firebase'; 
-import { updateitterationID, updatetrajectoryID, updateitterationName, updateIterationImage } from '../../Store/workingProject';
-import GoogleAuth from '../../firebase/googleauth';
-import SignOut from '../../firebase/signout';
+import { auth } from '../../../firebase/firebase'; 
+import { updateitterationID, updatetrajectoryID, updateitterationName, updateIterationImage } from '../../../Store/workingProject';
+import GoogleAuth from '../../../firebase/googleauth';
+import SignOut from '../../../firebase/signout';
 import TrajectoriesList from './TrajectoryList';
 import ItterationList from './ItterationList';
 import html2canvas from 'html2canvas';

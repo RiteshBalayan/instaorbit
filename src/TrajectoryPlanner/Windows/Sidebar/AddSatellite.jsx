@@ -4,10 +4,10 @@ import { Button, IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DoneIcon from '@mui/icons-material/Done';
-import { updateSatellite, togglePreview, addSatellite } from '../../Store/satelliteSlice';
-import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
-import { updateCoordinate, deleteState } from '../../Store/CurrentState';
-import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, eccentricToMeanAnomaly } from '../Simulation/Functions';
+import { updateSatellite, togglePreview, addSatellite } from '../../../Store/satelliteSlice';
+import { initializeParticles, resetTracePoints, deleteParticle } from '../../../Store/StateTimeSeries';
+import { updateCoordinate, deleteState } from '../../../Store/CurrentState';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly, trueToEccentricAnomaly, eccentricToMeanAnomaly } from '../../Simulation/Functions';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
 // Import the necessary components from react-color
