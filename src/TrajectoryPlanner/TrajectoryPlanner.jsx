@@ -6,7 +6,7 @@ import GlobeAndTimer from './Windows/GlobeAndTimer';
 /**
  * 
  */
-function Simulator() {
+function TrajectoryPlanner() {
 
   return (
     <div className="simulator">
@@ -16,4 +16,4 @@ function Simulator() {
   );
 }
 
-export default Simulator;
+export default TrajectoryPlanner;

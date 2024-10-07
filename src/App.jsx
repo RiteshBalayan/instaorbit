@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Simulator from './TrajectoryPlanner/Simulator';
+import TrajectoryPlanner from './TrajectoryPlanner/TrajectoryPlanner';
 import HomePage from './HomePage';
 import CAD from './CAD/cad';
 import ConstelationView from './Constelation/ConstelationView';
@@ -11,7 +11,7 @@ function App() {
     <Router>
       <Routes>
           <Route path="*" element={<HomePage/>} />
-          <Route path="/trajectoryplanner" element={<Simulator/>} />
+          <Route path="/trajectoryplanner" element={<TrajectoryPlanner/>} />
           <Route path="/cad" element={<CAD/>} />
           <Route path='/constellation' element={<ConstelationView />} />
         </Routes>
