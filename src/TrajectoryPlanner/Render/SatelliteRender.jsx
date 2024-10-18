@@ -26,6 +26,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   argumentOfPeriapsis = THREE.MathUtils.degToRad(argumentOfPeriapsis);
   assendingnode = THREE.MathUtils.degToRad(assendingnode);
   trueanomly = THREE.MathUtils.degToRad(trueanomly);
+  const satelliteconfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
 
 
   //To Render the orbit tracks and Satellite
@@ -77,9 +78,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       // Update previous elapsedTime
       prevRenderTime.current = RenderTime;
     }
-  }, [RenderTime, particleId, particle, inclination, trueanomly ]);
+  }, [RenderTime, particleId, particle, inclination, trueanomly, satelliteconfig, tubeRef ]);
 
-  const satelliteconfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
   const ellipseRef = useRef();
   const satellitepreviewRef = useRef();
 
@@ -134,7 +134,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       satellitepreviewRef.current.position.set(preX, preY, preZ);
 
     }
-  }, [semimajoraxis, eccentricity, assendingnode, inclination, argumentOfPeriapsis, trueanomly]);
+  }, [semimajoraxis, eccentricity, assendingnode, inclination, argumentOfPeriapsis, trueanomly, satelliteconfig]);
 
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const prevElapsedTime = useRef(elapsedTime);
@@ -249,21 +249,24 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         <lineBasicMaterial color={color} linewidth={0.5} />
       </line>
       
-
+      {satelliteconfig.Tube &&(
       <mesh ref={tubeRef}> 
         <meshStandardMaterial color="red" transparent opacity={0.3}/> 
       </mesh>
+      )}
 
-      {satelliteconfig.preview &&
+      {satelliteconfig.preview &&(
         <line ref={ellipseRef} >
           <lineBasicMaterial color="red" linewidth={3} />
         </line>
-      }
+      )}
+
       {satelliteconfig.preview &&      
       <mesh ref={satellitepreviewRef}>
         <sphereGeometry args={[0.05, 4, 4]} />
         <meshStandardMaterial color="red" />
       </mesh>}
+
       {previewBurn && (
       <line ref={burnlineRef} >
         <lineBasicMaterial color="blue" linewidth={3} />

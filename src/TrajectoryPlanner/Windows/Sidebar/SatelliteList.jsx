@@ -15,6 +15,8 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import './SatelliteConfig.css';
+import GetVNB from '../../Simulation/RefrenceFrameConvertor';
+import { Vector } from 'ootk';
 
 const SatelliteList = () => {
   const dispatch = useDispatch();
@@ -23,6 +25,7 @@ const SatelliteList = () => {
   const [burnInputVisible, setBurnInputVisible] = useState({});
   const [burnData, setBurnData] = useState({ x: '', y: '', z: '', time: '' });
   const satelliteConfigRef = useRef(null);
+  const elapsedTime = useSelector((state) => state.timer.elapsedTime);
 
   const handleDeleteSatellite = (id) => {
     const newConfig = satellitesConfig.filter(s => s.id !== id);
@@ -60,7 +63,7 @@ const SatelliteList = () => {
       x: 0,
       y: 0,
       z: 0,
-      time: 0,
+      time: elapsedTime,
       previewMode: true,
     };
 
@@ -86,28 +89,60 @@ const SatelliteList = () => {
     setBurnData(initialBurn);
   };
 
+  const orbitalelements = useSelector(state => state.CurrentState.satelite)
+
   const handleBurnDataChange = (field, value) => {
-    setBurnData(prevState => {
-      const updatedBurn = {
-        ...prevState,
-        [field]: parseFloat(value),
-      };
 
-      // Find the satellite and update the burn in the state
-      const updatedConfig = satellitesConfig.map(satellite => {
-        if (satellite.id === activeSatellite) {
-          return {
-            ...satellite,
-            burns: satellite.burns.map(burn => burn.id === updatedBurn.id ? updatedBurn : burn),
-          };
-        }
-        return satellite;
-      });
+    let updatedBurn = {
+      ...burnData, // Assuming burnData is the initial state for the current burn
+      [field]: parseFloat(value),
+    };
 
-      dispatch(updateSatellites(updatedConfig));
+    setBurnData(updatedBurn)
 
-      return updatedBurn;
+    // 1. Set the updated burn state
+
+    const Coordinate = orbitalelements.find(p => p.id === activeSatellite).coordinates ;
+    const Velocity = orbitalelements.find(p => p.id === activeSatellite).velocity ;
+
+    //setBurnData(GetVNB(activeSatellite, [burnData.x, burnData.y, burnData.z]))
+    console.log('Active Satellite ID is', activeSatellite);
+    console.log([updatedBurn.x, updatedBurn.y, updatedBurn.z]);
+    console.log('elemt is', orbitalelements);
+    console.log('this element is :', Coordinate);
+    console.log('orbital coordinates are :', Coordinate.x);
+    const inputVector = [updatedBurn.x, updatedBurn.y, updatedBurn.z];
+    const coordinates = [Coordinate.x, Coordinate.y, Coordinate.z];
+    const velocity = [Velocity[0], Velocity[1], Velocity[2]];
+    const a = GetVNB({
+      inputVector,
+      coordinates,
+      velocity
     });
+
+
+    console.log('this is transformed Burn', a);
+    updatedBurn.x = a[0]
+    updatedBurn.y = a[1]
+    updatedBurn.z = a[2]
+
+
+    console.log('this is orignal Burn: ', updatedBurn);
+
+    
+        // 3. Next, update the satellites configuration
+        const updatedConfig = satellitesConfig.map(satellite => {
+          if (satellite.id === activeSatellite) {
+            return {
+              ...satellite,
+              burns: satellite.burns.map(burn => burn.id === updatedBurn.id ? updatedBurn : burn),
+            };
+          }
+          return satellite;
+        });
+
+    // 4. Finally, dispatch the action with the updated config
+    dispatch(updateSatellites(updatedConfig));
   };
 
   const handleDoneClick = (id) => {

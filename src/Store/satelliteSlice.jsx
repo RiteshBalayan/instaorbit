@@ -39,6 +39,13 @@ const satelliteSlice = createSlice({
         satelliteToUpdate.Simulation = Simulation;
       } 
     },
+    toggleTube: (state, action) => {
+      const { id, Tube } = action.payload;
+      const satelliteToUpdate = state.satellitesConfig.find(s => s.id === id);
+      if (satelliteToUpdate) {
+        satelliteToUpdate.Tube = Tube;
+      } 
+    },
     updateBurn: (state, action) => {
       const { id, burnID, data } = action.payload;
       const satelliteToUpdate = state.satellitesConfig.find(s => s.id === id);
@@ -61,6 +68,15 @@ const satelliteSlice = createSlice({
   },
 });
 
-export const { updateSatellites, addSatellite, updateSatellite, deleteSatellite, togglePreview, updateBurn, toggleSimulation } = satelliteSlice.actions;
+export const {
+  updateSatellites, 
+  addSatellite, 
+  updateSatellite, 
+  deleteSatellite, 
+  togglePreview, 
+  updateBurn, 
+  toggleSimulation,
+  toggleTube
+} = satelliteSlice.actions;
 
 export default satelliteSlice.reducer;

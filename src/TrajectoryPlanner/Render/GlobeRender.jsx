@@ -154,7 +154,7 @@ const GlobeRender = () => {
             { view.AmbientLight &&
             <ambientLight intensity={1} />
             }
-            <directionalLight ref={lightRef} position={[5, 0, 5]} intensity={2} />
+            <directionalLight ref={lightRef} position={[5, 0, 5]} intensity={1} />
             <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
 
             { !view.HDEarth &&
@@ -190,7 +190,7 @@ const GlobeRender = () => {
             { view.HDEarth &&  
             <mesh>
                 <sphereGeometry args={[2.02, 64, 64]} />
-                <meshStandardMaterial map={cloudsTexture} transparent={true} opacity={0.4} />
+                <meshStandardMaterial map={cloudsTexture} transparent={true} opacity={0.3} />
             </mesh>
             }
             

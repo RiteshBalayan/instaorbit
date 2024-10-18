@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, Button, Switch } from '@mui/material';
 import { Home, Settings, Info, ContactMail } from '@mui/icons-material';
+import SatelliteAltIcon from '@mui/icons-material/SatelliteAlt';
+import PublicIcon from '@mui/icons-material/Public';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import './UTControl.css'; // Import custom CSS
 import UtilityControl from './UtilityControl'; // First fixed window
 import { useSelector, useDispatch } from 'react-redux'; // To access the Redux store
-import { toggleSimulation, togglePreview } from '../../../Store/satelliteSlice';
+import { toggleSimulation, togglePreview, toggleTube } from '../../../Store/satelliteSlice';
 
 // Create a dark theme
 const theme = createTheme({
@@ -24,32 +26,46 @@ const theme = createTheme({
 const SatelliteControl = ({ satelliteId }) => {
 
   const dispatch = useDispatch();
-  const SimulationActive = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === satelliteId));
+  const Satellite = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === satelliteId));
 
   const handleSimulationToggle = () => {
-    dispatch(toggleSimulation({ id: parseFloat(satelliteId) , Simulation: !SimulationActive.Simulation})); 
+    dispatch(toggleSimulation({ id: parseFloat(satelliteId) , Simulation: !Satellite.Simulation})); 
+  };
+
+  const handlePreviewToggle = () => {
+    dispatch(togglePreview({ id: parseFloat(satelliteId) , preview: !Satellite.preview})); 
+  };
+
+  const handleTubeToggle = () => {
+    dispatch(toggleTube({ id: parseFloat(satelliteId) , Tube: !Satellite.Tube})); 
   };
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', my: 1 }}>
+    <Box className="satellite-container">
       <Typography variant="body1">
-        Satellite ID: {satelliteId}
+        {Satellite.name}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Switch 
-          checked={SimulationActive.Simulation} 
-          onChange={handleSimulationToggle} 
-          color="primary" 
-        />
+      <Box className="button-group">
         <Button 
           variant="contained" 
           onClick={handleSimulationToggle} 
-          sx={{ ml: 2 }}
         >
-          {SimulationActive.Simulation ? 'Simulation Active' : 'Simulation Inactive'}
+          {Satellite.Simulation ? 'Simulation Active' : 'Simulation Inactive'}
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleTubeToggle}
+        >
+          {Satellite.Tube ? 'Tube Active' : 'Tube Inactive'}
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handlePreviewToggle} 
+        >
+          {Satellite.preview ? 'Preview Active' : 'Preview Inactive'}
         </Button>
       </Box>
-    </Box>
+    </Box> 
   );
 };
 
@@ -80,7 +96,7 @@ const UTControl = () => {
             {/* First fixed icon */}
             <ListItem button onClick={() => handleIconClick('fixed')} selected={activeWindow === 'fixed'}>
               <ListItemIcon>
-                <Home style={{ color: activeWindow === 'fixed' ? '#fff' : '#bbb' }} />
+                <PublicIcon style={{ color: activeWindow === 'fixed' ? '#fff' : '#bbb' }} />
               </ListItemIcon>
             </ListItem>
 
@@ -88,7 +104,7 @@ const UTControl = () => {
             {satellitesConfig.map((satellite, index) => (
               <ListItem button key={satellite.id} onClick={() => handleIconClick(index)} selected={activeWindow === index}>
                 <ListItemIcon>
-                  <Settings style={{ color: activeWindow === index ? '#fff' : '#bbb' }} />
+                  <SatelliteAltIcon style={{ color: activeWindow === index ? '#fff' : '#bbb' }} />
                 </ListItemIcon>
               </ListItem>
             ))}
