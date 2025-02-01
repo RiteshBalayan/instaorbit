@@ -98,6 +98,11 @@ const SatelliteList = () => {
       [field]: parseFloat(value),
     };
 
+    let newFrameBurn = {
+      ...burnData, // Assuming burnData is the initial state for the current burn
+      [field]: parseFloat(value),
+    };
+
     setBurnData(updatedBurn)
 
     // 1. Set the updated burn state
@@ -107,11 +112,11 @@ const SatelliteList = () => {
 
     //setBurnData(GetVNB(activeSatellite, [burnData.x, burnData.y, burnData.z]))
     console.log('Active Satellite ID is', activeSatellite);
-    console.log([updatedBurn.x, updatedBurn.y, updatedBurn.z]);
+    console.log([newFrameBurn.x, newFrameBurn.y, newFrameBurn.z]);
     console.log('elemt is', orbitalelements);
     console.log('this element is :', Coordinate);
     console.log('orbital coordinates are :', Coordinate.x);
-    const inputVector = [updatedBurn.x, updatedBurn.y, updatedBurn.z];
+    const inputVector = [newFrameBurn.x, newFrameBurn.y, newFrameBurn.z];
     const coordinates = [Coordinate.x, Coordinate.y, Coordinate.z];
     const velocity = [Velocity[0], Velocity[1], Velocity[2]];
     const a = GetVNB({
@@ -122,12 +127,12 @@ const SatelliteList = () => {
 
 
     console.log('this is transformed Burn', a);
-    updatedBurn.x = a[0]
-    updatedBurn.y = a[1]
-    updatedBurn.z = a[2]
+    newFrameBurn.x = a[0]
+    newFrameBurn.y = a[1]
+    newFrameBurn.z = a[2]
 
 
-    console.log('this is orignal Burn: ', updatedBurn);
+    console.log('this is orignal Burn: ', newFrameBurn);
 
     
         // 3. Next, update the satellites configuration
@@ -135,7 +140,7 @@ const SatelliteList = () => {
           if (satellite.id === activeSatellite) {
             return {
               ...satellite,
-              burns: satellite.burns.map(burn => burn.id === updatedBurn.id ? updatedBurn : burn),
+              burns: satellite.burns.map(burn => burn.id === newFrameBurn.id ? newFrameBurn : burn),
             };
           }
           return satellite;
@@ -144,6 +149,47 @@ const SatelliteList = () => {
     // 4. Finally, dispatch the action with the updated config
     dispatch(updateSatellites(updatedConfig));
   };
+
+  //Same Frametransfer logic if animation is playing while burn preview is seen.
+  useEffect(() => {
+    if (activeSatellite && burnData && orbitalelements) {  // Make sure activeSatellite and burnData are defined
+  
+    // Find the active satellite's orbital elements
+    const satellite = orbitalelements.find(p => p.id === activeSatellite);
+  
+    // Access coordinates and velocity safely
+    const coordinates = satellite.coordinates;  // Use optional chaining
+    const velocity = satellite.velocity;
+  
+  
+    // Debugging Logs
+    console.log('below are the useeffect Log')
+    console.log('Active Satellite ID is', activeSatellite);
+    console.log('Burn Data:', burnData);
+    console.log('Orbital Elements:', orbitalelements);
+    console.log('Coordinates:', coordinates);
+    console.log('Velocity:', velocity);
+  
+    // Call GetVNB with the correct parameters
+    const inputVector = [burnData.x, burnData.y, burnData.z];
+    const transformedBurn = GetVNB({
+      inputVector,
+      coordinates: [coordinates.x, coordinates.y, coordinates.z],
+      velocity: [velocity[0], velocity[1], velocity[2]]
+    });
+  
+    console.log('Transformed Burn:', transformedBurn);
+  
+    // Update burn data safely
+    setBurnData({
+      x: transformedBurn[0],
+      y: transformedBurn[1],
+      z: transformedBurn[2]
+    });
+  }
+  
+  }, [activeSatellite, burnData, orbitalelements, satellitesConfig]); // Add dependencies
+  
 
   const handleDoneClick = (id) => {
     // Update the burn to set previewMode to false

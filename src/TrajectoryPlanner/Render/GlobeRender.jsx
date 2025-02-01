@@ -9,6 +9,7 @@ import VonAllenBelt from './VonAllenBelt';
 import { useLoader } from '@react-three/fiber';
 import SimuStackSatellites from '../Simulation/StackSimulator';
 import { toggleCentralObject } from '../../Store/View';
+import EarthCesium from './EarthCesium';
 
 // Vertex Shader for Glow
 const vertexShader = `
@@ -151,6 +152,8 @@ const GlobeRender = () => {
 
     return (
         <>
+
+            {/*<EarthCesium />*/}
             { view.AmbientLight &&
             <ambientLight intensity={1} />
             }

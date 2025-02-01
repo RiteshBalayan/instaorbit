@@ -191,6 +191,10 @@ const Timer = () => {
       verticalScroll: true,
       zoomable: true,
       zoomFriction: 20,
+      snap: function(date, scale, step) {
+        return Math.round(date / 1000) * 1000; // Snap to nearest second
+      },
+      //timeAxis: {scale: 'minute', step: 1},
       //start: new Date(minTime),
       editable: {
         remove: false,
