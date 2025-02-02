@@ -944,3 +944,64 @@ html, body {
   font-size: 0.9rem;
   text-align: center;
 }
+
+.signout-btn {
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 77, 77, 0.1) 0%,
+    rgba(255, 77, 77, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 77, 77, 0.2);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  margin-left: 1rem;
+}
+
+.signout-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 77, 77, 0.2) 0%,
+    rgba(255, 77, 77, 0.1) 100%
+  );
+  border-color: rgba(255, 77, 77, 0.3);
+  transform: translateY(-1px);
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-welcome {
+  font-size: 0.9rem;
+  color: #00ffcc;
+  background: rgba(0, 255, 204, 0.05);
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  white-space: normal;
+  overflow: visible;
+  font-weight: 500;
+  box-shadow: 
+    0 0 10px rgba(0, 255, 204, 0.1),
+    inset 0 0 10px rgba(0, 255, 204, 0.1);
+  text-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+}
+
+.auth-nav {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}

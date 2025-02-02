@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from './firebase';
 import { setUser } from '../Store/authSlice';
+import GoogleAuthButton from './GoogleAuthButton';
 
 const SignUp = ({ onSignUpSuccess, onSignUpFailure }) => {
   const [email, setEmail] = useState('');
@@ -19,34 +20,49 @@ const SignUp = ({ onSignUpSuccess, onSignUpFailure }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
       dispatch(setUser(userCredential.user));
-      onSignUpSuccess(); // Notify parent on success
+      onSignUpSuccess();
     } catch (error) {
-      onSignUpFailure(error.message); // Notify parent on failure
+      onSignUpFailure(error.message);
     }
   };
 
   return (
-    <div>
-      <h2>Sign Up</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+    <div className="auth-form-container">
+      <GoogleAuthButton 
+        onSuccess={onSignUpSuccess}
+        onError={onSignUpFailure}
       />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-      />
-      <button onClick={handleSignUp}>Sign Up</button>
+      
+      <div className="auth-separator">
+        <span>or</span>
+      </div>
+
+      <form className="auth-form" onSubmit={(e) => { e.preventDefault(); handleSignUp(); }}>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="auth-input"
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="auth-input"
+        />
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          className="auth-input"
+        />
+        <button type="submit" className="auth-submit">
+          Sign Up
+        </button>
+      </form>
     </div>
   );
 };

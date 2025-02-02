@@ -11,14 +11,18 @@ const SignOut = () => {
     try {
       await signOut(auth);
       dispatch(clearUser());
-      alert('Signed out successfully');
     } catch (error) {
-      alert(error.message);
+      console.error('Sign out error:', error.message);
     }
   };
 
   return (
-    <button onClick={handleSignOut}>Sign Out</button>
+    <button 
+      onClick={handleSignOut}
+      className="auth-button signout-btn"
+    >
+      Sign Out
+    </button>
   );
 };
 
