@@ -130,7 +130,7 @@ const HomePage = () => {
 
         <section className="tools-section">
           <div className="section-header">
-            <h2>Our Tools</h2>
+            <h2>Our Platforms</h2>
             <div className="section-decoration"></div>
           </div>
           <div className="tools-grid">
