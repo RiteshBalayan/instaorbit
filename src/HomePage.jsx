@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import './Styles/HomePage.css';
 import Login from './firebase/login';
+import SignUp from './firebase/signup'
 import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';
 import { motion } from 'framer-motion';
