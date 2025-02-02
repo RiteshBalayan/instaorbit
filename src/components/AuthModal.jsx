@@ -1,7 +1,52 @@
 import React, { useState } from 'react';
+import Login from '../firebase/login';
+import SignUp from '../firebase/signup';
 
 const AuthModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    try {
+      if (isLogin) {
+        await signInWithEmail(email, password);
+        onClose(); // Close modal after successful login
+      } else {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
+        await registerWithEmail(email, password);
+        onClose(); // Close modal after successful registration
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    try {
+      await signInWithGoogle();
+      onClose(); // Close modal after successful Google auth
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Reset form state when modal is closed
+  const handleClose = () => {
+    setError('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -28,18 +73,9 @@ const AuthModal = ({ isOpen, onClose }) => {
         </div>
 
         {isLogin ? (
-          <form className="auth-form">
-            <input type="email" placeholder="Email" />
-            <input type="password" placeholder="Password" />
-            <button type="submit" className="auth-submit">Login</button>
-          </form>
+          <Login onSuccess={onClose} />
         ) : (
-          <form className="auth-form">
-            <input type="email" placeholder="Email" />
-            <input type="password" placeholder="Password" />
-            <input type="password" placeholder="Confirm Password" />
-            <button type="submit" className="auth-submit">Register</button>
-          </form>
+          <SignUp onSuccess={onClose} />
         )}
       </div>
     </div>

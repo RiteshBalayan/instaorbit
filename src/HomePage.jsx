@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import './Styles/HomePage.css';
@@ -6,6 +6,7 @@ import Login from './firebase/login';
 import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';
 import { motion } from 'framer-motion';
+import AuthModal from './components/AuthModal';
 
 const icons = {
   trajectoryPlanner: (
@@ -35,6 +36,7 @@ const icons = {
 
 const HomePage = () => {
   const user = useSelector((state) => state.auth.user);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
     <div className="home-container">
@@ -67,12 +69,21 @@ const HomePage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <GoogleAuth />
-              <Login />
+              <button 
+                className="auth-button"
+                onClick={() => setIsAuthModalOpen(true)}
+              >
+                Register / Login
+              </button>
             </motion.div>
           )}
         </div>
       </nav>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
 
       <main className="main-content">
         <section className="hero-section">

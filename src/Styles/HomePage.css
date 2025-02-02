@@ -933,3 +933,14 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+.auth-error {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
+  border: 1px solid rgba(255, 77, 77, 0.2);
+  padding: 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
