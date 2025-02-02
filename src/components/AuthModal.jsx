@@ -16,13 +16,11 @@ const AuthModal = ({ isOpen, onClose }) => {
   };
 
   const handleSignUpSuccess = () => {
-    console.log("2**")
     setError('');
     onClose(); // Close modal on sign-up success
   };
 
   const handleSignUpFailure = (errorMessage) => {
-    console.log("4** or 5**")
     setError(errorMessage); // Set error message on sign-up failure
   };
 
