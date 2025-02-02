@@ -7,12 +7,38 @@ import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';
 import { motion } from 'framer-motion';
 
+const icons = {
+  trajectoryPlanner: (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="24" cy="24" r="18" />
+      <path d="M24 6C24 6 32 14 32 24C32 34 24 42 24 42" />
+      <path d="M24 6C24 6 16 14 16 24C16 34 24 42 24 42" />
+      <path d="M6 24H42" />
+    </svg>
+  ),
+  spacecraftDesigner: (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M24 4L32 20H16L24 4Z" />
+      <rect x="16" y="20" width="16" height="24" rx="2" />
+      <path d="M14 28H18M30 28H34M14 36H18M30 36H34" />
+    </svg>
+  ),
+  constellationDesigner: (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="24" cy="12" r="4" />
+      <circle cx="12" cy="32" r="4" />
+      <circle cx="36" cy="32" r="4" />
+      <path d="M24 16L12 28M24 16L36 28M12 32L36 32" />
+    </svg>
+  )
+};
+
 const HomePage = () => {
   const user = useSelector((state) => state.auth.user);
 
   return (
     <div className="home-container">
-      <div className="background-animation"></div>
+     
       
       <nav className="nav-bar">
         <motion.div 
@@ -21,7 +47,7 @@ const HomePage = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <span className="logo-text">Space Lab</span>
+          <span className="logo-text">InstaOrbit</span>
           <div className="logo-underline"></div>
         </motion.div>
         
@@ -60,12 +86,10 @@ const HomePage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="glitch" data-text="Space Mission Design Lab">Space Mission Design Lab</h1>
+            <h1>Space Engineering Design Lab</h1>
             <p className="hero-subtitle">Advanced tools for the next generation of space exploration</p>
             <div className="hero-decoration">
-              <span className="line"></span>
-              <span className="dot"></span>
-              <span className="line"></span>
+             
             </div>
           </motion.div>
         </section>
@@ -75,62 +99,46 @@ const HomePage = () => {
             <h2>Our Tools</h2>
             <div className="section-decoration"></div>
           </div>
-          
-          <motion.div 
-            className="tools-grid"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
+          <div className="tools-grid">
             {[
               {
                 to: "/trajectoryplanner",
-                icon: "🛰️",
+                icon: icons.trajectoryPlanner,
                 title: "Trajectory Planner",
                 description: "Design optimal trajectories for space missions",
-                features: ["Orbital mechanics", "Delta-v optimization", "Mission planning"],
-                gradient: "gradient-1"
+                prototypeUrl: "/trajectoryplanner"
               },
               {
                 to: "/cad",
-                icon: "🚀",
+                icon: icons.spacecraftDesigner,
                 title: "Spacecraft Designer",
                 description: "Design and optimize spacecraft systems",
-                features: ["3D modeling", "System analysis", "Performance optimization"],
-                gradient: "gradient-2"
+                prototypeUrl: "/cad"
               },
               {
                 to: "/constellation",
-                icon: "⚡",
-                title: "Constellation Designer",
-                description: "Plan satellite constellation networks",
-                features: ["Coverage analysis", "Network optimization", "Deployment strategy"],
-                gradient: "gradient-3"
+                icon: icons.constellationDesigner,
+                title: "Constellation Optimiser",
+                description: "Optimise satellite constellation networks",
+                prototypeUrl: "/constellation"
               }
             ].map((tool, index) => (
-              <motion.div
-                key={tool.title}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Link to={tool.to} className={`tool-card ${tool.gradient}`}>
-                  <div className="card-content">
-                    <div className="tool-icon">{tool.icon}</div>
+              <div key={tool.title} className="tool-card">
+                <div className="tool-content">
+                  <div className="tool-icon">{tool.icon}</div>
+                  <div className="tool-info">
                     <h2>{tool.title}</h2>
                     <p>{tool.description}</p>
-                    <div className="tool-features">
-                      {tool.features.map((feature, i) => (
-                        <span key={i} className="feature-tag">{feature}</span>
-                      ))}
-                    </div>
                   </div>
-                  <div className="card-overlay">
-                    <span className="explore-text">Explore →</span>
-                  </div>
-                </Link>
-              </motion.div>
+                </div>
+                <div className="card-actions">
+                  <a href={tool.prototypeUrl} className="prototype-btn" target="_blank" rel="noopener noreferrer">
+                    Check out the prototype
+                  </a>
+                </div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </section>
       </main>
     </div>
