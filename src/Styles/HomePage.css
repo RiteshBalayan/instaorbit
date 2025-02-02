@@ -36,14 +36,24 @@ html, body {
   border-bottom: 1px solid rgba(0, 255, 204, 0.1);
 }
 
-.logo {
+.logo-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
   position: relative;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .logo-text {
   font-size: 2rem;
   font-weight: 800;
-  position: relative;
   background: linear-gradient(
     45deg,
     #ffffff 0%,
@@ -69,7 +79,7 @@ html, body {
   transition: transform 0.3s ease;
 }
 
-.logo:hover .logo-underline {
+.logo-link:hover .logo-underline {
   transform: scaleX(1);
   transform-origin: left;
 }

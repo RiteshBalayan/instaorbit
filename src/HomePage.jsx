@@ -50,8 +50,18 @@ const HomePage = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <span className="logo-text">InstaOrbit</span>
-          <div className="logo-underline"></div>
+          <a href="/" className="logo-link">
+            <img
+              className="logo"
+              alt=""
+              src="/satellite-svgrepo-com.svg"
+            />
+            <div className="logo-text-wrapper">
+              <span className="logo-text">InstaOrbit</span>
+              <div className="logo-underline"></div>
+            </div>
+          </a>
+          
         </motion.div>
         
         <div className="auth-nav">
