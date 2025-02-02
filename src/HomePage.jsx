@@ -70,12 +70,15 @@ const HomePage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <button 
-                className="auth-button"
-                onClick={() => setIsAuthModalOpen(true)}
-              >
-                Register / Login
-              </button>
+              <div className="auth-prompt-wrapper">
+                <button 
+                  className="auth-button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                >
+                  Register &nbsp;/&nbsp; Login
+                </button>
+                <span className="auth-prompt-text">Sign in to save your progress</span>
+              </div>
             </motion.div>
           )}
         </div>
