@@ -4,7 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from './firebase';
 import { setUser } from '../Store/authSlice';
 
-const Login = () => {
+const Login = ({ onLoginSuccess, onLoginFailure }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useDispatch();
@@ -13,15 +13,17 @@ const Login = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       dispatch(setUser(userCredential.user));
-      alert('Logged in successfully');
+      console.log("2**");
+      onLoginSuccess();  // Notify AuthModal about success
     } catch (error) {
-      alert(error.message);
+      onLoginFailure(error.message);  // Notify AuthModal about failure
+      console.log("4** or 5**");
     }
   };
 
   return (
     <div>
-      <h2></h2>
+      <h2>Login</h2>
       <input
         type="email"
         placeholder="Email"

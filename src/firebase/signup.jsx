@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/
 import { auth } from './firebase';
 import { setUser } from '../Store/authSlice';
 
-const SignUp = () => {
+const SignUp = ({ onSignUpSuccess, onSignUpFailure }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -12,16 +12,16 @@ const SignUp = () => {
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      onSignUpFailure('Passwords do not match');
       return;
     }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
       dispatch(setUser(userCredential.user));
-      alert('Signed up successfully. Please check your email for verification.');
+      onSignUpSuccess(); // Notify parent on success
     } catch (error) {
-      alert(error.message);
+      onSignUpFailure(error.message); // Notify parent on failure
     }
   };
 

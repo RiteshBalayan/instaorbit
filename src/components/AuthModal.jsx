@@ -4,47 +4,30 @@ import SignUp from '../firebase/signup';
 
 const AuthModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleLoginSuccess = () => {
     setError('');
-    
-    try {
-      if (isLogin) {
-        await signInWithEmail(email, password);
-        onClose(); // Close modal after successful login
-      } else {
-        if (password !== confirmPassword) {
-          setError('Passwords do not match');
-          return;
-        }
-        await registerWithEmail(email, password);
-        onClose(); // Close modal after successful registration
-      }
-    } catch (err) {
-      setError(err.message);
-    }
+    onClose(); // Close modal on login success
   };
 
-  const handleGoogleAuth = async () => {
-    try {
-      await signInWithGoogle();
-      onClose(); // Close modal after successful Google auth
-    } catch (err) {
-      setError(err.message);
-    }
+  const handleLoginFailure = (errorMessage) => {
+    setError(errorMessage); // Set error message on login failure
   };
 
-  // Reset form state when modal is closed
+  const handleSignUpSuccess = () => {
+    console.log("2**")
+    setError('');
+    onClose(); // Close modal on sign-up success
+  };
+
+  const handleSignUpFailure = (errorMessage) => {
+    console.log("4** or 5**")
+    setError(errorMessage); // Set error message on sign-up failure
+  };
+
   const handleClose = () => {
     setError('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
     onClose();
   };
 
@@ -54,7 +37,7 @@ const AuthModal = ({ isOpen, onClose }) => {
     <div className="modal-overlay">
       <div className="modal-content">
         <button className="modal-close" onClick={onClose}>×</button>
-        
+
         <div className="modal-header">
           <div className="auth-toggle">
             <button 
@@ -73,13 +56,21 @@ const AuthModal = ({ isOpen, onClose }) => {
         </div>
 
         {isLogin ? (
-          <Login onSuccess={onClose} />
+          <Login 
+            onLoginSuccess={handleLoginSuccess} 
+            onLoginFailure={handleLoginFailure} 
+          />
         ) : (
-          <SignUp onSuccess={onClose} />
+          <SignUp 
+            onSignUpSuccess={handleSignUpSuccess} 
+            onSignUpFailure={handleSignUpFailure} 
+          />
         )}
+
+        {error && <p style={{ color: 'red' }}>{error}</p>}  {/* Show error message */}
       </div>
     </div>
   );
 };
 
-export default AuthModal; 
+export default AuthModal;
