@@ -52,14 +52,13 @@ const HomePage = () => {
         >
           <a href="/" className="logo-link">
             <img
-              className="logo"
-              alt=""
               src="/satellite-svgrepo-com.svg"
+              alt="InstaOrbit Logo"
             />
             <div className="logo-text-wrapper">
               <span className="logo-text">InstaOrbit</span>
-              <div className="logo-underline"></div>
             </div>
+            <div className="logo-underline"></div>
           </a>
           
         </motion.div>

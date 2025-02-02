@@ -36,19 +36,28 @@ html, body {
   border-bottom: 1px solid rgba(0, 255, 204, 0.1);
 }
 
+.logo {
+  position: relative;
+}
+
 .logo-link {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 1rem;
   text-decoration: none;
   position: relative;
+  padding-bottom: 4px;
 }
 
-.logo {
+.logo-link img {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
+}
+
+.logo-text-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
 .logo-text {
@@ -69,7 +78,7 @@ html, body {
 
 .logo-underline {
   position: absolute;
-  bottom: -5px;
+  bottom: 0;
   left: 0;
   width: 100%;
   height: 2px;
