@@ -105,21 +105,21 @@ const HomePage = () => {
                 to: "/trajectoryplanner",
                 icon: icons.trajectoryPlanner,
                 title: "Trajectory Planner",
-                description: "Design optimal trajectories for space missions",
+                description: "Plan optimal trajectories for space missions",
                 prototypeUrl: "/trajectoryplanner"
               },
               {
                 to: "/cad",
                 icon: icons.spacecraftDesigner,
                 title: "Spacecraft Designer",
-                description: "Design and optimize spacecraft systems",
+                description: "Optimise your spacecraft design for efficiency and performance",
                 prototypeUrl: "/cad"
               },
               {
                 to: "/constellation",
                 icon: icons.constellationDesigner,
                 title: "Constellation Optimiser",
-                description: "Optimise satellite constellation networks",
+                description: "Design satellite constellation networks for optimal coverage and efficiency",
                 prototypeUrl: "/constellation"
               }
             ].map((tool, index) => (
