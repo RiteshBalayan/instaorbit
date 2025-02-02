@@ -413,10 +413,11 @@ html, body {
 
 .tool-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.02);
-  border: 2px solid;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 20px;
-  padding-left: 7vw;
+  padding-left: 6vw;
   padding-right: 6vw;
   padding-top: 4vh;
   padding-bottom: 6vh;
@@ -431,8 +432,16 @@ html, body {
   width: 100%;
   box-shadow: 
     0 0 30px rgba(255, 255, 255, 0.05),
-    inset 0 0 30px rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(5px);
+    inset 0 0 30px rgba(255, 255, 255, 0.02);
+}
+
+.tool-card:hover {
+  transform: translateY(-3px);
+  background: rgba(20, 20, 20, 0.97);
+  box-shadow: 
+    0 0 40px rgba(255, 255, 255, 0.08),
+    inset 0 0 40px rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .tool-card::before {
@@ -443,11 +452,11 @@ html, body {
   padding: 1px;
   background: linear-gradient(
     45deg,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.5) 25%,
-    rgba(255, 255, 255, 0.9) 50%,
-    rgba(255, 255, 255, 0.5) 75%,
-    rgba(255, 255, 255, 0.1)
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.3) 25%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0.3) 75%,
+    rgba(255, 255, 255, 0.05)
   );
   -webkit-mask: 
     linear-gradient(#fff 0 0) content-box, 
@@ -462,24 +471,14 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 4px;
+  width: 3px;
   height: 100%;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.5) 25%,
-    rgba(255, 255, 255, 0.9) 50%,
-    rgba(255, 255, 255, 0.5) 75%,
-    rgba(255, 255, 255, 0.1)
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.05)
   );
-}
-
-.tool-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 0 40px rgba(255, 255, 255, 0.08),
-    inset 0 0 40px rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
 }
 
 .tool-icon {
