@@ -8,9 +8,6 @@ import './UTControl.css'; // Import custom CSS
 import UtilityControl from './UtilityControl'; // First fixed window
 import { useSelector, useDispatch } from 'react-redux'; // To access the Redux store
 import { toggleSimulation, togglePreview, toggleTube } from '../../../Store/satelliteSlice';
-import SatelliteControl from'./SatelliteControl';
-
-
 
 // Create a dark theme
 const theme = createTheme({
@@ -25,6 +22,52 @@ const theme = createTheme({
     },
   },
 });
+
+const SatelliteControl = ({ satelliteId }) => {
+
+  const dispatch = useDispatch();
+  const Satellite = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === satelliteId));
+
+  const handleSimulationToggle = () => {
+    dispatch(toggleSimulation({ id: parseFloat(satelliteId) , Simulation: !Satellite.Simulation})); 
+  };
+
+  const handlePreviewToggle = () => {
+    dispatch(togglePreview({ id: parseFloat(satelliteId) , preview: !Satellite.preview})); 
+  };
+
+  const handleTubeToggle = () => {
+    dispatch(toggleTube({ id: parseFloat(satelliteId) , Tube: !Satellite.Tube})); 
+  };
+
+  return (
+    <Box className="satellite-container">
+      <Typography variant="body1">
+        {Satellite.name}
+      </Typography>
+      <Box className="button-group">
+        <Button 
+          variant="contained" 
+          onClick={handleSimulationToggle} 
+        >
+          {Satellite.Simulation ? 'Simulation Active' : 'Simulation Inactive'}
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleTubeToggle}
+        >
+          {Satellite.Tube ? 'Tube Active' : 'Tube Inactive'}
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handlePreviewToggle} 
+        >
+          {Satellite.preview ? 'Preview Active' : 'Preview Inactive'}
+        </Button>
+      </Box>
+    </Box> 
+  );
+};
 
 
 

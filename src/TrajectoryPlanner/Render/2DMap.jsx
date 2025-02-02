@@ -15,7 +15,6 @@ const Map = ({  particleId }) => {
   const pointsRef = useRef();
   const lineRef = useRef();
   const sunRef = useRef();
-  const RenderTime = useSelector((state) => state.timer.RenderTime);
 
   useEffect(() => {
     if (sunRef) {
@@ -43,12 +42,11 @@ const Map = ({  particleId }) => {
   if (pointsRef.current && Satelite) {
     const x = Satelite.coordinates.mapX
     const y = Satelite.coordinates.mapY
-    const lastPoint = particle.tracePoints.filter(p => p.time < RenderTime).slice(-1)[0]
-    pointsRef.current.position.set(lastPoint.mapX, lastPoint.mapY, 1);
+    pointsRef.current.position.set(x, y, 1);
   }
   
   if (pointsRef.current) {
-    const newTracePoints = particle.tracePoints.filter(p => p.time < RenderTime).flatMap(p => {
+    const newTracePoints = particle.tracePoints.flatMap(p => {
       const x = p.mapX;
       const y = p.mapY;
       const z = (y > 1 || y < -1) ? - 1 : 1;
@@ -71,10 +69,6 @@ const Map = ({  particleId }) => {
       <mesh ref={pointsRef}>
         <sphereGeometry args={[0.05, 4, 4]} />
         <meshStandardMaterial color="red" />
-      </mesh>
-      <mesh ref={pointsRef}>
-        <sphereGeometry args={[0.40, 10, 10]} />
-        <meshStandardMaterial color="yellow" opacity={0.1} transparent={true}/>
       </mesh>
       <line ref={lineRef}>
         <bufferGeometry>

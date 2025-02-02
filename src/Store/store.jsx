@@ -19,7 +19,6 @@ const store = configureStore({
     workingProject: workingProjectReducer,
     view: viewReducer,
   },
-  
 });
 
 export default store;
