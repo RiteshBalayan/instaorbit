@@ -8,6 +8,7 @@ import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';
 import { motion } from 'framer-motion';
 import AuthModal from './components/AuthModal';
+import { FaBars, FaTimes } from 'react-icons/fa';
 
 const icons = {
   trajectoryPlanner: (
@@ -39,6 +40,7 @@ const HomePage = () => {
   const user = useSelector((state) => state.auth.user);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const updateCursor = (e) => {
@@ -53,7 +55,7 @@ const HomePage = () => {
     <div className="home-container">
      
       
-      <nav className="nav-bar">
+      <nav className="navbar">
         <motion.div 
           className="logo"
           initial={{ opacity: 0, x: -20 }}
@@ -70,9 +72,8 @@ const HomePage = () => {
             </div>
             <div className="logo-underline"></div>
           </a>
-          
         </motion.div>
-        
+
         <div className="auth-nav">
           {user ? (
             <motion.div 
