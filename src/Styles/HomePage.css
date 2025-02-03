@@ -530,7 +530,7 @@ html, body {
   font-size: 4rem;
   color: #ffffff;
   text-align: center;
-  margin-bottom: 4rem;
+  /* margin-bottom: 2.5rem; */
 }
 
 .section-decoration {
