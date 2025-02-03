@@ -8,7 +8,7 @@ import SignOut from './firebase/signout';
 import GoogleAuth from './firebase/googleauth';
 import { motion } from 'framer-motion';
 import AuthModal from './components/AuthModal';
-import { FaBars, FaTimes } from 'react-icons/fa';
+import { FaBars, FaTimes, FaUser, FaSignOutAlt } from 'react-icons/fa';
 
 const icons = {
   trajectoryPlanner: (
@@ -82,7 +82,10 @@ const HomePage = () => {
               animate={{ opacity: 1 }}
             >
               <span className="user-welcome">Welcome, {user.displayName || user.email}</span>
-              <SignOut />
+              <SignOut>
+                <span>Sign Out</span>
+                <FaSignOutAlt className="signout-icon" />
+              </SignOut>
             </motion.div>
           ) : (
             <motion.div 
@@ -95,7 +98,8 @@ const HomePage = () => {
                   className="auth-button"
                   onClick={() => setIsAuthModalOpen(true)}
                 >
-                  Register &nbsp;/&nbsp; Login
+                  <span>Register &nbsp;/&nbsp; Login</span>
+                  <FaUser className="auth-icon" />
                 </button>
                 <span className="auth-prompt-text">Sign in to save your progress</span>
               </div>

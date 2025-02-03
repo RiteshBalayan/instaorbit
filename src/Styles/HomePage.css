@@ -92,7 +92,56 @@ html, body {
   }
 
   .auth-nav {
-    display: none; /* Hide auth on mobile */
+    display: block; /* Show auth nav */
+  }
+
+  .logo-link img {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Hide text version of auth button */
+  .auth-prompt-text {
+    display: none;
+  }
+
+  .auth-button {
+    padding: 0.6rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .auth-button span {
+    display: none; /* Hide text */
+  }
+
+  /* Add icon to auth button */
+  .auth-icon {
+    display: block; /* Show icon */
+    font-size: 1.2rem;
+  }
+
+  .user-welcome {
+    display: none;
+  }
+
+  .signout-btn {
+    padding: 0.6rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .signout-btn span {
+    display: none;
+  }
+
+  .signout-icon {
+    display: block;
+    font-size: 1.2rem;
   }
 }
 
@@ -108,6 +157,10 @@ html, body {
 
   .nav-link {
     font-size: 0.9rem;
+  }
+
+  .logo-text {
+    font-size: 1.4rem;
   }
 }
 
@@ -843,16 +896,59 @@ html, body {
   transition: all 0.3s ease;
   cursor: pointer;
   backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.auth-button:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.1) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+/* Hide icon by default (for desktop/tablet) */
+.auth-icon {
+  display: none;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .auth-nav {
+    display: block; /* Show auth nav */
+  }
+
+  .auth-button {
+    padding: 0.6rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .auth-button span {
+    display: none; /* Hide text */
+  }
+
+  .auth-icon {
+    display: block; /* Show icon */
+    font-size: 1.2rem;
+  }
+
+  .auth-prompt-text {
+    display: none;
+  }
+
+  .signout-btn {
+    padding: 0.6rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .signout-btn span {
+    display: none;
+  }
+
+  .signout-icon {
+    display: block;
+    font-size: 1.2rem;
+  }
 }
 
 /* Modal Styles */
