@@ -64,7 +64,7 @@ const HomePage = () => {
         >
           <a href="/" className="logo-link">
             <img
-              src="/satellite-svgrepo-com.svg"
+              src="/satellite-svgrepo-com-light.svg"
               alt="InstaOrbit Logo"
             />
             <div className="logo-text-wrapper">

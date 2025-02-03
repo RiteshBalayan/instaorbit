@@ -195,6 +195,23 @@ html, body {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
+  filter: brightness(0) invert(1); /* Make SVG white */
+  animation: shine 3s linear infinite;
+  background: linear-gradient(
+    45deg,
+    #ffffff 0%,
+    #666666 50%,
+    #ffffff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-mask-image: url('/satellite-svgrepo-com-light.svg');
+  mask-image: url('/satellite-svgrepo-com-light.svg');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  background-size: 200% auto;
 }
 
 .logo-text-wrapper {
