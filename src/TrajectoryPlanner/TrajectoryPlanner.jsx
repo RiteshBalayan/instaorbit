@@ -13,7 +13,7 @@ function TrajectoryPlanner() {
     <div className="simulator">
       <GlobeAndTimer />
       <UtilityPanel />
-      <CustomCursor />
+
     </div>
   );
 }

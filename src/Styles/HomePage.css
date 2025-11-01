@@ -3,7 +3,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  cursor: none; /* Hide default cursor */
+
 }
 
 html, body {
@@ -19,6 +19,7 @@ html, body {
   overflow-x: hidden;
   background-color: #0a0a0a;
   z-index: 100000;
+  cursor: none; /* Hide default cursor */
 }
 
 /* Navigation */

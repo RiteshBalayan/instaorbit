@@ -14,9 +14,7 @@ body, html {
   }
 
   /* Add cursor styles */
-  * {
-    cursor: none !important;
-  }
+ 
 
   .cursor {
     width: 15px;
