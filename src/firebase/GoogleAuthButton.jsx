@@ -10,7 +10,15 @@ const GoogleAuthButton = ({ onSuccess, onError }) => {
   const handleGoogleAuth = async () => {
     try {
       const userCredential = await signInWithPopup(auth, googleProvider);
-      dispatch(setUser(userCredential.user));
+      const u = userCredential.user;
+      const safeUser = {
+        uid: u.uid,
+        displayName: u.displayName || null,
+        email: u.email || null,
+        photoURL: u.photoURL || null,
+        providerId: u.providerData && u.providerData[0] ? u.providerData[0].providerId : null,
+      };
+      dispatch(setUser(safeUser));
       if (onSuccess) onSuccess();
     } catch (error) {
       if (onError) onError(error.message);

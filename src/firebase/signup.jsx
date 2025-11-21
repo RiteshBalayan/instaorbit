@@ -19,7 +19,15 @@ const SignUp = ({ onSignUpSuccess, onSignUpFailure }) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
-      dispatch(setUser(userCredential.user));
+      const u = userCredential.user;
+      const safeUser = {
+        uid: u.uid,
+        displayName: u.displayName || null,
+        email: u.email || null,
+        photoURL: u.photoURL || null,
+        providerId: u.providerData && u.providerData[0] ? u.providerData[0].providerId : null,
+      };
+      dispatch(setUser(safeUser));
       onSignUpSuccess();
     } catch (error) {
       onSignUpFailure(error.message);

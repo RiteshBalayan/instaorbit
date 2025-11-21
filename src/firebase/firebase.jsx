@@ -24,7 +24,14 @@ const db = getFirestore(app);
 // Listen to auth state changes and dispatch appropriate actions
 onAuthStateChanged(auth, (user) => {
     if (user) {
-      store.dispatch(setUser(user));
+      const safeUser = {
+        uid: user.uid,
+        displayName: user.displayName || null,
+        email: user.email || null,
+        photoURL: user.photoURL || null,
+        providerId: user.providerData && user.providerData[0] ? user.providerData[0].providerId : null,
+      };
+      store.dispatch(setUser(safeUser));
     } else {
       store.dispatch(clearUser());
     }

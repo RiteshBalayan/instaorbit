@@ -73,11 +73,32 @@ export const fetchTrajectories = async () => {
             
             if (trajectoryDocSnap.exists()) {
               const data = trajectoryDocSnap.data();
+              // Normalize createdOn to a JS Date and a readable string
+              let createdOnDate = null;
+              if (data.createdOn) {
+                // Firestore may store a Timestamp; try to convert
+                if (typeof data.createdOn.toDate === 'function') {
+                  createdOnDate = data.createdOn.toDate();
+                } else if (data.createdOn instanceof Date) {
+                  createdOnDate = data.createdOn;
+                } else {
+                  // last resort: try to parse
+                  createdOnDate = new Date(data.createdOn);
+                }
+              }
+
+              const createdOnStr = createdOnDate ? createdOnDate.toLocaleString('en-US', {
+                month: 'long', day: 'numeric', year: 'numeric',
+                hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short'
+              }) : null;
+
               return {
                 id: trajectoryDocSnap.id,
                 name: data.name,
                 // If archived field missing, consider it unarchived (false)
                 archived: typeof data.archived === 'boolean' ? data.archived : false,
+                createdOn: createdOnStr,
+                createdOnRaw: createdOnDate,
               };
             } else {
               console.warn(`Trajectory document with ID ${id} does not exist.`);
@@ -139,10 +160,27 @@ export const fetchIterations = async (trajectoryId) => {
 
       if (!iterationsSnapshot.empty) {
         // Map over the snapshot to retrieve the IDs and Name fields of each document
-        const iterationsData = iterationsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().commitMessage
-        }));
+        const iterationsData = iterationsSnapshot.docs.map(doc => {
+          const d = doc.data();
+          // normalize timestamp
+          let tsRaw = null;
+          if (d.timestamp) {
+            if (typeof d.timestamp.toDate === 'function') tsRaw = d.timestamp.toDate();
+            else if (d.timestamp instanceof Date) tsRaw = d.timestamp;
+            else tsRaw = new Date(d.timestamp);
+          }
+          const tsStr = tsRaw ? tsRaw.toLocaleString('en-US', {
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short'
+          }) : null;
+
+          return {
+            id: doc.id,
+            name: d.commitMessage,
+            timestamp: tsStr,
+            timestampRaw: tsRaw,
+          };
+        });
 
         return iterationsData;
       } else {

@@ -13,7 +13,15 @@ const Login = ({ onLoginSuccess, onLoginFailure }) => {
   const handleLogin = async () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      dispatch(setUser(userCredential.user));
+      const u = userCredential.user;
+      const safeUser = {
+        uid: u.uid,
+        displayName: u.displayName || null,
+        email: u.email || null,
+        photoURL: u.photoURL || null,
+        providerId: u.providerData && u.providerData[0] ? u.providerData[0].providerId : null,
+      };
+      dispatch(setUser(safeUser));
       onLoginSuccess();
     } catch (error) {
       onLoginFailure(error.message);
