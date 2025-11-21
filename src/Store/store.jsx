@@ -7,6 +7,7 @@ import groupReducer from './groupSlice';
 import authReducer from './authSlice';
 import workingProjectReducer from './workingProject';
 import viewReducer from './View';
+import trajectoryReducer from './trajectorySlice';
 
 const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ const store = configureStore({
     groups: groupReducer,
     workingProject: workingProjectReducer,
     view: viewReducer,
+    trajectoryList: trajectoryReducer,
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import '../../../Styles/simulator/SlimTopBar.css'; 
+import styled, { keyframes } from 'styled-components';
 import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { auth } from '../../../firebase/firebase'; 
@@ -27,20 +27,22 @@ const Popup = ({ onClose, trajectories, iterations, type }) => {
   }, []);
 
   return (
-    <div className="popup-overlay">
-      <div className="popup-content" ref={popupRef}>
-        <button className="close-button" onClick={onClose}>X</button>
-        {type === 'trajectory' ? (
-          <>
-            <h2>Select a Trajectory</h2>
-            <TrajectoriesList trajectories={trajectories} />
-          </>
-        ) : (
-          <>
-            <h2>Select an Iteration</h2>
-            <ItterationList iterations={iterations} />
-          </>
-        )}
+    <div style={{position:'fixed',inset:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,backgroundColor:'rgba(0,0,0,0.45)'}}>
+      <div ref={popupRef} style={{width:'min(92vw,760px)', maxHeight:'80vh', overflow:'auto', borderRadius:12, padding:12, boxShadow:'0 20px 60px rgba(2,6,23,0.8)', background:'#0f1113', position:'relative'}}>
+        <button onClick={onClose} style={{position:'absolute',right:10,top:10,background:'transparent',border:'none',color:'#cfd6ff',cursor:'pointer'}}>✕</button>
+        <div style={{padding:'8px 6px 0 6px'}}>
+          {type === 'trajectory' ? (
+            <>
+              <h3 style={{margin:'0 0 8px 0',color:'#e8ebff'}}>Select a Trajectory</h3>
+              <TrajectoriesList trajectories={trajectories} />
+            </>
+          ) : (
+            <>
+              <h3 style={{margin:'0 0 8px 0',color:'#e8ebff'}}>Select an Iteration</h3>
+              <ItterationList iterations={iterations} />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -200,76 +202,243 @@ const TopBar = () => {
     };
   }, [showSaveAsInput, showNewTrajInput]);
 
-  return (
-    <div className="slim-top-bar">
-      <div ref={screenshotRef} ></div>
-      <div className="top-bar-items">
-        <p style={{ marginRight: '10px' }}>{ProjectName}</p>
-        {user && (
-        <>
-        <div className="top-bar-item" onClick={handleOpenClick}>Open</div>
-        <div className="top-bar-item" onClick={handleVersionClick}>Version</div>
+  // Ripple effect for buttons
+  const ripple = keyframes`
+    to {
+      transform: scale(2.5);
+      opacity: 0;
+    }
+  `;
+  const Bar = styled.div`
+    width: 100%;
+    background: linear-gradient(90deg, #232526 0%, #4e54c8 100%);
+    color: #f5f6fa;
+    font-family: 'Inter', 'Roboto', 'system-ui', sans-serif;
+    box-shadow: 0 1px 6px rgba(44,44,54,0.10);
+    padding: 0.18rem 0.7rem;
+    border-bottom: 1px solid #2d2d2d;
+    z-index: 100;
+    font-size: 0.85rem;
+  `;
+  const Items = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+  `;
+  const Item = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  `;
+  const RippleButton = styled.button`
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%);
+    color: #fff;
+    font-weight: 500;
+    font-family: inherit;
+    border: none;
+    border-radius: 6px;
+    padding: 0.22rem 0.7rem;
+    cursor: pointer;
+    transition: background 0.18s, box-shadow 0.18s, transform 0.08s;
+    box-shadow: 0 1px 4px rgba(78,84,200,0.08);
+    font-size: 0.85rem;
+    &:hover, &:focus {
+      background: linear-gradient(90deg, #8f94fb 0%, #4e54c8 100%);
+      box-shadow: 0 2px 8px rgba(78,84,200,0.18);
+      transform: scale(1.03);
+    }
+    &:active {
+      transform: scale(0.97);
+    }
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transform: scale(0);
+      animation: ${ripple} 0.6s linear;
+      pointer-events: none;
+    }
+  `;
+  const AuthSection = styled.div`
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+  `;
+  const AuthContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  `;
+  const Welcome = styled.span`
+    font-size: 0.85rem;
+    color: #b2b6c8;
+  `;
+  const PopupOverlay = styled.div`
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(44, 44, 54, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  `;
+  const PopupContent = styled.div`
+    background: #232526;
+    color: #f5f6fa;
+    border-radius: 6px;
+    box-shadow: 0 1px 6px rgba(44,44,54,0.10);
+    padding: 0.5rem 0.7rem;
+    min-width: 220px;
+    max-width: 90vw;
+    position: relative;
+    font-size: 0.85rem;
+    max-height: 340px;
+    overflow-y: auto;
+  `;
+  const CloseButton = styled.button`
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #414345;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    &:hover {
+      background: #4e54c8;
+    }
+  `;
+  const Input = styled.input`
+    background: #232526;
+    color: #f5f6fa;
+    border: 1px solid #4e54c8;
+    border-radius: 4px;
+    padding: 0.18rem 0.5rem;
+    font-size: 0.85rem;
+    margin-right: 0.3rem;
+    margin-bottom: 0.3rem;
+    &:focus {
+      outline: none;
+      border-color: #8f94fb;
+    }
+  `;
+  const LoadingIndicator = styled.div`
+    display: inline-block;
+    width: 0.8rem;
+    height: 0.8rem;
+    border: 2px solid #8f94fb;
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-left: 0.3rem;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  `;
 
-            <div className="top-bar-item">
-              <button className="top-bar-button" onClick={handleNewTrajClick} disabled={uploading}>
+  // Ripple effect for buttons
+  const handleRipple = (e) => {
+    const button = e.currentTarget;
+    const circle = document.createElement('span');
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const radius = diameter / 2;
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${e.clientX - button.getBoundingClientRect().left - radius}px`;
+    circle.style.top = `${e.clientY - button.getBoundingClientRect().top - radius}px`;
+    circle.classList.add('ripple');
+    button.appendChild(circle);
+    circle.addEventListener('animationend', () => circle.remove());
+  };
+
+  return (
+    <Bar>
+      <div ref={screenshotRef}></div>
+      <Items>
+        <p style={{ marginRight: '7px', fontWeight: 500, fontSize: '0.92rem', letterSpacing: '0.01em' }}>{ProjectName}</p>
+        {user && (
+          <>
+            <Item onClick={handleOpenClick} style={{cursor:'pointer'}}>
+              <RippleButton onMouseDown={handleRipple}>Open</RippleButton>
+            </Item>
+            <Item onClick={handleVersionClick} style={{cursor:'pointer'}}>
+              <RippleButton onMouseDown={handleRipple}>Version</RippleButton>
+            </Item>
+            <Item>
+              <RippleButton onMouseDown={handleRipple} onClick={handleNewTrajClick} disabled={uploading}>
                 New
-                {uploading && <div className="loading-indicator"> </div>}
-              </button>
-            </div>
+                {uploading && <LoadingIndicator />}
+              </RippleButton>
+            </Item>
             {showNewTrajInput && (
-              <div className="top-bar-item" ref={newTrajInputRef}>
-                <input
+              <Item ref={newTrajInputRef}>
+                <Input
                   type="text"
                   value={newTrajMessage}
                   onChange={(e) => setNewTrajMessage(e.target.value)}
+                  autoFocus
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   placeholder="Enter project name"
                 />
-                <button className="top-bar-button" onClick={handleNewTrajectory} disabled={uploading}>
+                <RippleButton onMouseDown={handleRipple} onClick={handleNewTrajectory} disabled={uploading}>
                   Create new Trajectory
-                </button>
-              </div>
+                </RippleButton>
+              </Item>
             )}
-            <div className="top-bar-item">
-              <button className="top-bar-button" onClick={handleSaveAsClick} disabled={uploading}>
+            <Item>
+              <RippleButton onMouseDown={handleRipple} onClick={handleSaveAsClick} disabled={uploading}>
                 Save As
-                {uploading && <div className="loading-indicator"> </div>}
-              </button>
-            </div>
+                {uploading && <LoadingIndicator />}
+              </RippleButton>
+            </Item>
             {showSaveAsInput && (
-              <div className="top-bar-item" ref={saveAsInputRef}>
-                <input
+              <Item ref={saveAsInputRef}>
+                <Input
                   type="text"
                   value={saveAsMessage}
                   onChange={(e) => setSaveAsMessage(e.target.value)}
+                  autoFocus
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   placeholder="Enter iteration message"
                 />
-                <button className="top-bar-button" onClick={handleSaveAs} disabled={uploading}>
-                  Create new itteration
-                </button>
-              </div>
+                <RippleButton onMouseDown={handleRipple} onClick={handleSaveAs} disabled={uploading}>
+                  Create new iteration
+                </RippleButton>
+              </Item>
             )}
-            <div className="top-bar-item">
-              <button className="top-bar-button" onClick={handleSave} disabled={downloading}>
+            <Item>
+              <RippleButton onMouseDown={handleRipple} onClick={handleSave} disabled={downloading}>
                 Save
-                {downloading && <div className="loading-indicator"></div>}
-              </button>
-            </div>
+                {downloading && <LoadingIndicator />}
+              </RippleButton>
+            </Item>
           </>
         )}
-        <div className="top-bar-item auth-section">
+        <AuthSection>
           {user ? (
-            <div className="auth-container">
-              <span className="welcome-message">Hello, {user.displayName || user.email}</span>
+            <AuthContainer>
+              <Welcome>Hello, {user.displayName || user.email}</Welcome>
               <SignOut className="auth-button"/>
-            </div>
+            </AuthContainer>
           ) : (
-            <div className="auth-container">
-              <span className="welcome-message">Log in to save your Progress</span>
+            <AuthContainer>
+              <Welcome>Log in to save your Progress</Welcome>
               <GoogleAuth className="auth-button"/>
-            </div>
+            </AuthContainer>
           )}
-        </div>
-      </div>
+        </AuthSection>
+      </Items>
       {showPopup && (
         <Popup 
           onClose={handleClosePopup} 
@@ -278,7 +447,7 @@ const TopBar = () => {
           type={popupType} 
         />
       )}
-    </div>
+    </Bar>
   );
 };
 

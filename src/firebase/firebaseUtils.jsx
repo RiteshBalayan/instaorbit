@@ -72,9 +72,12 @@ export const fetchTrajectories = async () => {
             const trajectoryDocSnap = await getDoc(trajectoryDocRef);
             
             if (trajectoryDocSnap.exists()) {
+              const data = trajectoryDocSnap.data();
               return {
                 id: trajectoryDocSnap.id,
-                name: trajectoryDocSnap.data().name
+                name: data.name,
+                // If archived field missing, consider it unarchived (false)
+                archived: typeof data.archived === 'boolean' ? data.archived : false,
               };
             } else {
               console.warn(`Trajectory document with ID ${id} does not exist.`);
@@ -100,6 +103,24 @@ export const fetchTrajectories = async () => {
   } catch (error) {
     console.error("Error fetching trajectories:", error);
     return [];
+  }
+};
+
+// Set/archive a trajectory by toggling `archived` boolean on the trajectory document
+export const setTrajectoryArchived = async (trajectoryId, archived) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      console.log('No user signed in');
+      return false;
+    }
+    const trajectoryDocRef = doc(db, 'trajectories', trajectoryId);
+    await updateDoc(trajectoryDocRef, { archived });
+    console.log(`Trajectory ${trajectoryId} archived=${archived}`);
+    return true;
+  } catch (error) {
+    console.error('Error setting trajectory archived flag:', error);
+    return false;
   }
 };
 

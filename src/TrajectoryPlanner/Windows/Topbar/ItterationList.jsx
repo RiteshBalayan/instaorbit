@@ -1,7 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { fetchIterations, downloadIterationState } from '../../../firebase/firebaseUtils';
 import { useSelector } from 'react-redux';
-import { Box, Card, CardContent, CardMedia, Typography, Button, CircularProgress, Grid } from '@mui/material';
+import styled from 'styled-components';
+
+const ListContainer = styled.div`
+  font-family: 'Inter', 'Roboto', 'system-ui', sans-serif;
+  font-size: 0.85rem;
+  min-width: 200px;
+  max-width: 260px;
+  background: #232526;
+  color: #e0e3ea;
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(44,44,54,0.10);
+  padding: 0.5rem 0.5rem 0.3rem 0.5rem;
+  max-height: 320px;
+  overflow-y: auto;
+`;
+const ListTitle = styled.div`
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+  color: #8f94fb;
+`;
+const FileList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+`;
+const FileItem = styled.li`
+  background: #232526;
+  color: #e0e3ea;
+  border-radius: 4px;
+  margin-bottom: 0.15rem;
+  padding: 0.28rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.12s;
+  font-size: 0.85rem;
+  &:hover {
+    background: #353a4d;
+    color: #fff;
+  }
+`;
+const ErrorMsg = styled.div`
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+`;
 
 const ItterationsList = () => {
   const [iterations, setIterations] = useState([]);
@@ -46,61 +92,22 @@ const ItterationsList = () => {
   };
 
   return (
-    <Box sx={{ p: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Iterations
-      </Typography>
-
-      {error && <Typography color="error">{error}</Typography>}
-
-      {downloading && <CircularProgress />}
-
+    <ListContainer>
+      <ListTitle>Iterations</ListTitle>
+      {error && <ErrorMsg>{error}</ErrorMsg>}
+      {downloading && <div style={{color:'#8f94fb',fontSize:'0.95em'}}>Loading...</div>}
       {!downloading && iterations.length > 0 && (
-        <Grid container spacing={3}>
+        <FileList>
           {iterations.map((iteration) => (
-            <Grid item xs={12} sm={6} md={4} key={iteration.id}>
-              <Card sx={{ maxWidth: 345 }}>
-                {iteration.image ? (
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={iteration.itterationImage}
-                    alt={`Iteration ${iteration.name}`}
-                  />
-                ) : (
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image="placeholder-image-url.jpg" // A placeholder if no image is available
-                    alt="No image available"
-                  />
-                )}
-
-                <CardContent>
-                  <Typography variant="h6" component="div">
-                    {iteration.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Created on: {new Date(iteration.createdAt).toLocaleDateString()}
-                  </Typography>
-
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    sx={{ mt: 2 }}
-                    onClick={() => handleClick(iteration.id)}
-                  >
-                    Load Iteration
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
+            <FileItem key={iteration.id} onClick={() => handleClick(iteration.id)}>
+              <span style={{fontWeight:500}}>{iteration.name}</span>
+              <span style={{marginLeft:'auto',fontSize:'0.85em',color:'#8f94fb'}}>ID: {iteration.id}</span>
+            </FileItem>
           ))}
-        </Grid>
+        </FileList>
       )}
-
-      {iterations.length === 0 && !error && <Typography>No iterations available.</Typography>}
-    </Box>
+      {iterations.length === 0 && !error && <div style={{color:'#b2b6c8'}}>No iterations available.</div>}
+    </ListContainer>
   );
 };
 
