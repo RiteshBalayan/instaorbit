@@ -3,7 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { uploadIteration, downloadIterationState, uploadAutoSave, updateIteration, newTrajectory } from '../../../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { auth } from '../../../firebase/firebase'; 
-import { updateitterationID, updatetrajectoryID, updateitterationName, updateIterationImage } from '../../../Store/workingProject';
+import { updateitterationID, updatetrajectoryID, updateitterationName, updatetrajectoryName, updateIterationImage } from '../../../Store/workingProject';
 import GoogleAuth from '../../../firebase/googleauth';
 import SignOut from '../../../firebase/signout';
 import TrajectoriesList from './TrajectoryList';
@@ -41,6 +41,30 @@ const Item = styled.div`
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  position: relative;
+  /* Tooltip for outer item wrapper using data-tooltip */
+  &::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    white-space: nowrap;
+    left: 50%;
+    top: calc(100% + 8px);
+    transform: translate(-50%, 0) scale(0.95);
+    opacity: 0;
+    background: rgba(10,12,18,0.95);
+    color: #e8ebff;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    transition: opacity 140ms ease, transform 140ms ease;
+    pointer-events: none;
+    box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+    z-index: 300;
+  }
+  &:hover::after, &:focus-within::after {
+    opacity: 1;
+    transform: translate(-50%, 6px) scale(1);
+  }
 `;
 
 const RippleButton = styled.button`
@@ -73,6 +97,29 @@ const RippleButton = styled.button`
     animation: ${rippleKeyframes} 0.6s linear;
     pointer-events: none;
   }
+  /* Custom tooltip using data-tooltip to ensure hover descriptions appear */
+  &::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    white-space: nowrap;
+    left: 50%;
+    top: calc(100% + 8px);
+    opacity: 0;
+    pointer-events: none;
+    background: rgba(10,12,18,0.95);
+    color: #e8ebff;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    transition: opacity 140ms ease, transform 140ms ease;
+    transform: translate(-50%, 0) scale(0.95);
+    box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+    z-index: 200;
+  }
+  &:hover::after, &:focus::after {
+    opacity: 1;
+    transform: translate(-50%, 6px) scale(1);
+  }
 `;
 
 const AuthSection = styled.div`
@@ -91,6 +138,45 @@ const AuthContainer = styled.div`
 const Welcome = styled.span`
   font-size: 0.85rem;
   color: #b2b6c8;
+`;
+
+const ProjectWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0;
+  max-width: 720px;
+  margin-right: 8px;
+`;
+
+const ProjectLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.92);
+  background: rgba(255,255,255,0.06); /* very light translucent */
+  padding: 6px 12px;
+  border-radius: 8px 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  min-height: 34px;
+`;
+
+const ProjectTitle = styled.div`
+  display: inline-flex;
+  align-items: center;
+  font-weight: 800;
+  font-size: 1.12rem; /* larger readable name without extra vertical padding */
+  color: rgba(206, 206, 206, 0.95);
+  background: rgba(20,20,20,0.18); /* darker translucent grey */
+  padding: 6px 12px;
+  border-radius: 0 8px 8px 0;
+  max-width: 640px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 34px;
 `;
 
 const PopupOverlay = styled.div`
@@ -216,6 +302,8 @@ const TopBar = () => {
   const [saveAsMessage, setSaveAsMessage] = useState('');
   const [showNewTrajInput, setShowNewTrajInput] = useState(false);
   const [newTrajMessage, setNewTrajMessage] = useState('');
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [popupType, setPopupType] = useState('');
   const [loadNotification, setLoadNotification] = useState(null);
@@ -242,47 +330,41 @@ const TopBar = () => {
   };
 
   const handleNewTrajClick = () => {
-    setShowNewTrajInput(true);
+    // open modal for creating a new trajectory
+    setNewTrajMessage('');
+    setShowNewModal(true);
   };
 
   const handleNewTrajectory = async () => {
-    if (user && newTrajMessage) {
-      setUploading(true);
-      try {
-        const newTrajectoryId = await newTrajectory(newTrajMessage);
-        if (newTrajectoryId) {
-          dispatch(updatetrajectoryID(newTrajectoryId));
-          dispatch(updateitterationName(newTrajMessage));
-        }
-        const InitialCommitMessage = 'InitialCommit';
-
-        if (user && InitialCommitMessage) {
-          setUploading(true);
-          try {
-            const newIterationId = await uploadIteration(newTrajectoryId, state, InitialCommitMessage);
-            if (newIterationId) {
-              dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux store
-            }
-            console.log('Upload successful');
-          } catch (error) {
-            console.error('Upload failed:', error);
-          } finally {
-            setUploading(false);
-          }
-        } else {
-          console.log('User not authenticated or save message is empty. Upload operation not allowed.');
-        }
-
-        console.log('Upload successful');
-        setNewTrajMessage(''); // Clear the input field after saving
-        setShowNewTrajInput(false); // Hide the input field after saving
-      } catch (error) {
-        console.error('Upload failed:', error);
-      } finally {
-        setUploading(false);
-      }
-    } else {
+    if (!user || !newTrajMessage) {
       console.log('User not authenticated or save message is empty. Upload operation not allowed.');
+      return;
+    }
+    setShowNewModal(false);
+    setUploading(true);
+    try {
+      const newTrajectoryId = await newTrajectory(newTrajMessage);
+      if (newTrajectoryId) {
+        dispatch(updatetrajectoryID(newTrajectoryId));
+        dispatch(updatetrajectoryName(newTrajMessage));
+      }
+      const InitialCommitMessage = 'InitialCommit';
+      if (newTrajectoryId && InitialCommitMessage) {
+        try {
+          const newIterationId = await uploadIteration(newTrajectoryId, state, InitialCommitMessage);
+          if (newIterationId) dispatch(updateitterationID(newIterationId));
+        } catch (err) {
+          console.error('Initial iteration upload failed', err);
+        }
+      }
+      setNewTrajMessage('');
+      // show success notification
+      setLoadNotification('New trajectory created');
+      setTimeout(() => setLoadNotification(null), 2800);
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -304,36 +386,43 @@ const TopBar = () => {
   };
 
   const handleSaveAsClick = () => {
-    setShowSaveAsInput(true);
+    // open Save As modal
+    setSaveAsMessage('');
+    setShowSaveAsModal(true);
   };
 
   const handleSaveAs = async () => {
-    if (user && saveAsMessage) {
-      setUploading(true);
-      const canvas = await html2canvas(screenshotRef.current, {
-        scale: 0.5, // lower the scale for a lower quality image
-      });
-  
-      // Convert the canvas to a data URL (base64 image format)
-      const imgData = canvas.toDataURL('image/jpeg', 0.5); // Set quality to 0.5 for low quality
-      // Dispatch the image data to Redux store
-      dispatch(updateIterationImage(imgData));
-      try {
-        const newIterationId = await uploadIteration(trajectoryID, state, saveAsMessage);
-        if (newIterationId) {
-          dispatch(updateitterationID(newIterationId)); // Update the iteration ID in Redux stor
-        }
-
-        console.log('Upload successful');
-        setSaveAsMessage(''); // Clear the input field after saving
-        setShowSaveAsInput(false); // Hide the input field after saving
-      } catch (error) {
-        console.error('Upload failed:', error);
-      } finally {
-        setUploading(false);
-      }
-    } else {
+    if (!user || !saveAsMessage || !trajectoryID) {
       console.log('User not authenticated or save message is empty. Upload operation not allowed.');
+      return;
+    }
+    setShowSaveAsModal(false);
+    setUploading(true);
+    try {
+      try {
+        if (screenshotRef && screenshotRef.current) {
+          try {
+            const canvas = await html2canvas(screenshotRef.current, { scale: 0.5 });
+            const imgData = canvas && canvas.toDataURL ? canvas.toDataURL('image/jpeg', 0.5) : null;
+            if (imgData) dispatch(updateIterationImage(imgData));
+          } catch (err) {
+            console.warn('Failed to capture screenshot for iteration image:', err);
+          }
+        }
+      } catch (err) {
+        console.warn('Screenshot capture error:', err);
+      }
+
+      const newIterationId = await uploadIteration(trajectoryID, state, saveAsMessage);
+      if (newIterationId) dispatch(updateitterationID(newIterationId));
+      setSaveAsMessage('');
+      // show success notification
+      setLoadNotification('New iteration created');
+      setTimeout(() => setLoadNotification(null), 2800);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
     }
   };
   
@@ -375,16 +464,25 @@ const TopBar = () => {
     <Bar>
       <div ref={screenshotRef}></div>
       <Items>
-        <p style={{ marginRight: '7px', fontWeight: 500, fontSize: '0.92rem', letterSpacing: '0.01em' }}>{ProjectName}</p>
+        {(() => {
+          const fullName = ProjectName || 'Untitled';
+          const displayed = fullName.length > 50 ? fullName.slice(0, 50) + '…' : fullName;
+          return (
+            <ProjectWrapper>
+              <ProjectLabel>Project</ProjectLabel>
+              <ProjectTitle title={fullName}>{displayed}</ProjectTitle>
+            </ProjectWrapper>
+          );
+        })()}
         {user && (
           <>
-            <Item onClick={handleOpenClick} style={{cursor:'pointer'}}>
+            <Item data-tooltip="Open a new project from library" onClick={handleOpenClick} style={{cursor:'pointer'}}>
               <RippleButton onMouseDown={handleRipple} title="Open a new project from library" aria-label="Open a new project from library">Open</RippleButton>
             </Item>
-            <Item onClick={handleVersionClick} style={{cursor:'pointer'}}>
+            <Item data-tooltip="See different iteration of this project" onClick={handleVersionClick} style={{cursor:'pointer'}}>
               <RippleButton onMouseDown={handleRipple} title="See different iteration of this project" aria-label="See different iteration of this project">Version</RippleButton>
             </Item>
-            <Item>
+            <Item data-tooltip="Start a new project from scratch">
               <RippleButton onMouseDown={handleRipple} onClick={handleNewTrajClick} disabled={uploading} title="Start a new project from scratch" aria-label="Start a new project from scratch">
                 New
                 {uploading && <LoadingIndicator />}
@@ -407,7 +505,7 @@ const TopBar = () => {
                 </RippleButton>
               </Item>
             )}
-            <Item>
+            <Item data-tooltip="Save current progress as new iteration">
               <RippleButton onMouseDown={handleRipple} onClick={handleSaveAsClick} disabled={uploading} title="Save current progress as new iteration" aria-label="Save current progress as new iteration">
                 Save As
                 {uploading && <LoadingIndicator />}
@@ -430,7 +528,7 @@ const TopBar = () => {
                 </RippleButton>
               </Item>
             )}
-            <Item>
+            <Item data-tooltip="Save progress to current iteration">
               <RippleButton onMouseDown={handleRipple} onClick={handleSave} disabled={downloading} title="Save progress to current iteration" aria-label="Save progress to current iteration">
                 Save
                 {downloading && <LoadingIndicator />}
@@ -473,6 +571,51 @@ const TopBar = () => {
             {loadNotification}
           </div>
         </div>
+      )}
+
+      {/* New Trajectory popup modal */}
+      {showNewModal && (
+        <PopupOverlay>
+          <PopupContent style={{width:420,maxWidth:'92vw'}}>
+            <CloseButton onClick={() => setShowNewModal(false)}>✕</CloseButton>
+            <div style={{display:'flex',gap:12,alignItems:'center'}}>
+              <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,#6f77ff,#4e54c8)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>✚</div>
+              <div style={{flex:1}}>
+                <h3 style={{margin:'0 0 6px 0'}}>Create a new trajectory from scratch</h3>
+                <div style={{color:'#bfc7ee',fontSize:13}}>This will create a new project and upload an initial iteration snapshot.</div>
+              </div>
+            </div>
+            <div style={{marginTop:12}}>
+              <Input value={newTrajMessage} onChange={(e) => setNewTrajMessage(e.target.value)} placeholder="Trajectory name" onKeyDown={(e) => { if (e.key === 'Enter') handleNewTrajectory(); }} />
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:12}}>
+              <RippleButton onMouseDown={handleRipple} onClick={()=>setShowNewModal(false)} style={{background:'#414345'}} title="Cancel">Cancel</RippleButton>
+              <RippleButton onMouseDown={handleRipple} onClick={handleNewTrajectory} disabled={uploading || !newTrajMessage} title="Create new trajectory">Create new trajectory {uploading && <LoadingIndicator />}</RippleButton>
+            </div>
+          </PopupContent>
+        </PopupOverlay>
+      )}
+      {/* Save As popup modal */}
+      {showSaveAsModal && (
+        <PopupOverlay>
+          <PopupContent style={{width:420,maxWidth:'92vw'}}>
+            <CloseButton onClick={() => setShowSaveAsModal(false)}>✕</CloseButton>
+            <div style={{display:'flex',gap:12,alignItems:'center'}}>
+              <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,#4ee0c8,#2fc6b5)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>💾</div>
+              <div style={{flex:1}}>
+                <h3 style={{margin:'0 0 6px 0'}}>Save current state as a new iteration</h3>
+                <div style={{color:'#bfc7ee',fontSize:13}}>Provide a short message describing this iteration. A thumbnail will be captured if available.</div>
+              </div>
+            </div>
+            <div style={{marginTop:12}}>
+              <Input value={saveAsMessage} onChange={(e) => setSaveAsMessage(e.target.value)} placeholder="Iteration message" onKeyDown={(e) => { if (e.key === 'Enter') handleSaveAs(); }} />
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:12}}>
+              <RippleButton onMouseDown={handleRipple} onClick={()=>setShowSaveAsModal(false)} style={{background:'#414345'}} title="Cancel">Cancel</RippleButton>
+              <RippleButton onMouseDown={handleRipple} onClick={handleSaveAs} disabled={uploading || !saveAsMessage} title="Save as new iteration">Save As {uploading && <LoadingIndicator />}</RippleButton>
+            </div>
+          </PopupContent>
+        </PopupOverlay>
       )}
     </Bar>
   );

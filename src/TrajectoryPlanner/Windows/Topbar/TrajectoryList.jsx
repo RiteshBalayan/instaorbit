@@ -31,10 +31,9 @@ const FileList = styled.ul`
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 0.6rem;
   align-items: start;
-  justify-items: stretch;
   width: 100%;
   box-sizing: border-box;
 `;
@@ -150,7 +149,7 @@ const TrajCard = styled.div`
   align-items:center;
   justify-content:center;
   text-align:center;
-  min-height:120px;
+  min-height:110px;
   transition: transform .12s, box-shadow .12s;
   cursor:pointer;
   border: 1px solid rgba(255,255,255,0.02);
@@ -159,8 +158,8 @@ const TrajCard = styled.div`
 `;
 
 const TrajIcon = styled.div`
-  width:64px; height:64px; border-radius:12px; display:flex;align-items:center;justify-content:center;
-  background: linear-gradient(135deg, rgba(143,148,251,0.12), rgba(143,148,251,0.06)); color:#9aa0f7; font-size:24px;
+  width:56px; height:56px; border-radius:12px; display:flex;align-items:center;justify-content:center;
+  background: linear-gradient(135deg, rgba(143,148,251,0.12), rgba(143,148,251,0.06)); color:#9aa0f7; font-size:22px;
 `;
 
 const TrajName = styled.div`

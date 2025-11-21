@@ -6,6 +6,7 @@ const workingProject = createSlice({
   initialState: {
     trajectoryID: null,
     trajectoryName: 'Unsaved Project',
+    itterationName: 'Initial commit',
     itterationID: null,
     itterationImage: null,
   },
@@ -17,6 +18,9 @@ const workingProject = createSlice({
       state.itterationID = action.payload;
     },
     updateitterationName(state, action) {
+      state.itterationName = action.payload;
+    },
+    updatetrajectoryName(state, action) {
       state.trajectoryName = action.payload;
     },
     updateIterationImage(state, action) {
@@ -34,6 +38,7 @@ export const {
   updatetrajectoryID,
   updateitterationID,
   updateitterationName,
+  updatetrajectoryName,
   updateIterationImage,
 } = workingProject.actions;
 

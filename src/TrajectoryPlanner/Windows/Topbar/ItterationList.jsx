@@ -202,9 +202,17 @@ const ItterationsList = ({ iterations: propIterations, onLoaded, onClose }) => {
       }
 
       dispatch(updatetrajectoryID(TrajectoryID));
+      // Always update trajectory name in Redux (find from prop or fallback)
+      let trajName = 'Unsaved Project';
+      if (typeof window !== 'undefined' && window.__TRAJECTORYS__ && window.__TRAJECTORYS__[TrajectoryID]) {
+        trajName = window.__TRAJECTORYS__[TrajectoryID].name;
+      } else if (iterations.length > 0 && iterations[0].trajectoryName) {
+        trajName = iterations[0].trajectoryName;
+      }
+      dispatch(require('../../../Store/workingProject').updatetrajectoryName(trajName));
       dispatch(updateitterationID(iterationId));
       const iterObj = iterations.find(i => i.id === iterationId);
-      if (iterObj) dispatch(updateitterationName(iterObj.name));
+      if (iterObj) dispatch(require('../../../Store/workingProject').updateitterationName(iterObj.name));
 
       if (typeof onLoaded === 'function') {
         const message = iterObj ? `Iteration "${iterObj.name}" of trajectory loaded into project` : 'Iteration loaded into project';
