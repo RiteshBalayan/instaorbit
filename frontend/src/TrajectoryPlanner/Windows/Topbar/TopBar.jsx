@@ -15,7 +15,7 @@ import NotificationToast from './components/NotificationToast';
 import ProjectDisplay from './components/ProjectDisplay';
 import ActionButtons from './components/ActionButtons';
 import AuthenticationSection from './components/AuthenticationSection';
-import { setViewMode } from '../../../Store/View';
+import { setViewMode, toggleControlPanel, toggleLinkBudget } from '../../../Store/View';
 
 
 const TopBar = () => {
@@ -24,6 +24,8 @@ const TopBar = () => {
   const ProjectName = useSelector((state) => state.workingProject.trajectoryName);
   const trajectoryID = useSelector((state) => state.workingProject.trajectoryID);
   const currentViewMode = useSelector((state) => state.view.viewMode);
+  const showControlPanel = useSelector((state) => state.view.showControlPanel);
+  const showLinkBudget = useSelector((state) => state.view.showLinkBudget);
   const dispatch = useDispatch();
   const user = auth.currentUser;
   
@@ -81,6 +83,10 @@ const TopBar = () => {
           hasTrajectory={hasTrajectory}
           currentViewMode={currentViewMode}
           onChangeView={(mode) => dispatch(setViewMode(mode))}
+          showControlPanel={showControlPanel}
+          showLinkBudget={showLinkBudget}
+          onToggleControlPanel={() => dispatch(toggleControlPanel())}
+          onToggleLinkBudget={() => dispatch(toggleLinkBudget())}
         />
 
         <AuthenticationSection user={user} />

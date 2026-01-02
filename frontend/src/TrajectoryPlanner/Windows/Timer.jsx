@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment';
 import { toggleCoupled, setstarttime } from '../../Store/timeSlice';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
@@ -36,6 +36,7 @@ import {
 
 const Timer = () => {
   const dispatch = useDispatch();
+  const showControlPanel = useSelector((state) => state.view.showControlPanel);
   
   // Local state
   const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
@@ -166,45 +167,47 @@ const Timer = () => {
 
   return (
     <div className="exptimer-container">
-      <div className="time-controller">
-        <div className="control-panel-title">Control Panel</div>
-        <div className="controller-content">
-          {/* Time Display Section */}
-          <TimeDisplay
-            currentTime={formatting.currentTime}
-            elapsedTime={formatting.formattedElapsedTime}
-            timeUnit={formatting.timeUnit}
-            onUnitChange={handleTimeUnitChange}
-            timeUnitConfig={TIME_UNIT_CONFIG}
-          />
-          
-          {/* All Transport Controls in one horizontal line */}
-          <TimeControls
-            isRunning={simulation.isRunning}
-            onPlayPause={handleStartPause}
-            onReset={handleReset}
-            renderRunning={render.renderRunning}
-            coupled={simulation.coupled}
-            onRenderPlayPause={handleRenderStartPause}
-            onCouplingToggle={handleCoupleToggle}
-          />
-          
-          {/* Start Time Control */}
-          <StartTimeControl
-            startTime={formatting.standardStartTime}
-            onOpenPicker={() => setShowDatePicker(true)}
-          />
-          
-          {/* Playback Speed Controls */}
-          <TimeStepControls
-            simStep={timeStep}
-            renderStep={simStep}
-            coupled={simulation.coupled}
-            onSimStepChange={handleTimeStepChange}
-            onRenderStepChange={handleRenderStepChange}
-          />
+      {showControlPanel && (
+        <div className="time-controller">
+          <div className="control-panel-title">Control Panel</div>
+          <div className="controller-content">
+            {/* Time Display Section */}
+            <TimeDisplay
+              currentTime={formatting.currentTime}
+              elapsedTime={formatting.formattedElapsedTime}
+              timeUnit={formatting.timeUnit}
+              onUnitChange={handleTimeUnitChange}
+              timeUnitConfig={TIME_UNIT_CONFIG}
+            />
+            
+            {/* All Transport Controls in one horizontal line */}
+            <TimeControls
+              isRunning={simulation.isRunning}
+              onPlayPause={handleStartPause}
+              onReset={handleReset}
+              renderRunning={render.renderRunning}
+              coupled={simulation.coupled}
+              onRenderPlayPause={handleRenderStartPause}
+              onCouplingToggle={handleCoupleToggle}
+            />
+            
+            {/* Start Time Control */}
+            <StartTimeControl
+              startTime={formatting.standardStartTime}
+              onOpenPicker={() => setShowDatePicker(true)}
+            />
+            
+            {/* Playback Speed Controls */}
+            <TimeStepControls
+              simStep={timeStep}
+              renderStep={simStep}
+              coupled={simulation.coupled}
+              onSimStepChange={handleTimeStepChange}
+              onRenderStepChange={handleRenderStepChange}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <TimelinePanel
         panelRef={timelinePanelRef}

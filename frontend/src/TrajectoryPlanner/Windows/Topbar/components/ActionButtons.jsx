@@ -35,7 +35,11 @@ const ActionButtons = ({
   user,
   hasTrajectory,
   currentViewMode,
-  onChangeView
+  onChangeView,
+  showControlPanel,
+  showLinkBudget,
+  onToggleControlPanel,
+  onToggleLinkBudget
 }) => {
   const isDisabled = !user;
   const isProjectDisabled = !user || !hasTrajectory;
@@ -62,6 +66,10 @@ const ActionButtons = ({
         currentViewMode={currentViewMode}
         onChange={onChangeView}
         handleRipple={handleRipple}
+        showControlPanel={showControlPanel}
+        showLinkBudget={showLinkBudget}
+        onToggleControlPanel={onToggleControlPanel}
+        onToggleLinkBudget={onToggleLinkBudget}
       />
 
       <Item 

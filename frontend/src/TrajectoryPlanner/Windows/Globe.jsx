@@ -11,12 +11,15 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 
 function Globe() {
   const viewMode = useSelector((state) => state.view.viewMode || 'globe');
+  const showLinkBudget = useSelector((state) => state.view.showLinkBudget);
   return (
     <div className='Globe-panel' style={{ position: 'relative' }}>
       <SlimTopBar />
-      <div className="globe-overlay">
-        <LinkBudgetBoard />
-      </div>
+      {showLinkBudget && (
+        <div className="globe-overlay">
+          <LinkBudgetBoard />
+        </div>
+      )}
 
       {viewMode === 'globe' && (
         <ErrorBoundary fallbackMessage="Globe view failed to render.">

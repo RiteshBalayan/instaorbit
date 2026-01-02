@@ -1,5 +1,6 @@
 import React from 'react';
 import UtilityPanel from './Windows/Sidebar/UtilityPanel';
+import { useSelector } from 'react-redux';
 import '../Styles/simulator/Simulator.css';
 import GlobeAndTimer from './Windows/GlobeAndTimer';
 import CustomCursor from '../components/CustomCursor';

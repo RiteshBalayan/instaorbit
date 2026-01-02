@@ -14,6 +14,8 @@ const initialState = {
   ReferenceSystem: initialRefrenceSystem,
   CentralObject: InitialCentralObject,
   viewMode: 'globe',
+  showControlPanel: true,
+  showLinkBudget: false,
 };
 
 const viewSlice = createSlice({
@@ -47,6 +49,12 @@ const viewSlice = createSlice({
     setViewMode: (state, action) => {
       state.viewMode = action.payload;
     },
+    toggleControlPanel: (state) => {
+      state.showControlPanel = !state.showControlPanel;
+    },
+    toggleLinkBudget: (state) => {
+      state.showLinkBudget = !state.showLinkBudget;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
@@ -55,6 +63,6 @@ const viewSlice = createSlice({
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleLinkBudget } = viewSlice.actions;
 
 export default viewSlice.reducer;
