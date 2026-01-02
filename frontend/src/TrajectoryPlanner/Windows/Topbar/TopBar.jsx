@@ -2,10 +2,10 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { auth } from '../../../firebase/firebase';
 import { Bar, Items } from './TopBar.styles';
-import { useTopBarState } from './hooks/useTopBarState';
-import { useProjectOperations } from './hooks/useProjectOperations';
-import { useRippleEffect } from './hooks/useRippleEffect';
-import { useClickOutside } from './hooks/useClickOutside';
+import { useTopBarState } from '../../../features/topbar/hooks/useTopBarState';
+import { useProjectOperations } from '../../../features/topbar/hooks/useProjectOperations';
+import { useRippleEffect } from '../../../features/topbar/hooks/useRippleEffect';
+import { useClickOutside } from '../../../features/topbar/hooks/useClickOutside';
 import NewTrajectoryModal from './components/NewTrajectoryModal';
 import SaveModal from './components/SaveModal';
 import SaveAsModal from './components/SaveAsModal';
@@ -59,7 +59,7 @@ const TopBar = () => {
     <Bar>
       <Items>
         <ProjectDisplay projectName={ProjectName} />
-        
+
         <ActionButtons
           operations={operations}
           handleRipple={handleRipple}
@@ -76,9 +76,10 @@ const TopBar = () => {
           user={user}
           hasTrajectory={hasTrajectory}
         />
-        
+
         <AuthenticationSection user={user} />
       </Items>
+
       <ProjectPopup
         isOpen={showPopup}
         onClose={operations.handleClosePopup}

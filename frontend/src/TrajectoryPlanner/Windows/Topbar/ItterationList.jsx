@@ -2,18 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchIterations, downloadIterationState } from '../../../firebase/firebaseUtils';
 import { updatetrajectoryID, updateitterationID, updateitterationName, updatetrajectoryName } from '../../../Store/workingProject';
-import { useListState } from './hooks/useListState.js';
-import { useListSorting, toggleSort } from './hooks/useListSorting.js';
-import {
-  ListContainer,
-  ListTitle,
-  FileList,
-  ErrorMsg,
-  LoadingOverlay,
-  Spinner,
-} from './components/ListComponents.styles';
-import ListControls from './components/ListControls';
-import IterationCard from './components/IterationCard';
+import { useListState } from '../../../features/topbar/hooks/useListState.js';
+import { useListSorting, toggleSort } from '../../../features/topbar/hooks/useListSorting.js';
+import IterationsListUI from '../../../ui/kit/topbar/IterationsListUI.jsx';
 
 const ItterationsList = ({ iterations: propIterations, onLoaded, onClose }) => {
   const [iterations, setIterations] = useState(propIterations || []);
@@ -138,50 +129,14 @@ const ItterationsList = ({ iterations: propIterations, onLoaded, onClose }) => {
   );
 
   return (
-    <ListContainer>
-      {state.isRestoring && (
-        <LoadingOverlay>
-          <Spinner>Loading</Spinner>
-        </LoadingOverlay>
-      )}
-      
-      <ListTitle>Iterations</ListTitle>
-      
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-        <ListControls
-          filter={state.filter}
-          onFilterChange={(e) => state.setFilter(e.target.value)}
-          view={state.view}
-          onViewChange={state.setView}
-          sortBy={state.sortBy}
-          sortDir={state.sortDir}
-          onSortChange={(field) =>
-            toggleSort(field, state.sortBy, state.sortDir, state.setSortBy, state.setSortDir)
-          }
-          placeholder="Filter iterations..."
-        />
-      </div>
-      
-      {state.error && <ErrorMsg>{state.error}</ErrorMsg>}
-      {state.loading && <div style={{ color: '#8f94fb', fontSize: '0.95em' }}>Loading...</div>}
-      
-      {!state.loading && filteredIterations.length > 0 && (
-        <FileList style={state.view === 'list' ? { gridTemplateColumns: '1fr' } : undefined}>
-          {filteredIterations.map((iteration) => (
-            <IterationCard
-              key={iteration.id}
-              iteration={iteration}
-              onClick={() => handleLoadIteration(iteration.id)}
-              view={state.view}
-            />
-          ))}
-        </FileList>
-      )}
-      
-      {filteredIterations.length === 0 && !state.error && (
-        <div style={{ color: '#b2b6c8' }}>No iterations available.</div>
-      )}
-    </ListContainer>
+    <IterationsListUI
+      state={{
+        ...state,
+        onToggleSort: (field) => toggleSort(field, state.sortBy, state.sortDir, state.setSortBy, state.setSortDir),
+      }}
+      filteredIterations={filteredIterations}
+      onLoadIteration={handleLoadIteration}
+    />
   );
 };
 
