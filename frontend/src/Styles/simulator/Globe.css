@@ -1,0 +1,25 @@
+.Globe-panel {
+    /*position: fixed;*/
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%; /* Fixed width for the panel */
+    background: rgba(0, 0, 0, 0.8); /* Black tint with opacity */
+    display: flex;
+    flex-direction: column;
+    z-index: 800;
+  }
+
+.globe-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 850;
+  pointer-events: none;
+}
+
+.globe-overlay > * {
+  pointer-events: auto;
+}
+
+  

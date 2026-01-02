@@ -1,0 +1,512 @@
+import { db } from './firebase';
+import { doc, setDoc, getDoc, deleteDoc, updateDoc, collection, addDoc, arrayUnion, getDocs } from "firebase/firestore";
+import { auth } from './firebase';
+import { useDispatch } from 'react-redux';
+
+
+// Function to serialize the state if needed
+const serializeState = (state) => {
+  // You can perform any additional serialization here if needed
+  // For now, we assume state is serializable as-is
+  return JSON.parse(JSON.stringify(state)); // Ensures deep copy and serialization
+};
+
+//Function to create new Trajectory
+export const newTrajectory = async (name) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      // Create a new document reference with an auto-generated ID
+      const trajectoryDocRef = doc(collection(db, "trajectories"));
+      
+      // Add initial data to the new document
+      const initialData = {
+        users: [user.uid], // Store the ID of the user who created the document
+        createdOn: new Date(),
+        name: name,
+      };
+      
+      // Set the document data
+      await setDoc(trajectoryDocRef, initialData);
+      
+      console.log(`New trajectory created successfully with ID '${trajectoryDocRef.id}'`);
+
+            // Update the user's document to include this trajectory ID
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        trajectories: arrayUnion(trajectoryDocRef.id)
+      });
+      
+      // Return the new document ID
+      return trajectoryDocRef.id;
+    } else {
+      console.log("No user is signed in");
+      return null;
+    }
+
+  } catch (error) {
+    console.error("Error creating new trajectory: ", error);
+    return null;
+  }
+};
+
+//Fuction to fetch trajectory projects for user
+export const fetchTrajectories = async () => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      console.log("User ID:", user.uid);
+      // Get the document from the 'users' collection with the current user's UID
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+
+        if (userData && userData.trajectories) {
+          const trajectoryIds = userData.trajectories;
+
+          // Fetch all trajectory documents using the IDs in the user's trajectories array
+          const trajectoryPromises = trajectoryIds.map(async id => {
+            const trajectoryDocRef = doc(db, "trajectories", id);
+            const trajectoryDocSnap = await getDoc(trajectoryDocRef);
+            
+            if (trajectoryDocSnap.exists()) {
+              const data = trajectoryDocSnap.data();
+              // Normalize createdOn to a JS Date and a readable string
+              let createdOnDate = null;
+              if (data.createdOn) {
+                // Firestore may store a Timestamp; try to convert
+                if (typeof data.createdOn.toDate === 'function') {
+                  createdOnDate = data.createdOn.toDate();
+                } else if (data.createdOn instanceof Date) {
+                  createdOnDate = data.createdOn;
+                } else {
+                  // last resort: try to parse
+                  createdOnDate = new Date(data.createdOn);
+                }
+              }
+
+              const createdOnStr = createdOnDate ? createdOnDate.toLocaleString('en-US', {
+                month: 'long', day: 'numeric', year: 'numeric',
+                hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short'
+              }) : null;
+
+              // Fetch the latest iteration thumbnail
+              let latestThumbnail = null;
+              try {
+                const iterationsRef = collection(db, "trajectories", id, "iterations");
+                const iterationsSnap = await getDocs(iterationsRef);
+                if (!iterationsSnap.empty) {
+                  // Find the latest iteration by timestamp
+                  let latestIteration = null;
+                  let latestTime = null;
+                  
+                  iterationsSnap.docs.forEach(doc => {
+                    const iterData = doc.data();
+                    if (iterData.timestamp) {
+                      let ts = null;
+                      if (typeof iterData.timestamp.toDate === 'function') {
+                        ts = iterData.timestamp.toDate();
+                      } else if (iterData.timestamp instanceof Date) {
+                        ts = iterData.timestamp;
+                      } else {
+                        ts = new Date(iterData.timestamp);
+                      }
+                      
+                      if (!latestTime || ts > latestTime) {
+                        latestTime = ts;
+                        latestIteration = iterData;
+                      }
+                    }
+                  });
+                  
+                  if (latestIteration && latestIteration.thumbnail) {
+                    latestThumbnail = latestIteration.thumbnail;
+                  }
+                }
+              } catch (err) {
+                console.warn(`Could not fetch iterations for trajectory ${id}:`, err);
+              }
+
+              return {
+                id: trajectoryDocSnap.id,
+                name: data.name,
+                // If archived field missing, consider it unarchived (false)
+                archived: typeof data.archived === 'boolean' ? data.archived : false,
+                createdOn: createdOnStr,
+                createdOnRaw: createdOnDate,
+                thumbnail: latestThumbnail,
+              };
+            } else {
+              console.warn(`Trajectory document with ID ${id} does not exist.`);
+              return null;
+            }
+          });
+
+          const trajectoriesData = (await Promise.all(trajectoryPromises)).filter(Boolean); // Filter out any null values
+
+          return trajectoriesData;
+        } else {
+          console.log('No trajectories found for this user.');
+          return [];
+        }
+      } else {
+        console.log('User document does not exist.');
+        return [];
+      }
+    } else {
+      console.log('No user is currently logged in.');
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching trajectories:", error);
+    return [];
+  }
+};
+
+// Set/archive a trajectory by toggling `archived` boolean on the trajectory document
+export const setTrajectoryArchived = async (trajectoryId, archived) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      console.log('No user signed in');
+      return false;
+    }
+    const trajectoryDocRef = doc(db, 'trajectories', trajectoryId);
+    await updateDoc(trajectoryDocRef, { archived });
+    console.log(`Trajectory ${trajectoryId} archived=${archived}`);
+    return true;
+  } catch (error) {
+    console.error('Error setting trajectory archived flag:', error);
+    return false;
+  }
+};
+
+// Delete a trajectory permanently (including all iterations)
+export const deleteTrajectory = async (trajectoryId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      console.log('No user signed in');
+      return false;
+    }
+
+    // Delete all iterations first
+    const iterationsRef = collection(db, 'trajectories', trajectoryId, 'iterations');
+    const iterationsSnapshot = await getDocs(iterationsRef);
+    
+    const deleteIterationPromises = iterationsSnapshot.docs.map(iterDoc => 
+      deleteDoc(doc(db, 'trajectories', trajectoryId, 'iterations', iterDoc.id))
+    );
+    await Promise.all(deleteIterationPromises);
+    console.log(`Deleted ${iterationsSnapshot.size} iterations from trajectory ${trajectoryId}`);
+
+    // Delete the trajectory document
+    const trajectoryDocRef = doc(db, 'trajectories', trajectoryId);
+    await deleteDoc(trajectoryDocRef);
+    console.log(`Trajectory ${trajectoryId} deleted successfully`);
+
+    // Remove trajectory ID from user's trajectories array
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const trajectories = userData.trajectories || [];
+      const updatedTrajectories = trajectories.filter(id => id !== trajectoryId);
+      await updateDoc(userDocRef, { trajectories: updatedTrajectories });
+      console.log(`Removed trajectory ${trajectoryId} from user ${user.uid}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting trajectory:', error);
+    return false;
+  }
+};
+
+// Function to fetch iterations for a given trajectory
+export const fetchIterations = async (trajectoryId) => {
+  try {
+    const user = auth.currentUser;
+
+    if (user) {
+      console.log("User ID:", user.uid);
+      // Reference to the iterations collection inside the specific trajectory document under the user's UID
+      const iterationsCollectionRef = collection(db, "trajectories", trajectoryId, "iterations");
+
+      // Get all documents in the iterations collection
+      const iterationsSnapshot = await getDocs(iterationsCollectionRef);
+
+      if (!iterationsSnapshot.empty) {
+        // Map over the snapshot to retrieve the IDs and Name fields of each document
+        const iterationsData = iterationsSnapshot.docs.map(doc => {
+          const d = doc.data();
+          // normalize timestamp
+          let tsRaw = null;
+          if (d.timestamp) {
+            if (typeof d.timestamp.toDate === 'function') tsRaw = d.timestamp.toDate();
+            else if (d.timestamp instanceof Date) tsRaw = d.timestamp;
+            else tsRaw = new Date(d.timestamp);
+          }
+          const tsStr = tsRaw ? tsRaw.toLocaleString('en-US', {
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short'
+          }) : null;
+
+          const result = {
+            id: doc.id,
+            name: d.commitMessage,
+            timestamp: tsStr,
+            timestampRaw: tsRaw,
+            thumbnail: d.thumbnail || null,
+          };
+          
+          if (result.thumbnail) {
+            console.log(`Iteration ${doc.id} has thumbnail (${Math.round(result.thumbnail.length / 1024)}KB)`);
+          } else {
+            console.log(`Iteration ${doc.id} has NO thumbnail`);
+          }
+          
+          return result;
+        });
+
+        return iterationsData;
+      } else {
+        console.log(`No iterations found for trajectory with ID ${trajectoryId}.`);
+        return [];
+      }
+    } else {
+      console.log('No user is currently logged in.');
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching iterations:", error);
+    return [];
+  }
+};
+
+
+
+// Function to upload a new iteration
+export const uploadIteration = async (trajectoryId, stateSlice, commitMessage) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const trajectoryDocRef = doc(db, "trajectories", trajectoryId);
+      const iterationCollectionRef = collection(trajectoryDocRef, "iterations");
+      const serializedState = serializeState(stateSlice);
+      
+      // Get compressed thumbnail from workingProject
+      const thumbnail = stateSlice.workingProject?.itterationImage || null;
+      
+      const docRef = await addDoc(iterationCollectionRef, {
+        State: serializedState,
+        commitMessage: commitMessage,
+        timestamp: new Date(),
+        thumbnail: thumbnail
+      });
+      
+      console.log(`New iteration uploaded successfully for trajectory '${trajectoryId}'`);
+      return docRef.id; // Return the new document ID
+    } else {
+      console.log("No user is signed in");
+    }
+  } catch (error) {
+    console.error("Error uploading new iteration: ", error);
+  }
+};
+
+// Function to update an existing iteration
+export const updateIteration = async (trajectoryId, iterationId, stateSlice) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const trajectoryDocRef = doc(db, "trajectories", trajectoryId);
+      const iterationDocRef = doc(trajectoryDocRef, "iterations", iterationId);
+      const serializedState = serializeState(stateSlice);
+      
+      // Get compressed thumbnail from workingProject
+      const thumbnail = stateSlice.workingProject?.itterationImage || null;
+      
+      await updateDoc(iterationDocRef, {
+        State: serializedState,
+        timestamp: new Date(),
+        thumbnail: thumbnail
+      });
+      
+      console.log(`Iteration '${iterationId}' updated successfully for trajectory '${trajectoryId}'`);
+    } else {
+      console.log("No user is signed in");
+    }
+  } catch (error) {
+    console.error("Error updating iteration: ", error);
+  }
+};
+
+// Function to upload autosave
+export const uploadAutoSave = async (trajectoryId, stateSlice) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const trajectoryDocRef = doc(db, "trajectories", trajectoryId);
+      const autoSaveDocRef = collection(trajectoryDocRef, "autosave");
+      const serializedState = serializeState(stateSlice);
+
+      await addDoc(autoSaveDocRef, {
+        State: serializedState,
+        timestamp: new Date()
+      });
+      
+      console.log(`Autosave uploaded successfully for trajectory '${trajectoryId}'`);
+    } else {
+      console.log("No user is signed in");
+    }
+  } catch (error) {
+    console.error("Error uploading autosave: ", error);
+  }
+};
+
+export const downloadIterationState = async (trajectoryId, iterationId, fieldName) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const iterationDocRef = doc(db, "trajectories", trajectoryId, "iterations", iterationId);
+      const docSnap = await getDoc(iterationDocRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data().State;
+        if (data && data[fieldName]) {
+          console.log(`State field '${fieldName}' downloaded successfully from iteration '${iterationId}'`);
+          return data[fieldName];
+        } else {
+          console.log(`No field '${fieldName}' found in iteration '${iterationId}'`);
+          return null;
+        }
+      } else {
+        console.log(`No iteration found with id '${iterationId}'`);
+        return null;
+      }
+    } else {
+      console.log("No user is signed in");
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error downloading state field '${fieldName}': `, error);
+    return null;
+  }
+};
+
+
+// Function to download the latest autosave
+export const downloadAutoSave = async (trajectoryId) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const autoSaveDocRef = doc(db, "trajectories", trajectoryId, "autosave", user.uid);
+      const docSnap = await getDoc(autoSaveDocRef);
+
+      if (docSnap.exists()) {
+        console.log(`Autosave downloaded successfully for trajectory '${trajectoryId}'`);
+        return docSnap.data().reduxState;
+      } else {
+        console.log("No autosave found");
+        return null;
+      }
+    } else {
+      console.log("No user is signed in");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error downloading autosave: ", error);
+    return null;
+  }
+};
+
+// Function to download a specific iteration
+export const downloadIteration = async (trajectoryId, iterationId) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const iterationDocRef = doc(db, "trajectories", trajectoryId, "iterations", iterationId);
+      const docSnap = await getDoc(iterationDocRef);
+
+      if (docSnap.exists()) {
+        console.log(`Iteration '${iterationId}' downloaded successfully for trajectory '${trajectoryId}'`);
+        return docSnap.data().reduxState;
+      } else {
+        console.log(`No iteration found with id '${iterationId}'`);
+        return null;
+      }
+    } else {
+      console.log("No user is signed in");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error downloading iteration: ", error);
+    return null;
+  }
+};
+
+export const uploadStateField = async (stateSlice, fieldName) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const userDocRef = doc(db, "users", user.uid);
+
+      // Check if the document exists
+      const docSnap = await getDoc(userDocRef);
+      if (docSnap.exists()) {
+        // Document exists, update the field
+        const serializedState = serializeState(stateSlice);
+        await updateDoc(userDocRef, {
+          [fieldName]: serializedState
+        });
+        console.log(`State field '${fieldName}' uploaded successfully`);
+      } else {
+        // Document does not exist, create it
+        const serializedState = serializeState(stateSlice);
+        await setDoc(userDocRef, {
+          [fieldName]: serializedState
+        });
+        console.log(`Document for user '${user.uid}' created with '${fieldName}'`);
+      }
+    } else {
+      console.log("No user is signed in");
+    }
+  } catch (error) {
+    console.error(`Error uploading state field '${fieldName}': `, error);
+  }
+};
+
+export const downloadStateField = async (fieldName) => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data[fieldName]) {
+          console.log(`State field '${fieldName}' downloaded successfully`);
+          return data[fieldName];
+        } else {
+          console.log(`No field '${fieldName}' found in document`);
+          return null;
+        }
+      } else {
+        console.log("No document found for the user");
+        return null;
+      }
+    } else {
+      console.log("No user is signed in");
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error downloading state field '${fieldName}': `, error);
+    return null;
+  }
+};
+
+

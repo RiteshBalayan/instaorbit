@@ -1,0 +1,828 @@
+.exptimer-container {
+  /*position: fixed;*/
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background-color: #1e1e1e;
+  color: #f0f0f0;
+  box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.7);
+  border-top: 2px solid #00ffcc;
+  border-radius: 10px 10px 0 0;
+}
+
+.time-controller {
+  width: 320px;
+  height: auto;
+  position: fixed;
+  left: 20px;
+  bottom: calc(var(--timeline-height, 200px) + 20px);
+  z-index: 1000;
+  border: 2px solid rgba(100, 150, 255, 0.5);
+  background: linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), 0 0 30px rgba(100, 150, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  gap: 12px;
+  backdrop-filter: blur(10px);
+  transition: bottom 0.3s ease;
+}
+
+.controller-content {
+  display: flex;
+  font-size: 1rem;
+  flex-direction: column;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.time-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  text-align: center;
+  gap: 12px;
+}
+
+.circular-clock-container {
+  width: 90px;
+  height: 90px;
+  margin-bottom: 8px;
+}
+
+.time-display .current-time {
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 22px;
+  font-weight: 500;
+  color: #e8e8e8;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+}
+
+.time-display .elapsed-time {
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: #999;
+  letter-spacing: 0.8px;
+  font-weight: 300;
+}
+
+/* Compact Time Display Layout */
+.premiere-time-display {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.time-display-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.clock-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compact-time-display {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 16px;
+  color: #e8e8e8;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.compact-time-label {
+  font-size: 9px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.elapsed-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.elapsed-label {
+  font-size: 9px;
+  color: #666;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.elapsed-value {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 14px;
+  color: #e8e8e8;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+}
+
+.time-units {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.unit-btn {
+  font-size: 10px;
+  padding: 4px 8px;
+  border: 1px solid rgba(80, 80, 80, 0.5);
+  background: rgba(40, 40, 40, 0.6);
+  color: #999;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.unit-btn:hover {
+  background: rgba(60, 60, 60, 0.8);
+  color: #d0d0d0;
+  border-color: rgba(100, 100, 100, 0.6);
+}
+
+.unit-btn.active {
+  background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+  border-color: #0078d4;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+}
+
+.time-unit-controls {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.time-unit-label {
+  font-size: 11px;
+  color: #888;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+/* Step Slider Styling */
+.step-slider-container {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.slider-label {
+  font-size: 11px;
+  color: #888;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.slider-value {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 13px;
+  color: #0078d4;
+  font-weight: 600;
+}
+
+.time-unit-btn {
+  font-size: 11px;
+  min-width: 45px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(80, 80, 80, 0.4);
+  background: rgba(50, 50, 50, 0.4);
+  color: #999;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+}
+
+.time-unit-btn:hover {
+  background: rgba(60, 60, 60, 0.6);
+  color: #d0d0d0;
+}
+
+.time-unit-btn.active {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: #ffffff;
+}
+
+.control-buttons-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+}
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.control-btn {
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(80, 80, 80, 0.5);
+  background: rgba(50, 50, 50, 0.7);
+  color: #d0d0d0;
+  cursor: pointer;
+  border-radius: 6px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: rgba(70, 70, 70, 0.9);
+  border-color: rgba(100, 100, 100, 0.7);
+  transform: translateY(-1px);
+}
+
+.control-btn.primary {
+  background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+  border-color: #0078d4;
+  box-shadow: 0 2px 12px rgba(0, 120, 212, 0.4);
+}
+
+.control-btn.danger {
+  background: rgba(180, 50, 50, 0.7);
+  border-color: rgba(200, 60, 60, 0.6);
+}
+
+.control-btn.danger:hover {
+  background: rgba(200, 60, 60, 0.9);
+}
+
+.control-btn.disabled,
+.control-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: rgba(70, 70, 70, 0.8);
+  border-color: rgba(100, 100, 100, 0.6);
+  color: #ffffff;
+}
+
+.control-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.control-btn.primary {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: #ffffff;
+}
+
+.control-btn.primary:hover:not(:disabled) {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+/* Container that holds the button and the display */
+.starttime-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.starttime-label {
+  font-size: 11px;
+  color: #888;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* Display text styling */
+.starttime-display {
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  color: #e8e8e8;
+  text-align: center;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Button styling */
+.starttime-btn {
+  font-size: 11px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 120, 212, 0.5);
+  background: rgba(0, 120, 212, 0.2);
+  color: #0078d4;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.starttime-btn:hover {
+  background: rgba(0, 120, 212, 0.3);
+  border-color: rgba(0, 120, 212, 0.8);
+  color: #4da6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+}
+
+.starttime-label {
+  font-size: 10px;
+  color: #808080;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+
+.time-step-input {
+  width: 60px; /* Adjust width as needed */
+  font-size: 0.8rem; /* Small font size */
+  margin-left: 5px;
+  color: #00ffcc;
+  background-color: #2a2a2a;
+  border: 1px solid #00ffcc;
+  border-radius: 10px;
+}
+
+.timeline-panel {
+  width: 80%;
+  background-color: #1a1a1a; /* Darker like Premiere Pro */
+  padding: 0px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0 10px 0 0;
+  position: relative;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  flex: 1;
+}
+
+.slider-container,
+.timeline-container {
+  margin: 0;
+  flex: 1;
+  background: #1a1a1a;
+  border-radius: 0 0 10px 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  min-height: 0;
+}
+
+.horizontal-slider {
+  width: 100%;
+  height: 6px;
+  background: #00ffcc;
+  border-radius: 3px;
+}
+
+.thumb {
+  background: #333;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #00ffcc;
+}
+
+.datepicker-popup {
+  position: absolute;
+  font-size: 0.8rem;
+  top: 50%;
+  left: 50%;
+  transform: translate( -50%, -50%);
+  background: rgb(92, 91, 91);
+  padding: 20px;
+  border: 1px solid #00ffcc;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  border-radius: 10px;
+}
+
+.datepicker-popup button {
+  margin: 5px;
+  background-color: #333;
+  color: #00ffcc;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Adjust the height and width of the calendar */
+.rdtPicker {
+  width: 200px; /* Adjust as needed */
+  height: auto; /* Automatically adjust height */
+}
+
+/* Adjust the height of the date and time selection */
+.rdtPicker .rdtDays,
+.rdtPicker .rdtTime {
+  max-height: 100px; /* Set a maximum height */
+  overflow-y: auto; /* Enable scrolling if content exceeds max height */
+}
+
+/* Adjust the individual day cells height */
+.rdtPicker .rdtDays .rdtDay {
+  height: 30px; /* Adjust as needed */
+  line-height: 30px; /* Vertically center the text */
+}
+
+/* Adjust the height of the time selection elements */
+.rdtPicker .rdtTime .rdtHours,
+.rdtPicker .rdtTime .rdtMinutes,
+.rdtPicker .rdtTime .rdtSeconds {
+  height: 30px; /* Adjust as needed */
+  line-height: 30px; /* Vertically center the text */
+}
+
+.current-time-point {
+  display: none !important; /* Hide current time indicator */
+}
+
+.time-input .rdt {
+  background-color: var(--highlight-bg);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-color);
+}
+
+.time-input .rdt input {
+  background-color: var(--highlight-bg);
+  color: var(--text-color);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.time-input .rdtPicker {
+  background-color: var(--highlight-bg);
+  color: var(--text-color);
+  border: none;
+}
+
+.time-input .rdtPicker td.rdtDay:hover,
+.time-input .rdtPicker td.rdtHour:hover,
+.time-input .rdtPicker td.rdtMinute:hover,
+.time-input .rdtPicker td.rdtSecond:hover {
+  background-color: var(--highlight-color);
+  color: var(--text-color);
+}
+
+.time-input .rdtPicker td.rdtActive,
+.time-input .rdtPicker td.rdtActive:hover {
+  background-color: var(--highlight-color);
+  color: var(--text-color);
+}
+
+
+
+/* Premiere Pro-style playhead - Clean vertical line with handle */
+.render-time-point {
+  background: transparent !important;
+  border: none !important;
+  color: #2196F3 !important;
+  cursor: ew-resize !important;
+  position: relative !important;
+  z-index: 1000 !important;
+  user-select: none !important;
+  width: 20px !important;
+  padding: 0 !important;
+  margin-left: -10px !important;
+  font-size: 14px !important;
+}
+
+/* Vertical playhead line - extends through all groups */
+.render-time-point::before {
+  content: '';
+  position: absolute;
+  top: -1000px; /* Extend way up to cover satellites group */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 2000px; /* Very tall to cover all groups */
+  background: #2196F3;
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.8);
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Playhead handle at top - TRIANGLE */
+.render-time-point::after {
+  content: '▼';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  color: #2196F3;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  cursor: ew-resize;
+  pointer-events: auto;
+  z-index: 1001;
+}
+
+.render-time-point:hover::before {
+  background: #42A5F5;
+  box-shadow: 0 0 12px rgba(66, 165, 245, 0.9);
+}
+
+.render-time-point:hover::after {
+  color: #42A5F5;
+  text-shadow: 0 2px 8px rgba(33, 150, 243, 0.8);
+}
+
+.render-time-point.vis-selected::before {
+  background: #64B5F6;
+  box-shadow: 0 0 16px rgba(100, 181, 246, 1);
+}
+
+.render-time-point.vis-selected::after {
+  color: #64B5F6;
+  text-shadow: 0 0 12px rgba(33, 150, 243, 1);
+}
+
+/* Premiere Pro-inspired timeline styling */
+.vis-timeline {
+  background-color: #1a1a1a !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+  padding: 0 !important;
+  font-family: 'Segoe UI', 'Arial', sans-serif !important;
+  overflow: visible !important;
+  height: 100% !important;
+  min-height: 150px !important;
+  flex: 1 !important;
+  position: relative !important;
+}
+
+/* Disable all vis-timeline animations for instant updates */
+.vis-timeline * {
+  transition: none !important;
+  animation: none !important;
+}
+
+.vis-timeline .vis-panel {
+  background-color: #1a1a1a !important;
+  overflow: visible !important;
+}
+
+.vis-timeline .vis-labelset {
+  background-color: #232323 !important;
+  border-right: 1px solid #2d2d2d !important;
+}
+
+.vis-timeline .vis-label {
+  color: #b0b0b0 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 4px 8px !important;
+  border-bottom: 1px solid #2d2d2d !important;
+}
+
+.vis-timeline .satellites-group {
+  flex: 2 !important; /* Satellites take 2/3 of vertical space */
+}
+
+.vis-timeline .satellites-group .vis-label {
+  height: 100% !important;
+  line-height: normal !important;
+  padding: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.vis-timeline .events-group {
+  flex: 1 !important; /* Events take 1/3 of vertical space */
+}
+
+.vis-timeline .events-group .vis-label {
+  height: 100% !important;
+  line-height: normal !important;
+  padding: 6px !important;
+  font-size: 10px !important;
+  color: #909090 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Grid lines - subtle like Premiere Pro */
+.vis-timeline .vis-grid.vis-minor {
+  border-color: #282828 !important;
+  border-width: 1px !important;
+}
+
+.vis-timeline .vis-grid.vis-major {
+  border-color: #3a3a3a !important;
+  border-width: 1px !important;
+}
+
+.vis-timeline .vis-grid.vis-vertical {
+  opacity: 0.5;
+}
+
+/* Time axis styling */
+.vis-timeline .vis-time-axis {
+  background-color: #232323 !important;
+  border-top: 1px solid #2d2d2d !important;
+}
+
+.vis-timeline .vis-time-axis .vis-text {
+  color: #999999 !important;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  padding-top: 2px !important;
+}
+
+.vis-timeline .vis-time-axis .vis-text.vis-major {
+  color: #cccccc !important;
+  font-weight: 500 !important;
+}
+
+.vis-timeline .vis-time-axis .vis-text.vis-minor {
+  color: #808080 !important;
+}
+
+/* All timeline items base styling */
+.vis-timeline .vis-item {
+  border-radius: 2px !important;
+  font-size: 10px !important;
+  transition: none !important; /* Instant changes, no animation */
+}
+
+/* Satellite track styling - solid prominent bars that scale with height */
+.vis-timeline .satellite-item {
+  background: linear-gradient(to bottom, #3a5a7a, #2d4a6a) !important;
+  border: 1px solid #4a6a8a !important;
+  color: #e0e0e0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  height: auto !important; /* Scale with group height */
+  min-height: 32px !important;
+  line-height: normal !important;
+  font-weight: 500 !important;
+  font-size: 11px !important;
+  padding: 8px 10px !important;
+  text-align: left !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.vis-timeline .satellite-item:hover {
+  background: linear-gradient(to bottom, #4a6a8a, #3d5a7a) !important;
+  border-color: #5a7a9a !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.vis-timeline .satellite-item.vis-selected {
+  background: linear-gradient(to bottom, #0078D7, #005a9e) !important;
+  border-color: #0078D7 !important;
+  box-shadow: 0 0 10px rgba(0, 120, 215, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Events/current time styling - shorter, lighter bars that scale */
+.vis-timeline .events-group .vis-item.vis-range {
+  background: linear-gradient(to bottom, rgba(120, 120, 180, 0.3), rgba(100, 100, 160, 0.25)) !important;
+  border: 1px solid rgba(140, 140, 200, 0.4) !important;
+  color: rgba(200, 200, 220, 0.8) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  height: auto !important; /* Scale with group height */
+  min-height: 20px !important;
+  line-height: normal !important;
+  font-size: 9px !important;
+  font-weight: 400 !important;
+  padding: 4px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.vis-timeline .events-group .vis-item.vis-range:hover {
+  background: linear-gradient(to bottom, rgba(140, 140, 200, 0.4), rgba(120, 120, 180, 0.35)) !important;
+  border-color: rgba(160, 160, 220, 0.5) !important;
+}
+
+/* Current time bar in events group - HIDDEN (only show draggable playhead) */
+.current-time-point {
+  display: none !important; /* Hide the current time indicator */
+  pointer-events: none !important;
+}
+
+/* Smooth scrolling */
+.vis-timeline .vis-content {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3a #1a1a1a;
+}
+
+.vis-timeline .vis-content::-webkit-scrollbar {
+  height: 8px;
+}
+
+.vis-timeline .vis-content::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.vis-timeline .vis-content::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 4px;
+}
+
+.vis-timeline .vis-content::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Point items (playhead) - hide default vis-timeline vertical line */
+.vis-timeline .vis-item.vis-point {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Hide the default vis-timeline point vertical line */
+.vis-timeline .vis-item.vis-point .vis-item-overflow {
+  display: none !important;
+}
+
+.vis-timeline .vis-item.vis-point .vis-item-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide the default point dot */
+.vis-timeline .vis-item.vis-point .vis-dot {
+  display: none !important;
+}
+
