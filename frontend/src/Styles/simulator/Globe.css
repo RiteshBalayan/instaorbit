@@ -23,3 +23,29 @@
 }
 
   
+/* Side-by-side split styles for both view */
+.split-container {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.split-pane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.split-divider {
+  width: 2px;
+  background: linear-gradient(180deg, rgba(143,148,251,0.6), rgba(78,84,200,0.6));
+  margin: 0 8px;
+  border-radius: 2px;
+}
+
+
