@@ -37,6 +37,7 @@ import {
 const Timer = () => {
   const dispatch = useDispatch();
   const showControlPanel = useSelector((state) => state.view.showControlPanel);
+  const [backendAvailable, setBackendAvailable] = useState(true);
   
   // Local state
   const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
@@ -165,11 +166,39 @@ const Timer = () => {
     };
   }, []);
 
+  // Backend health polling
+  useEffect(() => {
+    let intervalId;
+    const checkBackend = async () => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const resp = await fetch('http://localhost:3001/health', { signal: controller.signal });
+        clearTimeout(timeout);
+        // Consider any successful response (even 404/500) as server reachable
+        setBackendAvailable(true);
+      } catch (e) {
+        setBackendAvailable(false);
+      }
+    };
+    // Initial check and periodic polling
+    checkBackend();
+    intervalId = setInterval(checkBackend, 15000);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
   return (
     <div className="exptimer-container">
       {showControlPanel && (
         <div className="time-controller">
           <div className="control-panel-title">Control Panel</div>
+          {!backendAvailable && (
+            <div className="backend-warning">
+              Backend simulator not connected — simulation will not work. Contact admin.
+            </div>
+          )}
           <div className="controller-content">
             {/* Time Display Section */}
             <TimeDisplay
