@@ -1,0 +1,77 @@
+/* ─── Leaflet map dark-theme overrides ──────────────────── */
+
+/* Wrapper fills its parent (Globe split-pane, full view, etc.) */
+.leaflet-map-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* The map itself */
+.leaflet-dark-map {
+  width: 100%;
+  height: 100%;
+  background: #0d1117;
+}
+
+/* ─── Zoom control ────────────────────────────────────────── */
+.leaflet-dark-map .leaflet-control-zoom {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-dark-map .leaflet-control-zoom a {
+  background: rgba(30, 30, 30, 0.92);
+  color: #cfd6ff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  font-size: 16px;
+}
+
+.leaflet-dark-map .leaflet-control-zoom a:hover {
+  background: rgba(50, 50, 50, 0.95);
+  color: #fff;
+}
+
+/* ─── Attribution ─────────────────────────────────────────── */
+.leaflet-dark-map .leaflet-control-attribution {
+  background: rgba(13, 17, 23, 0.75);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.leaflet-dark-map .leaflet-control-attribution a {
+  color: rgba(143, 148, 251, 0.6);
+}
+
+/* ─── Tooltip overrides (satellite labels) ────────────────── */
+.leaflet-dark-map .leaflet-tooltip {
+  background: rgba(15, 17, 19, 0.92);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.leaflet-dark-map .leaflet-tooltip-top::before {
+  border-top-color: rgba(15, 17, 19, 0.92);
+}
+
+/* ─── Ground station DivIcon ──────────────────────────────── */
+.gs-leaflet-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ─── Default marker icon override (hide blue pin shadow) ──── */
+.leaflet-dark-map .leaflet-marker-icon.gs-leaflet-icon {
+  background: transparent;
+  box-shadow: none;
+}

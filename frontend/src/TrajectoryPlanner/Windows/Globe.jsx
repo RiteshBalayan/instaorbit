@@ -5,7 +5,7 @@ import SlimTopBar from './Topbar/TopBar';
 import GroundTrack from './GroundTrack';
 import { Canvas } from '@react-three/fiber';
 import LinkBudgetBoard from './Sidebar/LinkBudgetBoard';
-import MapRender from '../Render/2DMapRender';
+import LeafletMapRender from '../Render/LeafletMapRender';
 import { useSelector } from 'react-redux';
 import ErrorBoundary from '../../components/ErrorBoundary';
 
@@ -32,7 +32,7 @@ function Globe() {
       {viewMode === 'map' && (
         <div style={{ flex: 1, display: 'flex' }}>
           <ErrorBoundary fallbackMessage="Map view failed to render.">
-            <MapRender />
+            <LeafletMapRender />
           </ErrorBoundary>
         </div>
       )}
@@ -49,7 +49,7 @@ function Globe() {
           <div className="split-divider" />
           <div className="split-pane">
             <ErrorBoundary fallbackMessage="Map view failed to render.">
-              <MapRender />
+              <LeafletMapRender />
             </ErrorBoundary>
           </div>
         </div>
