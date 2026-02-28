@@ -7,6 +7,8 @@ import {
   toggleSun,
   toggleAmbientLight,
   toggleRefrenaceSystem,
+  setTrackWindow,
+  setShowOrbit,
 } from '../../../Store/View';
 
 export const useSidebarActions = () => {
@@ -19,8 +21,10 @@ export const useSidebarActions = () => {
   const setHDEarth = (value) => dispatch(toggleHDEarth(value));
   const setSun = (value) => dispatch(toggleSun(value));
   const setAmbientLight = (value) => dispatch(toggleAmbientLight(value));
+  const setTrackWindowAction = (value) => dispatch(setTrackWindow(value));
+  const setShowOrbitAction = (value) => dispatch(setShowOrbit(value));
 
-  return { setReferenceSystem, setGrid, setAxis, setVonAllenBelt, setHDEarth, setSun, setAmbientLight };
+  return { setReferenceSystem, setGrid, setAxis, setVonAllenBelt, setHDEarth, setSun, setAmbientLight, setTrackWindow: setTrackWindowAction, setShowOrbit: setShowOrbitAction };
 };
 
 export default useSidebarActions;

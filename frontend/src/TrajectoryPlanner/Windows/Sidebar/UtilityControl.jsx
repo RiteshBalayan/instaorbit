@@ -13,6 +13,8 @@ const UtilityControl = () => {
     setHDEarth,
     setSun,
     setAmbientLight,
+    setTrackWindow,
+    setShowOrbit,
   } = useSidebarActions();
 
   const handleReferenceToggle = useCallback(() => {
@@ -20,19 +22,27 @@ const UtilityControl = () => {
     setReferenceSystem(next);
   }, [referenceSystem, setReferenceSystem]);
 
-  const items = [
-    { key: 'Grid', label: 'Grid', checked: view.Grid, onChange: setGrid },
-    { key: 'Axis', label: 'Axis', checked: view.Axis, onChange: setAxis },
-    { key: 'HDEarth', label: 'HDEarth', checked: view.HDEarth, onChange: setHDEarth },
-    { key: 'VonAllenBelt', label: 'Von Allen Belt', checked: view.VonAllenBelt, onChange: setVonAllenBelt },
+  const sceneItems = [
+    { key: 'HDEarth', label: 'HD Earth', checked: view.HDEarth, onChange: setHDEarth },
     { key: 'Sun', label: 'Sun', checked: view.Sun, onChange: setSun },
     { key: 'AmbientLight', label: 'Ambient Light', checked: view.AmbientLight, onChange: setAmbientLight },
+    { key: 'VonAllenBelt', label: 'Van Allen Belt', checked: view.VonAllenBelt, onChange: setVonAllenBelt },
+  ];
+
+  const overlayItems = [
+    { key: 'Grid', label: 'Grid', checked: view.Grid, onChange: setGrid },
+    { key: 'Axis', label: 'Axis', checked: view.Axis, onChange: setAxis },
   ];
 
   return (
     <SidebarUtilityControl
       reference={{ value: referenceSystem, onToggle: handleReferenceToggle }}
-      items={items}
+      sceneItems={sceneItems}
+      overlayItems={overlayItems}
+      trackWindow={view.trackWindow}
+      onTrackWindowChange={setTrackWindow}
+      showOrbit={view.showOrbit}
+      onShowOrbitChange={setShowOrbit}
     />
   );
 };

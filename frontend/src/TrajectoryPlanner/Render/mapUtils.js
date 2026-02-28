@@ -1,17 +1,25 @@
 /**
  * Coordinate conversion utilities for the 2D Leaflet map.
  *
- * The backend simulation produces `mapX` and `mapY` using this projection
- * (see backend/server/index.js):
+ * ⚠️  LEGACY: `mapXYToLatLon` and `computeSubSolarLatLon` are kept for
+ * backward compatibility only.  New code should use `lat`/`lon` returned
+ * directly from the backend (which now does proper ECI→ECEF→geodetic via
+ * GMST) and `sunGeodetic()` from `../../transforms` for the sub-solar point.
+ *
+ * The backend simulation previously produced `mapX` and `mapY` using this
+ * projection (see backend/server/index.js):
  *
  *   mapX = (atan2(y, x) / π) * 7.5          →  range [-7.5, 7.5]
  *   mapY = ((-acos(z / r) / π) + 0.5) * 7.5 →  range [-3.75, 3.75]
  *
- * We invert that to real-world [lat, lon] (degrees) for Leaflet.
+ * The backend now returns proper { lat, lon, alt } alongside the legacy
+ * mapX / mapY for backward compat.
  */
 
 /**
+ * @deprecated Use `lat`/`lon` from the backend response instead.
  * Convert the backend mapX / mapY values to [lat, lon] in degrees.
+ * Kept for backward compat with trace points that don't yet have lat/lon.
  * @param {number} mapX  – range approximately [-7.5, 7.5]
  * @param {number} mapY  – range approximately [-3.75, 3.75]
  * @returns {[number, number]} [lat, lon] in degrees
@@ -32,11 +40,9 @@ export function mapXYToLatLon(mapX, mapY) {
 }
 
 /**
+ * @deprecated Use `sunGeodetic(utcMs)` from `../../transforms` instead.
+ * This simplified model assumes declination ≈ 0 (no obliquity).
  * Compute the sub-solar point as [lat, lon] given simulation timing.
- *
- * Simplified model (same logic as the old Three.js 2DMap component):
- *  – assumes the sun lies in the equatorial plane (declination ≈ 0)
- *  – longitude sweeps at Earth's rotation rate relative to the sun
  *
  * @param {number} elapsedTime  – simulation seconds since start
  * @param {number} starttime    – epoch ms of simulation start

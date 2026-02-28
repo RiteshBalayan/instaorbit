@@ -1,4 +1,4 @@
-import React, { useRef, useEffect} from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
@@ -9,6 +9,17 @@ import { Shape, TubeGeometry } from 'three';
 import { Sgp4, Satellite as sat } from 'ootk';
 import { PositionPoint, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
+import { computeGMST, computeGMSTFromSim } from '../../transforms';
+
+/**
+ * Rotate an ECI scene-unit position [x,y,z] to ECEF by applying Rz(-gmst).
+ * Used to convert satellite positions for EarthFixed 3D rendering.
+ */
+function eciSceneToEcef(x, y, z, gmst) {
+  const c = Math.cos(-gmst);
+  const s = Math.sin(-gmst);
+  return [c * x - s * y, s * x + c * y, z];
+}
 
 // Component to render orbit ellipse
 const OrbitEllipse = ({ elements, color }) => {
@@ -75,6 +86,13 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const satellitecurrentcoordinate = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId));
 
   const prevRenderTime = useRef(RenderTime);
+  const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
+  const starttime = useSelector((state) => state.timer.starttime);
+  const trackWindow = useSelector((state) => state.view.trackWindow);
+  const showOrbit = useSelector((state) => state.view.showOrbit);
+
+  // Track Horizon: ±1 hour window in seconds
+  const TRACK_HORIZON_SEC = 3600;
 
   inclination = THREE.MathUtils.degToRad(inclination);//Angles in Radian
   argumentOfPeriapsis = THREE.MathUtils.degToRad(argumentOfPeriapsis);
@@ -87,20 +105,53 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   useEffect(() => {
     // Check if RenderTime has changed
     if (RenderTime !== prevRenderTime.current) {
+      const isFixed = referenceSystem === 'EarthFixed';
+
       // Update satellite position from tracePoints if available
       if (satelliteRef.current && particle?.tracePoints?.length > 0) {
-        const filteredPoints = particle.tracePoints.filter(p => p.time <= RenderTime);
+        let filteredPoints = particle.tracePoints.filter(p => p.time <= RenderTime);
+
+        // Track Horizon: keep only points within ±1 hr of current RenderTime
+        if (trackWindow && filteredPoints.length > 0) {
+          const tMin = RenderTime - TRACK_HORIZON_SEC;
+          const tMax = RenderTime + TRACK_HORIZON_SEC;
+          // Also include future points up to +1hr that exist
+          filteredPoints = particle.tracePoints.filter(
+            (p) => p.time >= tMin && p.time <= tMax
+          );
+        }
         
         if (filteredPoints.length > 0) {
           const lastPoint = filteredPoints[filteredPoints.length - 1];
           if (lastPoint && [lastPoint.x, lastPoint.y, lastPoint.z].every(Number.isFinite)) {
-            satelliteRef.current.position.set(lastPoint.x, lastPoint.y, lastPoint.z);
+            if (isFixed) {
+              const gmst = computeGMST(starttime + lastPoint.time * 1000);
+              const [ex, ey, ez] = eciSceneToEcef(lastPoint.x, lastPoint.y, lastPoint.z, gmst);
+              satelliteRef.current.position.set(ex, ey, ez);
+            } else {
+              satelliteRef.current.position.set(lastPoint.x, lastPoint.y, lastPoint.z);
+            }
           }
         }
 
         // Update line geometry efficiently
+        // In EarthFixed mode, rotate every trace point ECI→ECEF using GMST at that point's time
+        // This produces the 3D ground track on the stationary globe
         if (lineRef.current && filteredPoints.length > 0) {
-          const traceArray = filteredPoints.flatMap(p => [p.x, p.y, p.z]);
+          let traceArray;
+          if (isFixed) {
+            traceArray = new Float32Array(filteredPoints.length * 3);
+            for (let k = 0; k < filteredPoints.length; k++) {
+              const p = filteredPoints[k];
+              const gmst = computeGMST(starttime + p.time * 1000);
+              const [ex, ey, ez] = eciSceneToEcef(p.x, p.y, p.z, gmst);
+              traceArray[k * 3]     = ex;
+              traceArray[k * 3 + 1] = ey;
+              traceArray[k * 3 + 2] = ez;
+            }
+          } else {
+            traceArray = new Float32Array(filteredPoints.flatMap(p => [p.x, p.y, p.z]));
+          }
           const positionAttribute = lineRef.current.geometry.getAttribute('position');
           
           if (!positionAttribute || positionAttribute.count !== filteredPoints.length) {
@@ -112,8 +163,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
             lineRef.current.geometry.setDrawRange(0, filteredPoints.length);
           } else {
             // Update existing attribute values
-            const floatArray = new Float32Array(traceArray);
-            positionAttribute.array = floatArray;
+            positionAttribute.array = traceArray;
             positionAttribute.count = filteredPoints.length;
             positionAttribute.needsUpdate = true;
             lineRef.current.geometry.setDrawRange(0, filteredPoints.length);
@@ -123,7 +173,14 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         // Update tube geometry (expensive operation - only when needed)
         if (tubeRef.current && satelliteconfig?.Tube && filteredPoints.length >= 2) {
           const tubePoints = filteredPoints
-            .map(p => new THREE.Vector3(p.x, p.y, p.z))
+            .map(p => {
+              if (isFixed) {
+                const gmst = computeGMST(starttime + p.time * 1000);
+                const [ex, ey, ez] = eciSceneToEcef(p.x, p.y, p.z, gmst);
+                return new THREE.Vector3(ex, ey, ez);
+              }
+              return new THREE.Vector3(p.x, p.y, p.z);
+            })
             .filter(point => point && [point.x, point.y, point.z].every(Number.isFinite));
           
           if (tubePoints.length >= 2) {
@@ -151,14 +208,20 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         // Fallback: use current coordinates if tracePoints not available
         const coords = satellitecurrentcoordinate.coordinates;
         if ([coords.x, coords.y, coords.z].every(Number.isFinite)) {
-          satelliteRef.current.position.set(coords.x, coords.y, coords.z);
+          if (isFixed) {
+            const gmst = computeGMSTFromSim(starttime, RenderTime);
+            const [ex, ey, ez] = eciSceneToEcef(coords.x, coords.y, coords.z, gmst);
+            satelliteRef.current.position.set(ex, ey, ez);
+          } else {
+            satelliteRef.current.position.set(coords.x, coords.y, coords.z);
+          }
         }
       }
       
       // Update previous RenderTime
       prevRenderTime.current = RenderTime;
     }
-  }, [RenderTime, particleId, particle, satellitecurrentcoordinate, satelliteconfig]);
+  }, [RenderTime, particleId, particle, satellitecurrentcoordinate, satelliteconfig, referenceSystem, starttime, trackWindow, showOrbit]);
 
   const ellipseRef = useRef();
   const satellitepreviewRef = useRef();
@@ -341,17 +404,23 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
 
   // Update satellite position continuously from current coordinates
   useFrame(() => {
+    const isFixed = referenceSystem === 'EarthFixed';
     // Always update position if coordinates exist
     if (satelliteRef.current) {
       if (satellitecurrentcoordinate?.coordinates) {
         const coords = satellitecurrentcoordinate.coordinates;
         if ([coords.x, coords.y, coords.z].every(Number.isFinite)) {
-          satelliteRef.current.position.set(coords.x, coords.y, coords.z);
+          let px = coords.x, py = coords.y, pz = coords.z;
+          if (isFixed) {
+            const gmst = computeGMSTFromSim(starttime, RenderTime);
+            [px, py, pz] = eciSceneToEcef(coords.x, coords.y, coords.z, gmst);
+          }
+          satelliteRef.current.position.set(px, py, pz);
           if (satelliteGlowRef.current) {
-            satelliteGlowRef.current.position.set(coords.x, coords.y, coords.z);
+            satelliteGlowRef.current.position.set(px, py, pz);
           }
           if (modelRef.current) {
-            modelRef.current.position.set(coords.x, coords.y, coords.z);
+            modelRef.current.position.set(px, py, pz);
             // Rotate satellite model slowly for visual interest
             modelRef.current.rotation.y += 0.01;
           }
@@ -377,7 +446,12 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       const coords = satellitecurrentcoordinate?.coordinates;
       if (activeBurn && coords && [coords.x, coords.y, coords.z].every(Number.isFinite)) {
         burnMarkerRef.current.visible = true;
-        burnMarkerRef.current.position.set(coords.x, coords.y, coords.z);
+        let bx = coords.x, by = coords.y, bz = coords.z;
+        if (isFixed) {
+          const gmst = computeGMSTFromSim(starttime, RenderTime);
+          [bx, by, bz] = eciSceneToEcef(coords.x, coords.y, coords.z, gmst);
+        }
+        burnMarkerRef.current.position.set(bx, by, bz);
         const pulse = 1 + 0.3 * Math.sin(performance.now() / 200);
         burnMarkerRef.current.scale.set(pulse, pulse, pulse);
       } else {
@@ -447,8 +521,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         </line>
       )}
       
-      {/* Always show orbit ellipse if orbit elements exist OR use initial conditions */}
-      {(orbitalelements?.elements?.a || semimajoraxis) && (
+      {/* Orbit ellipse: shown only in EarthInertial AND when showOrbit is on */}
+      {showOrbit && referenceSystem === 'EarthInertial' && (orbitalelements?.elements?.a || semimajoraxis) && (
         <OrbitEllipse 
           elements={orbitalelements?.elements || {
             a: semimajoraxis,
@@ -467,7 +541,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         <meshStandardMaterial color="red" />
       </mesh>}
 
-      {previewBurn && burnlineRef.current?.geometry?.attributes?.position ? (
+      {/* Burn preview orbit only in EarthInertial */}
+      {referenceSystem === 'EarthInertial' && previewBurn && burnlineRef.current?.geometry?.attributes?.position ? (
         <line ref={burnlineRef} >
           <lineBasicMaterial color="blue" linewidth={3} />
         </line>

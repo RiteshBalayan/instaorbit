@@ -11,6 +11,7 @@ import SimuStackSatellites from '../Simulation/StackSimulator';
 import { toggleCentralObject } from '../../Store/View';
 import { Line } from '@react-three/drei';
 import GroundStationRender from './GroundStationRender';
+import { computeGMSTFromSim, sunDirectionECIFromSim } from '../../transforms';
 
 // Vertex Shader for Glow
 const vertexShader = `
@@ -71,21 +72,18 @@ const GlobeRender = () => {
     const activeLinks = useSelector((state) => state.communication.activeLinks);
 
     // Get sun direction initial condition
-    const initialtime = new Date(starttime);
-    initialtime.setHours(0, 0, 0, 0);
-    const phase = (starttime - initialtime) / (1000 * 60 * 60);
+    // (no longer needed for phase; sun position is computed astronomically)
 
     const { clock } = useThree();
 
     useFrame(() => {
         if (earthRef.current) {
-            // Earth rotates once per 24 hours = 86400 seconds
-            // Angular velocity = 2π / 86400 radians per second
-            const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60); // radians per second
+            // Use GMST for astronomically correct Earth rotation
+            const gmst = computeGMSTFromSim(starttime, elapsedTime);
             if (referenceSystem === 'EarthInertial') {
                 // EarthInertial: Non-rotating reference frame
-                // Earth mesh rotates to show day/night cycle
-                earthRef.current.rotation.y = earthRotationRate * elapsedTime;
+                // Earth mesh rotates by GMST to show day/night cycle
+                earthRef.current.rotation.y = gmst;
             } else {
                 // EarthFixed: Rotating reference frame (rotates with Earth)
                 // Earth mesh appears stationary because frame rotates with it
@@ -93,20 +91,39 @@ const GlobeRender = () => {
             }
         }
         if (lightRef.current && sunRef.current && haloRef.current) {
+            // Compute sun direction in ECI with proper obliquity (23.44°)
+            const sunDir = sunDirectionECIFromSim(starttime, elapsedTime);
+            const sunRadius = 5;
             
-                const radius = 5;
-                let speed = 0;
-                if (referenceSystem === 'EarthFixed') {
-                    // In EarthFixed frame, sun appears to orbit Earth
-                    // (actually the frame is rotating, making sun appear to move)
-                    speed = (2 * Math.PI) / (24 * 60 * 60);
-                }
-                // In EarthInertial frame, sun stays at fixed position based on time of day (phase)
-                const x = radius * Math.cos((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
-                const y = radius * Math.sin((-speed * elapsedTime) + (phase / 24) * 2 * Math.PI);
-                lightRef.current.position.set(x, y, 0);
-                sunRef.current.position.set(x * 100, y * 100, 0);
-                haloRef.current.position.set(x * 100, y * 100, 0);
+            if (referenceSystem === 'EarthInertial') {
+                // In ECI: sun direction is used directly (sun barely moves ~1°/day)
+                lightRef.current.position.set(
+                    sunDir[0] * sunRadius,
+                    sunDir[1] * sunRadius,
+                    sunDir[2] * sunRadius
+                );
+                sunRef.current.position.set(
+                    sunDir[0] * sunRadius * 100,
+                    sunDir[1] * sunRadius * 100,
+                    sunDir[2] * sunRadius * 100
+                );
+                haloRef.current.position.set(
+                    sunDir[0] * sunRadius * 100,
+                    sunDir[1] * sunRadius * 100,
+                    sunDir[2] * sunRadius * 100
+                );
+            } else {
+                // In EarthFixed: rotate sun ECI direction by −GMST to get apparent position
+                const gmst = computeGMSTFromSim(starttime, elapsedTime);
+                const c = Math.cos(-gmst);
+                const s = Math.sin(-gmst);
+                const sx = c * sunDir[0] - s * sunDir[1];
+                const sy = s * sunDir[0] + c * sunDir[1];
+                const sz = sunDir[2];
+                lightRef.current.position.set(sx * sunRadius, sy * sunRadius, sz * sunRadius);
+                sunRef.current.position.set(sx * sunRadius * 100, sy * sunRadius * 100, sz * sunRadius * 100);
+                haloRef.current.position.set(sx * sunRadius * 100, sy * sunRadius * 100, sz * sunRadius * 100);
+            }
         }
     });
 
@@ -242,14 +259,21 @@ const GlobeRender = () => {
             ))}
             
             {/* Communication links - yellow lines between satellites and ground stations */}
-            {safeActiveLinks.map((link) => (
+            {safeActiveLinks.map((link) => {
+                let fromPt = [link.from.x, link.from.y, link.from.z];
+                let toPt = [link.to.x, link.to.y, link.to.z];
+                // In EarthFixed mode, rotate link endpoints from ECI → ECEF
+                if (referenceSystem === 'EarthFixed') {
+                    const gmst = computeGMSTFromSim(starttime, elapsedTime);
+                    const cf = Math.cos(-gmst), sf = Math.sin(-gmst);
+                    fromPt = [cf * fromPt[0] - sf * fromPt[1], sf * fromPt[0] + cf * fromPt[1], fromPt[2]];
+                    toPt = [cf * toPt[0] - sf * toPt[1], sf * toPt[0] + cf * toPt[1], toPt[2]];
+                }
+                return (
                 <group key={link.id}>
                     {/* Main communication beam */}
                     <Line
-                        points={[
-                            [link.from.x, link.from.y, link.from.z],
-                            [link.to.x, link.to.y, link.to.z],
-                        ]}
+                        points={[fromPt, toPt]}
                         color="#ffeb3b"
                         lineWidth={3}
                         dashed={false}
@@ -257,17 +281,18 @@ const GlobeRender = () => {
                         opacity={0.8}
                     />
                     {/* Transmitter indicator (from) */}
-                    <mesh position={[link.from.x, link.from.y, link.from.z]}>
+                    <mesh position={fromPt}>
                         <sphereGeometry args={[0.04, 8, 8]} />
                         <meshBasicMaterial color="#ffeb3b" transparent opacity={0.6} />
                     </mesh>
                     {/* Receiver indicator (to) */}
-                    <mesh position={[link.to.x, link.to.y, link.to.z]}>
+                    <mesh position={toPt}>
                         <sphereGeometry args={[0.04, 8, 8]} />
                         <meshBasicMaterial color="#ffeb3b" transparent opacity={0.6} />
                     </mesh>
                 </group>
-            ))}
+                );
+            })}
 
 
             {view.Grid &&

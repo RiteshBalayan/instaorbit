@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const funcs = require('./functions');
+const transforms = require('./transforms');
 const { Sgp4 } = require('ootk');
 
 const app = express();
@@ -9,22 +10,18 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '1mb' }));
 
 // POST /simulate
-// Expects JSON body with: { propagator, orbitalelements, burn, elapsedTime, referenceSystem, originalomega }
+// Expects JSON body with: { propagator, orbitalelements, burn, elapsedTime, starttime }
+// NOTE: referenceSystem and originalomega are accepted but IGNORED.
+//       All propagation is now always in ECI.  Frame conversion happens
+//       via GMST in this endpoint and on the frontend at render time.
 app.post('/simulate', (req, res) => {
   try {
-    const { propagator, orbitalelements, burn = [], elapsedTime = 0, referenceSystem, originalomega } = req.body;
+    const { propagator, orbitalelements, burn = [], elapsedTime = 0, starttime } = req.body;
 
-    // copy orbital elements
+    // copy orbital elements — always use the true inertial Ω (no hack)
     let { a, e, i, Ω, ω, ν } = orbitalelements.elements || orbitalelements;
     let Timefix = orbitalelements.timefix;
     const mu = 398600.4418;
-
-    // Apply Earth fixed reference update if requested (same logic as frontend)
-    if (referenceSystem === 'EarthFixed') {
-      const radiansPerSecond = 2 * Math.PI / (24 * 60 * 60);
-      const dΩ = (radiansPerSecond * elapsedTime) % (2 * Math.PI);
-      Ω = -(dΩ - originalomega) % (2 * Math.PI);
-    }
 
     // Calculate mean anomaly
     let eccentricanomly = funcs.trueToEccentricAnomaly(ν, e);
@@ -78,13 +75,23 @@ app.post('/simulate', (req, res) => {
     const newY = position[1] / 3185.5;
     const newZ = position[2] / 3185.5;
 
-    const r = Math.sqrt((newX) ** 2 + (newY) ** 2 + (newZ) ** 2);
-    const twoDphi = Math.atan2(newY, newX);
-    const twoDTheta = Math.acos(newZ / r);
-    const twodX = (twoDphi / Math.PI) * 7.5;
-    const twodY = ((-twoDTheta / Math.PI) + 0.5) * 7.5;
+    // ── Proper ECI → ECEF → geodetic conversion via GMST ──
+    // starttime is the simulation epoch in ms; compute absolute UTC for this step
+    const utcMs = (starttime || Date.now()) + elapsedTime * 1000;
+    const gmst = transforms.computeGMST(utcMs);
+    const ecefPos = transforms.eci2ecef(position, gmst);   // position is in km (ECI)
+    const geo = transforms.ecef2geodetic(ecefPos);          // { lat, lon, alt } degrees/km
 
-    const tracePoint = { time: elapsedTime, x: newX, y: newY, z: newZ, mapX: twodX, mapY: twodY };
+    // Keep legacy mapX/mapY for backward compatibility (derived from real lat/lon)
+    const twodX = (geo.lon / 180) * 7.5;
+    const twodY = (geo.lat / 90) * 3.75;
+
+    const tracePoint = {
+      time: elapsedTime,
+      x: newX, y: newY, z: newZ,
+      mapX: twodX, mapY: twodY,
+      lat: geo.lat, lon: geo.lon, alt: geo.alt,
+    };
 
     const result = {
       tracePoint,
@@ -93,7 +100,8 @@ app.post('/simulate', (req, res) => {
       kineticEnergy,
       potentialEnergy,
       totalEnergy,
-      elements: { a, e, ν, Ω, ω, i, M: meananomly }
+      elements: { a, e, ν, Ω, ω, i, M: meananomly },
+      geodetic: geo,
     };
 
     res.json(result);

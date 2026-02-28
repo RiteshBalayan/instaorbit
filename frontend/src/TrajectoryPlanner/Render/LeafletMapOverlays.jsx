@@ -16,7 +16,8 @@ import React, { useMemo } from 'react';
 import { CircleMarker, Polyline, Tooltip, Marker, useMap } from 'react-leaflet';
 import { useSelector } from 'react-redux';
 import L from 'leaflet';
-import { mapXYToLatLon, computeSubSolarLatLon, splitAtAntimeridian } from './mapUtils';
+import { mapXYToLatLon, splitAtAntimeridian } from './mapUtils';
+import { sunGeodetic } from '../../transforms';
 
 /* Longitude offsets to cover the three visible world copies */
 const WORLD_OFFSETS = [-360, 0, 360];
@@ -53,9 +54,15 @@ const gsIcon = L.divIcon({
 
 /* ─── Single satellite marker (rendered at all world copies) ── */
 const SatelliteMarker = ({ satellite, color }) => {
-  if (satellite?.coordinates?.mapX == null) return null;
-  const { mapX, mapY } = satellite.coordinates;
-  const basePos = mapXYToLatLon(mapX, mapY);
+  // Prefer proper lat/lon from backend (GMST-based), fall back to legacy mapXY
+  let basePos;
+  if (satellite?.coordinates?.lat != null && satellite?.coordinates?.lon != null) {
+    basePos = [satellite.coordinates.lat, satellite.coordinates.lon];
+  } else if (satellite?.coordinates?.mapX != null) {
+    basePos = mapXYToLatLon(satellite.coordinates.mapX, satellite.coordinates.mapY);
+  } else {
+    return null;
+  }
 
   return (
     <>
@@ -84,11 +91,29 @@ const SatelliteMarker = ({ satellite, color }) => {
 
 /* ─── Single satellite ground track (rendered at all copies) ── */
 const GroundTrack = ({ particle, color }) => {
+  const trackWindow = useSelector((s) => s.view.trackWindow);
+  const RenderTime = useSelector((s) => s.timer.RenderTime);
+
   const baseSegments = useMemo(() => {
     if (!particle?.tracePoints?.length) return [];
-    const points = particle.tracePoints.map((p) => mapXYToLatLon(p.mapX, p.mapY));
+
+    let pts = particle.tracePoints;
+
+    // Track Horizon: keep only points within ±1 hr of current RenderTime
+    if (trackWindow) {
+      const HORIZON = 3600; // seconds
+      const tMin = RenderTime - HORIZON;
+      const tMax = RenderTime + HORIZON;
+      pts = pts.filter((p) => p.time >= tMin && p.time <= tMax);
+    }
+
+    const points = pts.map((p) => {
+      // Prefer proper lat/lon (GMST-based), fall back to legacy mapXY
+      if (p.lat != null && p.lon != null) return [p.lat, p.lon];
+      return mapXYToLatLon(p.mapX, p.mapY);
+    });
     return splitAtAntimeridian(points);
-  }, [particle?.tracePoints]);
+  }, [particle?.tracePoints, trackWindow, RenderTime]);
 
   return (
     <>
@@ -110,10 +135,14 @@ const SubSolarMarker = () => {
   const elapsedTime = useSelector((s) => s.timer.elapsedTime);
   const starttime = useSelector((s) => s.timer.starttime);
 
-  const basePos = useMemo(
-    () => computeSubSolarLatLon(elapsedTime, starttime),
-    [elapsedTime, starttime],
-  );
+  // Proper sub-solar point using sun position with obliquity + GMST
+  const basePos = useMemo(() => {
+    const utcMs = starttime + elapsedTime * 1000;
+    const geo = sunGeodetic(utcMs);
+    // Normalise longitude to [-180, 180]
+    const normLon = ((geo.lon + 180) % 360 + 360) % 360 - 180;
+    return [geo.lat, normLon];
+  }, [elapsedTime, starttime]);
 
   return (
     <>

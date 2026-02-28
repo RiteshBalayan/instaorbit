@@ -16,6 +16,10 @@ const initialState = {
   viewMode: 'globe',
   showControlPanel: true,
   showLinkBudget: false,
+  // Track Horizon: show only ±1 hr ground track window (default off = show all)
+  trackWindow: false,
+  // Orbit ring visibility (Keplerian ellipse in 3D)
+  showOrbit: true,
 };
 
 const viewSlice = createSlice({
@@ -55,6 +59,12 @@ const viewSlice = createSlice({
     toggleLinkBudget: (state) => {
       state.showLinkBudget = !state.showLinkBudget;
     },
+    setTrackWindow: (state, action) => {
+      state.trackWindow = action.payload;
+    },
+    setShowOrbit: (state, action) => {
+      state.showOrbit = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
@@ -63,6 +73,6 @@ const viewSlice = createSlice({
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleLinkBudget } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleLinkBudget, setTrackWindow, setShowOrbit } = viewSlice.actions;
 
 export default viewSlice.reducer;
