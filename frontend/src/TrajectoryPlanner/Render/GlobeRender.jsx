@@ -70,6 +70,7 @@ const GlobeRender = () => {
     const cameraRef = useRef();
     const dispatch = useDispatch();
     const activeLinks = useSelector((state) => state.communication.activeLinks);
+    const showLinkLines = useSelector((state) => state.view.showLinkLines !== false);
 
     // Get sun direction initial condition
     // (no longer needed for phase; sun position is computed astronomically)
@@ -259,7 +260,7 @@ const GlobeRender = () => {
             ))}
             
             {/* Communication links - yellow lines between satellites and ground stations */}
-            {safeActiveLinks.map((link) => {
+            {showLinkLines && safeActiveLinks.map((link) => {
                 let fromPt = [link.from.x, link.from.y, link.from.z];
                 let toPt = [link.to.x, link.to.y, link.to.z];
                 // In EarthFixed mode, rotate link endpoints from ECI → ECEF

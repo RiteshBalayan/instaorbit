@@ -15,6 +15,7 @@ const UtilityControl = () => {
     setAmbientLight,
     setTrackWindow,
     setShowOrbit,
+    setShowLinkLines,
   } = useSidebarActions();
 
   const handleReferenceToggle = useCallback(() => {
@@ -27,6 +28,7 @@ const UtilityControl = () => {
     { key: 'Sun', label: 'Sun', checked: view.Sun, onChange: setSun },
     { key: 'AmbientLight', label: 'Ambient Light', checked: view.AmbientLight, onChange: setAmbientLight },
     { key: 'VonAllenBelt', label: 'Van Allen Belt', checked: view.VonAllenBelt, onChange: setVonAllenBelt },
+    { key: 'LinkLines', label: 'Link Lines', checked: view.showLinkLines !== false, onChange: setShowLinkLines },
   ];
 
   const overlayItems = [

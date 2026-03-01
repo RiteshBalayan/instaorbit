@@ -17,17 +17,9 @@ import {
  * @param {Function} onRenderTimeUpdate - Callback when render time is moved
  * @returns {object} Timeline reference and control functions
  */
-export const useTimeline = (onRenderTimeUpdate) => {
+export const useTimeline = () => {
   const timelineRef = useRef(null);
-  const isDraggingRef = useRef(false);
   const lastUpdateRef = useRef({ renderTime: 0, elapsedTime: 0 });
-  const dragThrottleRef = useRef(null);
-  const onRenderTimeUpdateRef = useRef(onRenderTimeUpdate);
-  
-  // Keep callback ref updated
-  useEffect(() => {
-    onRenderTimeUpdateRef.current = onRenderTimeUpdate;
-  }, [onRenderTimeUpdate]);
   
   // Redux state
   const particles = useSelector((state) => state.particles.particles);
@@ -37,27 +29,21 @@ export const useTimeline = (onRenderTimeUpdate) => {
   const timePoints = useSelector((state) => state.timer.timePoints);
   const isRunning = useSelector((state) => state.timer.isRunning);
   const linkHistory = useSelector((state) => state.communication?.linkHistory || []);
+  const contactWindows = useSelector((state) => state.communication?.contactWindows || []);
   const satellites = useSelector((state) => state.satellites?.satellitesConfig || []);
   const groundStations = useSelector((state) => state.groundStations?.groundStations || []);
+
+  // Derive a stable count of contact windows so we only rebuild the
+  // timeline when a window is opened or closed — not every time an
+  // existing window's end-time is extended.
+  const windowCount = contactWindows.length;
 
   // Timeline initialization - only create once and on major changes
   useEffect(() => {
     if (!timelineRef.current) return;
 
     const currentTimeline = timelineRef.current.timeline;
-    const groups = createTimelineGroups();
-    const dragCallback = (newRenderTime) => {
-      isDraggingRef.current = true;
-      onRenderTimeUpdateRef.current(newRenderTime);
-      setTimeout(() => {
-        isDraggingRef.current = false;
-      }, 100);
-    };
-    
-    // Recreate items when:
-    // 1. Satellite count changes (satellites added/removed)
-    // 2. Link history updates (communication windows added)
-    // 3. Play button is pressed (isRunning changes) - updates satellite end times
+    const groups = createTimelineGroups(particles, contactWindows, satellites, groundStations);
     
     const items = createTimelineItems(
       particles,
@@ -66,12 +52,14 @@ export const useTimeline = (onRenderTimeUpdate) => {
       renderTime,
       linkHistory,
       satellites,
-      groundStations
+      groundStations,
+      contactWindows
     );
     
-    // Options WITH global callbacks that filter by item.id
+    // Options — playhead drag is handled by our custom mouse handler below,
+    // so we disable vis-timeline's built-in item dragging entirely.
     const minTime = starttime || Date.now();
-    const options = createTimelineOptions(minTime, dragCallback);
+    const options = createTimelineOptions(minTime, () => {});
 
     // Initialize timeline if it doesn't exist
     if (!currentTimeline) {
@@ -79,46 +67,68 @@ export const useTimeline = (onRenderTimeUpdate) => {
       timelineRef.current.timeline = newTimeline;
       lastUpdateRef.current = { renderTime, elapsedTime };
     } else {
-      // Update timeline when particles change (satellites added/removed) or play/pause
+      // Rebuild items when satellites or contact windows change
       currentTimeline.setItems(items);
       currentTimeline.setGroups(groups);
-      // Re-set options to ensure callbacks are active
       currentTimeline.setOptions(options);
     }
-  }, [particles.length, starttime, isRunning, linkHistory.length]); // Re-run when satellite count, link history, or play/pause changes
+  }, [particles.length, starttime, isRunning, windowCount]);
 
-  // Update timeline positions smoothly without recreation
+  // Extend open contact-window bars during LIVE SIMULATION only.
+  // This runs when elapsedTime advances (simulation is running forward)
+  // and stretches any still-open window's end edge.  It does NOT run
+  // when the user scrubs renderTime backward.
+  const prevElapsedRef = useRef(0);
   useEffect(() => {
     const timeline = timelineRef.current?.timeline;
-    if (!timeline || isDraggingRef.current) return;
-
-    // Throttle updates - only update if values actually changed
-    if (
-      lastUpdateRef.current.renderTime === renderTime &&
-      lastUpdateRef.current.elapsedTime === elapsedTime
-    ) {
+    if (!timeline || !isRunning) return;
+    // Only extend when simulation moves forward
+    if (elapsedTime <= prevElapsedRef.current) {
+      prevElapsedRef.current = elapsedTime;
       return;
     }
+    prevElapsedRef.current = elapsedTime;
 
-    lastUpdateRef.current = { renderTime, elapsedTime };
-
-    const minTime = starttime || Date.now();
-    
-    // Update positions in a single batch to prevent flickering
     requestAnimationFrame(() => {
       try {
         const items = timeline.itemsData;
-        
-        // Update render time marker (playhead)
+        contactWindows.forEach((w, index) => {
+          if (!w.closed && w.simEnd) {
+            try {
+              items.updateOnly({ id: `link-cw-${index}`, end: new Date(w.simEnd) });
+            } catch (_) {
+              // Item may not exist yet
+            }
+          }
+        });
+      } catch (_) { /* ignore */ }
+    });
+  }, [elapsedTime, isRunning, contactWindows]);
+
+  // Smoothly update ONLY the playhead position.
+  // Contact-window bars and satellite bars are STATIC — they are set once
+  // in the initialization effect and only rebuilt when windowCount or
+  // particles.length changes.  Touching them here caused broken /
+  // overlapping bars when the user scrubbed the playhead backward.
+  useEffect(() => {
+    const timeline = timelineRef.current?.timeline;
+    if (!timeline) return;
+
+    if (lastUpdateRef.current.renderTime === renderTime) return;
+    lastUpdateRef.current = { renderTime, elapsedTime };
+
+    const minTime = starttime || Date.now();
+
+    requestAnimationFrame(() => {
+      try {
+        const items = timeline.itemsData;
         const currentRenderTime = new Date(minTime + renderTime * 1000);
         items.updateOnly({ id: 'Render-time', start: currentRenderTime });
-        
-        // Note: current-time item removed - only show draggable playhead
-      } catch (error) {
-        // Ignore errors during update
+      } catch (_) {
+        // Timeline may not be ready yet
       }
     });
-  }, [renderTime, elapsedTime, starttime]);
+  }, [renderTime, starttime]);
 
   // Control functions
   const zoomToFit = () => {
@@ -132,7 +142,7 @@ export const useTimeline = (onRenderTimeUpdate) => {
       const timeline = timelineRef.current.timeline;
       const range = timeline.getWindow();
       const interval = range.end - range.start;
-      const newInterval = interval * 0.7; // Zoom in by 30%
+      const newInterval = interval * 0.7;
       const center = (range.start.valueOf() + range.end.valueOf()) / 2;
       
       timeline.setWindow(
@@ -148,7 +158,7 @@ export const useTimeline = (onRenderTimeUpdate) => {
       const timeline = timelineRef.current.timeline;
       const range = timeline.getWindow();
       const interval = range.end - range.start;
-      const newInterval = interval * 1.4; // Zoom out by 40%
+      const newInterval = interval * 1.4;
       const center = (range.start.valueOf() + range.end.valueOf()) / 2;
       
       timeline.setWindow(

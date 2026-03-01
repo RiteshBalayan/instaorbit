@@ -24,24 +24,33 @@ const initialState = {
   // Link configurations (saved link definitions)
   links: [],
   
-  // Historical link records for analysis
+  // ── Coalesced contact windows ──────────────────────────────────
+  // Each window: { id, txId, rxId, simStart, simEnd, metrics }
+  // A "window" is a continuous period where a link is active.
+  // When the link drops, the window is closed; a new window opens
+  // when the link re-establishes.  This replaces the old per-step
+  // linkHistory array (which grew to 10k records).
+  contactWindows: [],
+
+  // Legacy linkHistory kept for backward compat with saved projects
+  // but no longer appended to during live simulation.
   linkHistory: [],
   
   // Contact events (AOS/LOS)
-  contactEvents: [],        // [{ id, satId, gsId, type: 'aos'|'los', time, elevation }]
-  
+  contactEvents: [],
+
   // Predicted contact windows
-  predictedContacts: [],    // [{ satId, gsId, aos, los, maxElevation, duration }]
-  
+  predictedContacts: [],
+
   // Current Doppler data per link
-  dopplerData: {},          // { linkId: { shiftHz, rateHzPerSec, relativeVelocity } }
-  
+  dopplerData: {},
+
   // Link quality statistics
-  linkStats: {},            // { linkId: { avgSnr, avgMargin, totalContactTime, passCount } }
-  
+  linkStats: {},
+
   // Handover management
-  handoverQueue: [],        // Upcoming handovers: [{ satId, fromGs, toGs, time }]
-  activeHandovers: [],      // In-progress handovers
+  handoverQueue: [],
+  activeHandovers: [],
 };
 
 const communicationSlice = createSlice({
@@ -78,12 +87,11 @@ const communicationSlice = createSlice({
       state.links = state.links.filter(l => l.id !== id);
     },
     
-    // Link history
+    // Link history (legacy — no longer appended during live sim)
     addLinkRecord: (state, action) => {
       const record = action.payload;
       if (record) {
         state.linkHistory.push(record);
-        // Keep history size manageable (last 10000 records)
         if (state.linkHistory.length > 10000) {
           state.linkHistory = state.linkHistory.slice(-10000);
         }
@@ -91,6 +99,58 @@ const communicationSlice = createSlice({
     },
     clearLinkHistory: (state) => {
       state.linkHistory = [];
+      state.contactWindows = [];
+    },
+
+    // ── Coalesced contact windows ────────────────────────────────
+    // Called every sim step with the list of currently-active link IDs
+    // and their sim-time timestamp.  Opens, extends, or closes windows.
+    updateContactWindows: (state, action) => {
+      const { activeLinkIds, simTimeMs } = action.payload;
+      // activeLinkIds: ['sat-0→gs-1', ...] — link pairs that are in-link NOW
+      // simTimeMs: starttime + renderTime*1000 (absolute UTC ms)
+
+      const activeSet = new Set(activeLinkIds);
+
+      // 1. Extend or close existing open windows
+      state.contactWindows.forEach((w) => {
+        if (!w.closed) {
+          if (activeSet.has(w.pairId)) {
+            // Still active → extend end time
+            w.simEnd = simTimeMs;
+            activeSet.delete(w.pairId); // handled
+          } else {
+            // No longer active → close the window
+            w.closed = true;
+          }
+        }
+      });
+
+      // 2. Open new windows for newly active links
+      activeSet.forEach((pairId) => {
+        const [txId, rxId] = pairId.split('→');
+        state.contactWindows.push({
+          id: `cw-${pairId}-${simTimeMs}`,
+          pairId,
+          txId,
+          rxId,
+          simStart: simTimeMs,
+          simEnd: simTimeMs,
+          closed: false,
+        });
+      });
+
+      // 3. Keep max 500 windows (trim oldest closed ones first)
+      if (state.contactWindows.length > 500) {
+        const closed = state.contactWindows.filter((w) => w.closed);
+        const open = state.contactWindows.filter((w) => !w.closed);
+        const keep = closed.slice(-Math.max(0, 500 - open.length));
+        state.contactWindows = [...keep, ...open];
+      }
+    },
+
+    clearContactWindows: (state) => {
+      state.contactWindows = [];
     },
     
     // Contact events (AOS/LOS logging)
@@ -171,7 +231,7 @@ const communicationSlice = createSlice({
     },
     
     // Reset all communication state
-    resetCommunication: (state) => {
+    resetCommunication: () => {
       return initialState;
     },
   },
@@ -190,6 +250,8 @@ export const {
   updateLink,
   deleteLink,
   clearLinkHistory,
+  updateContactWindows,
+  clearContactWindows,
   addContactEvent,
   clearContactEvents,
   setPredictedContacts,

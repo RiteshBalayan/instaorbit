@@ -53,16 +53,36 @@ const gsIcon = L.divIcon({
 });
 
 /* ─── Single satellite marker (rendered at all world copies) ── */
-const SatelliteMarker = ({ satellite, color }) => {
-  // Prefer proper lat/lon from backend (GMST-based), fall back to legacy mapXY
-  let basePos;
-  if (satellite?.coordinates?.lat != null && satellite?.coordinates?.lon != null) {
-    basePos = [satellite.coordinates.lat, satellite.coordinates.lon];
-  } else if (satellite?.coordinates?.mapX != null) {
-    basePos = mapXYToLatLon(satellite.coordinates.mapX, satellite.coordinates.mapY);
-  } else {
+const SatelliteMarker = ({ satellite, particle, color }) => {
+  const RenderTime = useSelector((s) => s.timer.RenderTime);
+
+  // During timeline playback the Simulator doesn't run, so
+  // satellite.coordinates may be stale.  Derive the marker position
+  // from the trace point closest to (but not exceeding) RenderTime.
+  const basePos = useMemo(() => {
+    if (particle?.tracePoints?.length) {
+      // Find the last trace point at or before the current playhead
+      const pts = particle.tracePoints;
+      let best = null;
+      for (let i = pts.length - 1; i >= 0; i--) {
+        if (pts[i].time <= RenderTime) { best = pts[i]; break; }
+      }
+      if (best) {
+        if (best.lat != null && best.lon != null) return [best.lat, best.lon];
+        if (best.mapX != null) return mapXYToLatLon(best.mapX, best.mapY);
+      }
+    }
+    // Fallback: use CurrentState coordinates (live simulation mode)
+    if (satellite?.coordinates?.lat != null && satellite?.coordinates?.lon != null) {
+      return [satellite.coordinates.lat, satellite.coordinates.lon];
+    }
+    if (satellite?.coordinates?.mapX != null) {
+      return mapXYToLatLon(satellite.coordinates.mapX, satellite.coordinates.mapY);
+    }
     return null;
-  }
+  }, [particle?.tracePoints, RenderTime, satellite?.coordinates]);
+
+  if (!basePos) return null;
 
   return (
     <>
@@ -97,14 +117,15 @@ const GroundTrack = ({ particle, color }) => {
   const baseSegments = useMemo(() => {
     if (!particle?.tracePoints?.length) return [];
 
-    let pts = particle.tracePoints;
+    // Always clip to RenderTime so scrubbing backward shows only the
+    // portion of the ground track up to the playhead position.
+    let pts = particle.tracePoints.filter((p) => p.time <= RenderTime);
 
-    // Track Horizon: keep only points within ±1 hr of current RenderTime
+    // Track Horizon: further narrow to ±1 hr window around RenderTime
     if (trackWindow) {
       const HORIZON = 3600; // seconds
       const tMin = RenderTime - HORIZON;
-      const tMax = RenderTime + HORIZON;
-      pts = pts.filter((p) => p.time >= tMin && p.time <= tMax);
+      pts = pts.filter((p) => p.time >= tMin);
     }
 
     const points = pts.map((p) => {
@@ -317,7 +338,7 @@ const LeafletMapOverlays = () => {
         const particle = particles.find((p) => p.id === sat.id);
         return (
           <React.Fragment key={sat.id}>
-            <SatelliteMarker satellite={sat} color={color} />
+            <SatelliteMarker satellite={sat} particle={particle} color={color} />
             {particle && <GroundTrack particle={particle} color={color} />}
           </React.Fragment>
         );

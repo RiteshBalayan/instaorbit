@@ -34,7 +34,6 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
 
 
   useEffect(() => {
-    // Run simulation when renderTime changes (for timeline scrubbing)
     // Only run simulation if renderTime actually changed
     if (renderTime === prevRenderTime.current) {
       return;
@@ -42,6 +41,18 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
     
     // Update prevRenderTime immediately to prevent duplicate runs
     prevRenderTime.current = renderTime;
+
+    // ── Playback guard ──────────────────────────────────────────────
+    // When the user scrubs the timeline backward (or to any time that
+    // is at-or-below the simulation frontier `elapsedTime`), we are in
+    // pure playback mode.  The trace data for that time already exists
+    // in Redux, so we must NOT call the backend or add new trace
+    // points — that would create duplicates and waste network calls.
+    // Simulation should only run when renderTime is advancing the
+    // frontier (renderTime >= elapsedTime).
+    if (renderTime < elapsedTime) {
+      return;
+    }
     
     if (true) {
       // If orbitalelements not initialized yet, initialize with initial conditions
@@ -152,7 +163,7 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
       })();
       }
     }
-  }, [dispatch, renderTime, particleId, orbitalelements, burns, propagator, satelliteConfig, starttime]);
+  }, [dispatch, renderTime, elapsedTime, particleId, orbitalelements, burns, propagator, satelliteConfig, starttime]);
 
   return null;
 };

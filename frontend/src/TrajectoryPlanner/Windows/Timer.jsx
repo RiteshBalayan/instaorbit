@@ -49,9 +49,7 @@ const Timer = () => {
   const simulation = useSimulationTimer(timeStep);
   const render = useRenderTimer(simStep);
   const formatting = useTimeFormatting(simulation.elapsedTime, simulation.starttime);
-  const timeline = useTimeline((newRenderTime) => {
-    render.setRenderTime(newRenderTime);
-  });
+  const timeline = useTimeline();
 
   // Event handlers
   const handleStartPause = () => {
@@ -250,6 +248,8 @@ const Timer = () => {
         onFastForward={handleFastForward}
         onPlayPause={handleStartPause}
         isPlaying={simulation.isRunning}
+        onRenderTimeUpdate={(newRenderTime) => render.setRenderTime(newRenderTime)}
+        starttime={simulation.starttime}
       />
 
       <DatePickerModal

@@ -15,11 +15,11 @@ function Globe() {
   return (
     <div className='Globe-panel' style={{ position: 'relative' }}>
       <SlimTopBar />
-      {showLinkBudget && (
-        <div className="globe-overlay">
-          <LinkBudgetBoard />
-        </div>
-      )}
+
+      {/* LinkBudgetBoard must ALWAYS mount so it continuously computes
+          activeLinks and contactWindows regardless of panel visibility.
+          The overlay div is only shown when the user opens the panel. */}
+      <LinkBudgetBoard hidden={!showLinkBudget} />
 
       {viewMode === 'globe' && (
         <ErrorBoundary fallbackMessage="Globe view failed to render.">

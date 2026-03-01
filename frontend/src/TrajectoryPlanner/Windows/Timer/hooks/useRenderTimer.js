@@ -73,11 +73,15 @@ export const useRenderTimer = (renderStep) => {
   };
 
   const setRenderTime = (time) => {
-    // Update render time (visual playhead position)
+    // Update render time (visual playhead position / playhead)
     dispatch(updateRenderTime(time));
-    // CRITICAL: Also update elapsed time to drive simulation data
-    // This makes scrubbing work - satellites move to match playhead position
-    dispatch(setElapsedTime(time));
+    // Only advance the simulation frontier (elapsedTime) when scrubbing
+    // FORWARD past the current frontier.  Scrubbing backward is pure
+    // playback — the trace data already exists, so no new simulation is
+    // needed and elapsedTime must stay at its high-water mark.
+    if (time > elapsedTime) {
+      dispatch(setElapsedTime(time));
+    }
   };
 
   return {

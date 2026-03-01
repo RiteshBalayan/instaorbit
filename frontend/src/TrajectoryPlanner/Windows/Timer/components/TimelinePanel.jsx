@@ -5,6 +5,7 @@
 
 import React from 'react';
 import TimelineZoomControls from './TimelineZoomControls';
+import PlayheadOverlay from './PlayheadOverlay';
 
 export const TimelinePanel = ({ 
   panelRef,
@@ -17,10 +18,12 @@ export const TimelinePanel = ({
   onFastBackward,
   onFastForward,
   onPlayPause,
-  isPlaying
+  isPlaying,
+  onRenderTimeUpdate,
+  starttime,
 }) => {
   return (
-    <div ref={panelRef} className="timeline-panel">
+    <div ref={panelRef} className="timeline-panel" style={{ position: 'relative' }}>
       <TimelineZoomControls
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
@@ -33,6 +36,12 @@ export const TimelinePanel = ({
         isPlaying={isPlaying}
       />
       <div ref={timelineRef} className="timeline-container"></div>
+      {/* Transparent drag-handle overlay — always sits above vis-timeline DOM */}
+      <PlayheadOverlay
+        timelineRef={timelineRef}
+        onRenderTimeUpdate={onRenderTimeUpdate}
+        starttime={starttime}
+      />
     </div>
   );
 };

@@ -1,10 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Box, Paper, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Popover, Checkbox, FormControlLabel } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { setActiveLinks, addLinkRecord } from '../../../Store/communicationSlice';
+import { setActiveLinks, updateContactWindows } from '../../../Store/communicationSlice';
+import { computeGMST, geodeticToSceneECI, geodeticToScene, SCALE_FACTOR } from '../../../transforms';
 
-const SCALE_TO_KM = 3185.5;
 const SPEED_OF_LIGHT = 299792458;
 const PLANCK = 6.62607015e-34;
 
@@ -34,21 +34,23 @@ const defaultParams = {
   minElevationDeg: 10,
 };
 
-const LinkBudgetBoard = () => {
+const LinkBudgetBoard = ({ hidden = false }) => {
   const dispatch = useDispatch();
   const links = useSelector((state) => state.communication.links);
-  const linkHistory = useSelector((state) => state.communication.linkHistory);
+  const contactWindows = useSelector((state) => state.communication.contactWindows);
   const satellites = useSelector((state) => state.satellites.satellitesConfig);
   const groundStations = useSelector((state) => state.groundStations.groundStations);
   const currentStates = useSelector((state) => state.CurrentState.satelite);
   const particles = useSelector((state) => state.particles?.particles || []);
   const renderTime = useSelector((state) => state.timer.RenderTime);
+  const starttime = useSelector((state) => state.timer.starttime);
   const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
   const [openHistory, setOpenHistory] = useState(false);
   const [historyFilter, setHistoryFilter] = useState('all');
   const [localLinks, setLocalLinks] = useState([]);
-  const [selectedLinkIds, setSelectedLinkIds] = useState([]); // Track which links to display
-  const [filterAnchorEl, setFilterAnchorEl] = useState(null); // Popover anchor
+  const [selectedLinkIds, setSelectedLinkIds] = useState([]);
+  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+  const lastWindowUpdateRef = useRef(0); // throttle contact window updates
 
   const nameFor = (id) => {
     if (!id) return 'Unknown';
@@ -125,34 +127,45 @@ const LinkBudgetBoard = () => {
     if (!id) return null;
     if (id.startsWith('sat-')) {
       const numericId = parseFloat(id.replace('sat-', ''));
-      const satState = currentStates.find((s) => s.id === numericId);
+      // During playback, prefer trace-point position at RenderTime
       const particle = particles.find((p) => p.id === numericId);
-      const coords = satState?.coordinates || particle?.tracePoints?.slice(-1)[0];
+      if (particle?.tracePoints?.length) {
+        let best = null;
+        for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
+          if (particle.tracePoints[i].time <= renderTime) {
+            best = particle.tracePoints[i];
+            break;
+          }
+        }
+        if (best) {
+          return {
+            x: best.x * SCALE_FACTOR,  // scene units → km
+            y: best.y * SCALE_FACTOR,
+            z: best.z * SCALE_FACTOR,
+          };
+        }
+      }
+      // Fallback: CurrentState (live simulation)
+      const satState = currentStates.find((s) => s.id === numericId);
+      const coords = satState?.coordinates;
       if (!coords) return null;
       return {
-        x: coords.x * SCALE_TO_KM,
-        y: coords.y * SCALE_TO_KM,
-        z: coords.z * SCALE_TO_KM,
+        x: coords.x * SCALE_FACTOR,
+        y: coords.y * SCALE_FACTOR,
+        z: coords.z * SCALE_FACTOR,
       };
     }
-    // Ground station - must account for reference frame rotation
+    // Ground station → use proper GMST-based geodetic→ECI transform
     const gs = groundStations.find((g) => g.id === id);
     if (!gs) return null;
-    const latRad = (gs.lat * Math.PI) / 180;
-    const lonRad = (gs.lon * Math.PI) / 180;
-    const r = 6378.137 + (gs.altKm || 0);
-    
-    let adjustedLon = lonRad;
-    if (referenceSystem === 'EarthInertial') {
-      // In EarthInertial frame, ground stations rotate with Earth
-      const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60); // rad/s
-      adjustedLon = lonRad + (earthRotationRate * renderTime);
-    }
-    
+    const geo = { lat: gs.lat, lon: gs.lon, alt: gs.altKm || 0 };
+    // Always compute in ECI (satellites are always in ECI in trace data)
+    const utcMs = starttime + renderTime * 1000;
+    const scenePos = geodeticToSceneECI(geo, utcMs);
     return {
-      x: r * Math.cos(latRad) * Math.cos(adjustedLon),
-      y: r * Math.cos(latRad) * Math.sin(adjustedLon),
-      z: r * Math.sin(latRad),
+      x: scenePos[0] * SCALE_FACTOR,
+      y: scenePos[1] * SCALE_FACTOR,
+      z: scenePos[2] * SCALE_FACTOR,
     };
   };
 
@@ -201,21 +214,21 @@ const LinkBudgetBoard = () => {
       const gs = groundStations.find((g) => g.id === groundId);
       if (!gs) return null;
       const latRad = (gs.lat * Math.PI) / 180;
-      let lonRad = (gs.lon * Math.PI) / 180;
+      const lonRad = (gs.lon * Math.PI) / 180;
       
-      // Adjust longitude for ENU frame in EarthInertial mode
-      if (referenceSystem === 'EarthInertial') {
-        const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60);
-        lonRad = lonRad + (earthRotationRate * renderTime);
-      }
+      // Use GMST to get the correct ECI longitude of the ground station
+      const utcMs = starttime + renderTime * 1000;
+      const gmst = computeGMST(utcMs);
+      const enuLon = lonRad + gmst;  // geodetic lon → ECI lon
       
       const dxg = satPos.x - groundPos.x;
       const dyg = satPos.y - groundPos.y;
       const dzg = satPos.z - groundPos.z;
       const sinLat = Math.sin(latRad);
       const cosLat = Math.cos(latRad);
-      const sinLon = Math.sin(lonRad);
-      const cosLon = Math.cos(lonRad);
+      // ENU frame must use the ECI-rotated longitude, not geodetic
+      const sinLon = Math.sin(enuLon);
+      const cosLon = Math.cos(enuLon);
       const east = -sinLon * dxg + cosLon * dyg;
       const north = -sinLat * cosLon * dxg - sinLat * sinLon * dyg + cosLat * dzg;
       const up = cosLat * cosLon * dxg + cosLat * sinLon * dyg + sinLat * dzg;
@@ -274,134 +287,96 @@ const LinkBudgetBoard = () => {
     };
   };
 
-  // Create a dependency key that changes when any satellite position changes
+  // Dependency key: changes when satellite positions change or during playback
   const satPositionKey = useMemo(() => {
-    return currentStates.map(s => 
-      `${s.id}-${s.coordinates?.x}-${s.coordinates?.y}-${s.coordinates?.z}-${s.lastUpdate || ''}`
+    // Include renderTime so links recompute during timeline playback
+    return `rt-${renderTime}-` + currentStates.map(s => 
+      `${s.id}-${s.coordinates?.x?.toFixed(4)}-${s.coordinates?.y?.toFixed(4)}-${s.coordinates?.z?.toFixed(4)}`
     ).join('|');
-  }, [currentStates]);
+  }, [currentStates, renderTime]);
 
   const linkResults = useMemo(() => {
-    console.log('LinkBudgetBoard: Recomputing link results', {
-      numLinks: localLinks.length,
-      renderTime,
-      satPositionKey
-    });
     return localLinks.map((l) => computeLink(l)).filter(Boolean);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localLinks, groundStations, renderTime, satPositionKey]);
 
   useEffect(() => {
-    // Update active links for rendering lines (only valid positions)
-    
-    // Helper to get ground station position in scene units (matching GroundStationRender.jsx)
-    const getGroundStationRenderPosition = (gs) => {
-      if (!gs) return null;
-      const latRad = (gs.lat * Math.PI) / 180;
-      const lonRad = (gs.lon * Math.PI) / 180;
-      const r = (6378.137 + (gs.altKm || 0)) / SCALE_TO_KM;
-      
-      let adjustedLon = lonRad;
-      if (referenceSystem === 'EarthInertial') {
-        // In EarthInertial frame, ground stations rotate with Earth
-        const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60);
-        adjustedLon = lonRad + (earthRotationRate * renderTime);
+    // Build active link geometries for 3D rendering.
+    // Positions are in scene-unit ECI (same frame as satellites).
+    // GlobeRender handles ECI→ECEF rotation for EarthFixed mode.
+
+    const getRenderPos = (endpointId) => {
+      if (endpointId.startsWith('sat-')) {
+        const numId = parseFloat(endpointId.replace('sat-', ''));
+        // Prefer trace point at RenderTime (works during playback)
+        const particle = particles.find((p) => p.id === numId);
+        if (particle?.tracePoints?.length) {
+          for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
+            if (particle.tracePoints[i].time <= renderTime) {
+              const tp = particle.tracePoints[i];
+              return { x: tp.x, y: tp.y, z: tp.z };
+            }
+          }
+        }
+        // Fallback: CurrentState
+        const st = currentStates.find((s) => s.id === numId);
+        return st?.coordinates || null;
       }
-      
-      return {
-        x: r * Math.cos(latRad) * Math.cos(adjustedLon),
-        y: r * Math.cos(latRad) * Math.sin(adjustedLon),
-        z: r * Math.sin(latRad),
-      };
+      // Ground station → scene-unit ECI via proper GMST transform
+      const gs = groundStations.find((g) => g.id === endpointId);
+      if (!gs) return null;
+      const utcMs = starttime + renderTime * 1000;
+      const pos = geodeticToSceneECI({ lat: gs.lat, lon: gs.lon, alt: gs.altKm || 0 }, utcMs);
+      return { x: pos[0], y: pos[1], z: pos[2] };
     };
-    
+
     const active = linkResults
       .filter((r) => r.inLink)
       .map((r) => {
-        const txState = currentStates.find((s) => `sat-${s.id}` === r.txId);
-        const rxState = currentStates.find((s) => `sat-${s.id}` === r.rxId);
-        const gsTx = groundStations.find((g) => g.id === r.txId);
-        const gsRx = groundStations.find((g) => g.id === r.rxId);
-        
-        // Get render positions (already in scene units)
-        const txRender = txState?.coordinates || (gsTx ? getGroundStationRenderPosition(gsTx) : null);
-        const rxRender = rxState?.coordinates || (gsRx ? getGroundStationRenderPosition(gsRx) : null);
-        
-        if (!txRender || !rxRender) return null;
-        const { x: fx, y: fy, z: fz } = txRender;
-        const { x: tx, y: ty, z: tz } = rxRender;
-        if (![fx, fy, fz, tx, ty, tz].every(Number.isFinite)) return null;
-        
-        // Debug: Log positions to verify correctness
-        console.log('Link positions:', {
-          linkId: r.id,
-          txId: r.txId,
-          rxId: r.rxId,
-          from: { x: fx, y: fy, z: fz },
-          to: { x: tx, y: ty, z: tz },
-          distance: Math.sqrt((tx-fx)**2 + (ty-fy)**2 + (tz-fz)**2)
-        });
-        
-        return { 
-          id: `${r.txId}-${r.rxId}`, 
-          from: { x: fx, y: fy, z: fz }, 
-          to: { x: tx, y: ty, z: tz }, 
-          txId: r.txId, 
-          rxId: r.rxId 
-        };
+        const from = getRenderPos(r.txId);
+        const to = getRenderPos(r.rxId);
+        if (!from || !to) return null;
+        if (![from.x, from.y, from.z, to.x, to.y, to.z].every(Number.isFinite)) return null;
+        return { id: `${r.txId}-${r.rxId}`, from, to, txId: r.txId, rxId: r.rxId };
       })
       .filter(Boolean);
-    
-    console.log('LinkBudgetBoard: Setting active links', {
-      numResults: linkResults.length,
-      numActive: active.length,
-      satPositionKey
-    });
-    
+
     dispatch(setActiveLinks(active));
-  }, [linkResults, currentStates, groundStations, dispatch, satPositionKey, referenceSystem, renderTime]);
+
+    // ── Coalesced contact window update (throttled to 1 Hz) ────
+    const now = Date.now();
+    if (now - lastWindowUpdateRef.current >= 1000) {
+      lastWindowUpdateRef.current = now;
+      const activeLinkIds = linkResults
+        .filter((r) => r.inLink && r.ready)
+        .map((r) => `${r.txId}→${r.rxId}`);
+      const simTimeMs = starttime + renderTime * 1000;
+      dispatch(updateContactWindows({ activeLinkIds, simTimeMs }));
+    }
+  }, [linkResults, currentStates, particles, groundStations, dispatch, renderTime, starttime]);
   const latestByLink = useMemo(() => {
     const map = new Map();
-    linkHistory.forEach((rec) => {
-      if (!rec?.txId || !rec?.rxId) return;
-      const key = `${rec.txId}-${rec.rxId}`;
-      if (!map.has(key) || (rec.timestamp ?? 0) > (map.get(key).timestamp ?? 0)) {
-        map.set(key, rec);
+    // Use coalesced contact windows for latest status
+    contactWindows.forEach((w) => {
+      if (!w.closed) {
+        map.set(w.pairId, { txId: w.txId, rxId: w.rxId, timestamp: w.simEnd });
       }
     });
     return map;
-  }, [linkHistory]);
+  }, [contactWindows]);
 
   const filteredHistory = useMemo(() => {
-    return linkHistory
-      .filter((rec) => historyFilter === 'all' || `${rec.txId}-${rec.rxId}` === historyFilter)
-      .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-  }, [linkHistory, historyFilter]);
+    return contactWindows
+      .filter((w) => historyFilter === 'all' || w.pairId === historyFilter)
+      .sort((a, b) => (b.simEnd ?? 0) - (a.simEnd ?? 0));
+  }, [contactWindows, historyFilter]);
 
-  // Record link history when links are active
-  useEffect(() => {
-    const timestamp = Date.now();
-    linkResults.forEach((result) => {
-      if (result.inLink && result.ready) {
-        dispatch(addLinkRecord({
-          id: `${result.txId}-${result.rxId}-${timestamp}`,
-          timestamp,
-          txId: result.txId,
-          rxId: result.rxId,
-          metrics: {
-            rangeKm: result.rangeKm,
-            rxPowerDbm: result.rxPowerDbm,
-            snrDb: result.snrDb,
-            linkMargin: result.linkMargin,
-            elevationDeg: result.elevationDeg,
-          },
-        }));
-      }
-    });
-  }, [linkResults, dispatch]);
+  // When hidden, all hooks above still run (activeLinks + contactWindows
+  // are dispatched) but we render nothing visible.
+  if (hidden) return null;
 
   return (
-    <>
+    <div className="globe-overlay">
       <Paper 
         elevation={3} 
         sx={{ 
@@ -777,7 +752,7 @@ const LinkBudgetBoard = () => {
           <Button onClick={() => setOpenHistory(false)} sx={{ color: '#fff' }}>Close</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </div>
   );
 };
 

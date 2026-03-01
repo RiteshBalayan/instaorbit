@@ -20,6 +20,8 @@ const initialState = {
   trackWindow: false,
   // Orbit ring visibility (Keplerian ellipse in 3D)
   showOrbit: true,
+  // Communication link lines in 3D view (default on)
+  showLinkLines: true,
 };
 
 const viewSlice = createSlice({
@@ -65,6 +67,9 @@ const viewSlice = createSlice({
     setShowOrbit: (state, action) => {
       state.showOrbit = action.payload;
     },
+    setShowLinkLines: (state, action) => {
+      state.showLinkLines = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
@@ -73,6 +78,6 @@ const viewSlice = createSlice({
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleLinkBudget, setTrackWindow, setShowOrbit } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleLinkBudget, setTrackWindow, setShowOrbit, setShowLinkLines } = viewSlice.actions;
 
 export default viewSlice.reducer;
