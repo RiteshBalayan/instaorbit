@@ -3,6 +3,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
 
+/**
+ * RealSimulator – calls the backend /simulate endpoint every time RenderTime
+ * changes, then stores the result (ECI position + geodetic lat/lon) in Redux.
+ *
+ * IMPORTANT: All propagation is now always in ECI.  No Ω adjustment is
+ * applied before sending to the backend.  Frame conversion (ECI→ECEF) is
+ * done by the backend using GMST, and returned as { lat, lon, alt }.
+ */
 const RealSimulator = ({ particleId, propagator, burns }) => {
 
   const dispatch = useDispatch();
@@ -10,9 +18,7 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
   const orbitalelements = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId));
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const renderTime = useSelector((state) => state.timer.RenderTime);
-  const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
   const satelliteConfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
-  const orignalomega = satelliteConfig?.InitialCondition?.assendingnode;
 
   const prevRenderTime = useRef(undefined);
   const starttime = useSelector((state) => state.timer.starttime);
@@ -28,7 +34,6 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
 
 
   useEffect(() => {
-    // Run simulation when renderTime changes (for timeline scrubbing)
     // Only run simulation if renderTime actually changed
     if (renderTime === prevRenderTime.current) {
       return;
@@ -36,6 +41,18 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
     
     // Update prevRenderTime immediately to prevent duplicate runs
     prevRenderTime.current = renderTime;
+
+    // ── Playback guard ──────────────────────────────────────────────
+    // When the user scrubs the timeline backward (or to any time that
+    // is at-or-below the simulation frontier `elapsedTime`), we are in
+    // pure playback mode.  The trace data for that time already exists
+    // in Redux, so we must NOT call the backend or add new trace
+    // points — that would create duplicates and waste network calls.
+    // Simulation should only run when renderTime is advancing the
+    // frontier (renderTime >= elapsedTime).
+    if (renderTime < elapsedTime) {
+      return;
+    }
     
     if (true) {
       // If orbitalelements not initialized yet, initialize with initial conditions
@@ -57,11 +74,6 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
           elements: initialElements,
         }));
         
-        // Use initial elements for first simulation call
-        const adjustedOmega = referenceSystem === 'EarthFixed' && orignalomega !== undefined
-          ? initialElements.Ω
-          : initialElements.Ω;
-        
         (async () => {
           try {
             const resp = await fetch('http://localhost:3001/simulate', {
@@ -71,15 +83,11 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
                 propagator,
                 orbitalelements: {
                   timefix: null,
-                  elements: {
-                    ...initialElements,
-                    Ω: adjustedOmega,
-                  },
+                  elements: initialElements,  // always true inertial Ω
                 },
                 burn: undefined,
                 elapsedTime: renderTime,
-                referenceSystem,
-                originalomega: orignalomega,
+                starttime,                    // epoch for GMST computation
               }),
             });
 
@@ -113,15 +121,8 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
         ? burns.find((b) => renderTime >= (b.time ?? 0))
         : undefined;
 
-      // Calculate EarthFixed Ω (ascending node) adjustment
-      let adjustedOmega = orbitalelements.elements.Ω;
-      if (referenceSystem === 'EarthFixed' && orignalomega !== undefined) {
-        // In EarthFixed frame, the reference frame rotates with Earth
-        // The orbital plane must counter-rotate to maintain inertial orientation
-        const radiansPerSecond = 2 * Math.PI / (24 * 60 * 60); // Earth rotation rate
-        const dΩ = (radiansPerSecond * renderTime) % (2 * Math.PI);
-        adjustedOmega = -(dΩ - orignalomega) % (2 * Math.PI);
-      }
+      // No Ω adjustment — always send true inertial elements.
+      // The backend computes GMST and returns proper lat/lon.
 
       // Send request to backend simulation server
       (async () => {
@@ -131,17 +132,10 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               propagator,
-              orbitalelements: {
-                ...orbitalelements,
-                elements: {
-                  ...orbitalelements.elements,
-                  Ω: adjustedOmega,
-                },
-              },
+              orbitalelements,              // true inertial elements, unmodified
               burn: burnToUse,
               elapsedTime: renderTime,
-              referenceSystem,
-              originalomega: orignalomega,
+              starttime,                    // epoch for GMST computation
             }),
           });
 
@@ -169,7 +163,7 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
       })();
       }
     }
-  }, [dispatch, renderTime, particleId, orbitalelements, burns, propagator, referenceSystem, orignalomega, satelliteConfig]);
+  }, [dispatch, renderTime, elapsedTime, particleId, orbitalelements, burns, propagator, satelliteConfig, starttime]);
 
   return null;
 };

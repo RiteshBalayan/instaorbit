@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { auth } from '../../../firebase/firebase';
 import { Bar, Items } from './TopBar.styles';
-import { useTopBarState } from './hooks/useTopBarState';
-import { useProjectOperations } from './hooks/useProjectOperations';
-import { useRippleEffect } from './hooks/useRippleEffect';
-import { useClickOutside } from './hooks/useClickOutside';
+import { useTopBarState } from '../../../features/topbar/hooks/useTopBarState';
+import { useProjectOperations } from '../../../features/topbar/hooks/useProjectOperations';
+import { useRippleEffect } from '../../../features/topbar/hooks/useRippleEffect';
+import { useClickOutside } from '../../../features/topbar/hooks/useClickOutside';
 import NewTrajectoryModal from './components/NewTrajectoryModal';
 import SaveModal from './components/SaveModal';
 import SaveAsModal from './components/SaveAsModal';
@@ -14,6 +15,7 @@ import NotificationToast from './components/NotificationToast';
 import ProjectDisplay from './components/ProjectDisplay';
 import ActionButtons from './components/ActionButtons';
 import AuthenticationSection from './components/AuthenticationSection';
+import { setViewMode, toggleControlPanel, toggleLinkBudget } from '../../../Store/View';
 
 
 const TopBar = () => {
@@ -21,6 +23,10 @@ const TopBar = () => {
   const state = useSelector((state) => state);
   const ProjectName = useSelector((state) => state.workingProject.trajectoryName);
   const trajectoryID = useSelector((state) => state.workingProject.trajectoryID);
+  const currentViewMode = useSelector((state) => state.view.viewMode);
+  const showControlPanel = useSelector((state) => state.view.showControlPanel);
+  const showLinkBudget = useSelector((state) => state.view.showLinkBudget);
+  const dispatch = useDispatch();
   const user = auth.currentUser;
   
   // Check if a trajectory is loaded
@@ -59,7 +65,7 @@ const TopBar = () => {
     <Bar>
       <Items>
         <ProjectDisplay projectName={ProjectName} />
-        
+
         <ActionButtons
           operations={operations}
           handleRipple={handleRipple}
@@ -75,10 +81,18 @@ const TopBar = () => {
           saveAsInputRef={saveAsInputRef}
           user={user}
           hasTrajectory={hasTrajectory}
+          currentViewMode={currentViewMode}
+          onChangeView={(mode) => dispatch(setViewMode(mode))}
+          showControlPanel={showControlPanel}
+          showLinkBudget={showLinkBudget}
+          onToggleControlPanel={() => dispatch(toggleControlPanel())}
+          onToggleLinkBudget={() => dispatch(toggleLinkBudget())}
         />
-        
+
         <AuthenticationSection user={user} />
+
       </Items>
+
       <ProjectPopup
         isOpen={showPopup}
         onClose={operations.handleClosePopup}

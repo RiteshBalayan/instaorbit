@@ -1,0 +1,63 @@
+import React from 'react';
+import { FilterInput, ToggleButton, SmallIconButton, Controls } from './ListComponents.styles.js';
+
+const ListControls = ({
+  filter,
+  onFilterChange,
+  view,
+  onViewChange,
+  sortBy,
+  sortDir,
+  onSortChange,
+  showArchived,
+  onArchiveToggle,
+  placeholder = 'Filter...',
+}) => {
+  return (
+    <Controls>
+      <FilterInput
+        placeholder={placeholder}
+        value={filter}
+        onChange={onFilterChange}
+      />
+      
+      <ToggleButton
+        title={view === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+        active={view === 'grid'}
+        onClick={() => onViewChange(view === 'grid' ? 'list' : 'grid')}
+      >
+        <span style={{ fontSize: 14 }}>{view === 'grid' ? '▦' : '▤'}</span>
+        <span style={{ fontSize: 12 }}>{view === 'grid' ? 'Grid' : 'List'}</span>
+      </ToggleButton>
+
+      {showArchived !== undefined && onArchiveToggle && (
+        <ToggleButton
+          title={showArchived ? 'Showing archived' : 'Show archived'}
+          active={showArchived}
+          onClick={onArchiveToggle}
+        >
+          <span style={{ fontSize: 14 }}>{showArchived ? '🗂️' : '📁'}</span>
+          <span style={{ fontSize: 12 }}>{showArchived ? 'Archived' : 'Active'}</span>
+        </ToggleButton>
+      )}
+
+      <SmallIconButton
+        title="Sort alphabetically"
+        onClick={() => onSortChange('alpha')}
+        style={{ borderColor: sortBy === 'alpha' ? 'rgba(143, 148, 251, 0.8)' : undefined }}
+      >
+        A↕
+      </SmallIconButton>
+
+      <SmallIconButton
+        title="Sort by date"
+        onClick={() => onSortChange('date')}
+        style={{ borderColor: sortBy === 'date' ? 'rgba(143, 148, 251, 0.8)' : undefined }}
+      >
+        📅
+      </SmallIconButton>
+    </Controls>
+  );
+};
+
+export default ListControls;

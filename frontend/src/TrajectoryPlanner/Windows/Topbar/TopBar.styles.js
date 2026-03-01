@@ -17,7 +17,7 @@ export const Bar = styled.div`
   box-shadow: 0 1px 6px rgba(44,44,54,0.10);
   padding: 0.18rem 0.7rem;
   border-bottom: 1px solid #2d2d2d;
-  z-index: 100;
+  z-index: 9000;
   font-size: 0.85rem;
 `;
 

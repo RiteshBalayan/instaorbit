@@ -6,15 +6,99 @@
 import { DataSet } from 'vis-timeline/standalone';
 import { getTimelineFormatConfig } from './timeFormatters';
 
+/* ── Helpers (must be above createTimelineGroups which uses them) ── */
+
 /**
- * Creates timeline groups configuration
+ * Gets display name for a link endpoint
+ * @param {string} endpointId - Endpoint ID (e.g., 'sat-0', 'gs-1')
+ * @param {Array} satellites - Satellite configs
+ * @param {Array} groundStations - Ground station configs
+ * @returns {string} Display name
+ */
+const getEndpointName = (endpointId, satellites, groundStations) => {
+  if (!endpointId) return 'Unknown';
+  if (endpointId.startsWith('sat-')) {
+    const satId = parseInt(endpointId.replace('sat-', ''));
+    const sat = satellites?.find(s => s.id === satId);
+    return sat?.name || `Satellite ${satId}`;
+  }
+  const gs = groundStations?.find(g => g.id === endpointId);
+  return gs?.name || endpointId;
+};
+
+/**
+ * Gets color for a link based on its ID
+ * @param {string} linkId - Link identifier
+ * @returns {string} Hex color
+ */
+const getLinkColor = (linkId) => {
+  const colors = ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#FFEB3B'];
+  const hash = linkId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
+
+/**
+ * Creates timeline groups configuration.
+ *
+ * One row per satellite, one row for the playhead, one row per unique
+ * link pair.  This prevents bars from overlapping.
+ *
+ * Group ID scheme:
+ *   'sat-<id>'      – one per satellite
+ *   'playhead'      – fixed single row for the render-time scrubber
+ *   'link-<pairId>' – one per unique communication pair
+ *
+ * @param {Array}  particles       – satellite particle data
+ * @param {Array}  contactWindows  – coalesced contact windows from Redux
+ * @param {Array}  satellites      – satellitesConfig from Redux
+ * @param {Array}  groundStations  – ground station configs
  * @returns {DataSet} Timeline groups dataset
  */
-export const createTimelineGroups = () => {
-  return new DataSet([
-    { id: 1, content: 'Satellites', className: 'satellites-group' },
-    { id: 2, content: 'Events', className: 'events-group' }
-  ]);
+export const createTimelineGroups = (
+  particles = [],
+  contactWindows = [],
+  satellites = [],
+  groundStations = [],
+) => {
+  const groups = [];
+
+  // ── One row per satellite ────────────────────────────────────
+  particles.forEach((p, index) => {
+    const sat = satellites.find(s => s.id === p.id);
+    const label = sat?.name || p.name || `Satellite ${index + 1}`;
+    groups.push({
+      id: `sat-${p.id ?? index}`,
+      content: `🛰 ${label}`,
+      className: 'satellites-group',
+      order: index,
+    });
+  });
+
+  // ── Playhead row (always present) ────────────────────────────
+  groups.push({
+    id: 'playhead',
+    content: '▶ Playhead',
+    className: 'playhead-group',
+    order: 1000, // keep after satellites
+  });
+
+  // ── One row per unique link pair ─────────────────────────────
+  const seenPairs = new Set();
+  contactWindows.forEach(w => {
+    const pairId = w.pairId || `${w.txId}→${w.rxId}`;
+    if (seenPairs.has(pairId)) return;
+    seenPairs.add(pairId);
+    const txName = getEndpointName(w.txId, satellites, groundStations);
+    const rxName = getEndpointName(w.rxId, satellites, groundStations);
+    groups.push({
+      id: `link-${pairId}`,
+      content: `📡 ${txName} → ${rxName}`,
+      className: 'links-group',
+      order: 2000 + seenPairs.size,
+    });
+  });
+
+  return new DataSet(groups);
 };
 
 /**
@@ -26,7 +110,8 @@ export const createTimelineGroups = () => {
  */
 export const createTimelineOptions = (minTime, onRenderTimeUpdate) => {
   return {
-    stack: true,
+    stack: false,           // Prevent items from stacking / dancing vertically
+    stackSubgroups: false,
     align: 'centre',
     showCurrentTime: false,
     autoResize: true,
@@ -55,33 +140,12 @@ export const createTimelineOptions = (minTime, onRenderTimeUpdate) => {
     margin: {
       item: {
         horizontal: 2,
-        vertical: 8,
+        vertical: 4,
       },
       axis: 5,
     },
-    // Global callbacks - MUST be here, item-level callbacks don't work with DataSet!
-    onMove: (item, callback) => {
-      // ONLY process Render-time, ignore satellites
-      if (item.id === 'Render-time') {
-        const newRenderTime = (item.start.valueOf() - minTime) / 1000;
-        onRenderTimeUpdate(newRenderTime);
-        callback(item); // Apply the move
-      } else {
-        // Don't apply move for satellites - they stay locked
-        return false;
-      }
-    },
-    onMoving: (item, callback) => {
-      // ONLY process Render-time, ignore satellites
-      if (item.id === 'Render-time') {
-        const newRenderTime = (item.start.valueOf() - minTime) / 1000;
-        onRenderTimeUpdate(newRenderTime);
-        callback(item); // Continue the move
-      } else {
-        // Block satellites from being dragged
-        return false;
-      }
-    },
+    // Playhead dragging is handled by a custom mousedown/mousemove handler
+    // in useTimeline.js, so we don't need vis-timeline's built-in onMove/onMoving.
     format: getTimelineFormatConfig(),
     // Smooth animation settings
     rollingMode: {
@@ -111,7 +175,7 @@ export const createParticleItems = (particles, minTime) => {
           start: start,
           end: end,
           type: 'range',
-          group: 1,
+          group: `sat-${particle.id ?? index}`,  // own row per satellite
           className: 'satellite-item',
           editable: false,
           selectable: false,
@@ -138,12 +202,13 @@ export const createCurrentTimePoint = (minTime, currentTime) => {
     className: 'current-time-point',
     editable: false,
     selectable: false,
-    group: 2,
+    group: 'playhead',
   };
 };
 
 /**
  * Extracts contact windows from continuous link history records
+ * Legacy fallback for old-format linkHistory arrays.
  * @param {Array} linkHistory - All link history records
  * @param {string} linkId - Link identifier (e.g., 'sat-0→gs-1')
  * @returns {Array} Contact windows [{ start, end }]
@@ -164,17 +229,14 @@ const extractContactWindows = (linkHistory, linkId) => {
   
   records.forEach(record => {
     if (!windowStart) {
-      // Start first window
       windowStart = record.timestamp;
     } else if (record.timestamp - lastTimestamp > GAP_THRESHOLD_MS) {
-      // Gap detected - close previous window, start new one
       windows.push({ start: windowStart, end: lastTimestamp });
       windowStart = record.timestamp;
     }
     lastTimestamp = record.timestamp;
   });
   
-  // Close final window
   if (windowStart && lastTimestamp) {
     windows.push({ start: windowStart, end: lastTimestamp });
   }
@@ -183,50 +245,55 @@ const extractContactWindows = (linkHistory, linkId) => {
 };
 
 /**
- * Gets display name for a link endpoint
- * @param {string} endpointId - Endpoint ID (e.g., 'sat-0', 'gs-1')
+ * Creates timeline items for communication links.
+ *
+ * Prefers the new coalesced `contactWindows` array (already aggregated
+ * in Redux).  Falls back to the legacy `linkHistory` record list.
+ *
+ * @param {Array} linkHistory - Legacy link history records (fallback)
  * @param {Array} satellites - Satellite configs
  * @param {Array} groundStations - Ground station configs
- * @returns {string} Display name
- */
-const getEndpointName = (endpointId, satellites, groundStations) => {
-  if (endpointId.startsWith('sat-')) {
-    const satId = parseInt(endpointId.replace('sat-', ''));
-    const sat = satellites?.find(s => s.id === satId);
-    return sat?.name || `Satellite ${satId}`;
-  }
-  const gs = groundStations?.find(g => g.id === endpointId);
-  return gs?.name || endpointId;
-};
-
-/**
- * Gets color for a link based on its ID
- * @param {string} linkId - Link identifier
- * @returns {string} Hex color
- */
-const getLinkColor = (linkId) => {
-  const colors = ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#FFEB3B'];
-  const hash = linkId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return colors[hash % colors.length];
-};
-
-/**
- * Creates timeline items for communication links
- * @param {Array} linkHistory - Link history records from Redux
- * @param {Array} satellites - Satellite configs
- * @param {Array} groundStations - Ground station configs
+ * @param {Array} contactWindows - Coalesced contact windows from Redux
  * @returns {Array} Timeline items for communication windows
  */
-export const createLinkItems = (linkHistory, satellites, groundStations) => {
-  if (!linkHistory || linkHistory.length === 0) return [];
-  
+export const createLinkItems = (linkHistory, satellites, groundStations, contactWindows = []) => {
   const items = [];
-  
-  // Get unique link pairs from history
+
+  // ── Prefer coalesced windows ──────────────────────────────────
+  if (contactWindows.length > 0) {
+    contactWindows.forEach((w, index) => {
+      const txName = getEndpointName(w.txId, satellites, groundStations);
+      const rxName = getEndpointName(w.rxId, satellites, groundStations);
+      const linkName = `${txName} → ${rxName}`;
+      const color = getLinkColor(w.pairId || `${w.txId}→${w.rxId}`);
+
+      // Ignore windows shorter than 500ms (noise)
+      if (w.simEnd - w.simStart < 500) return;
+
+      const pairId = w.pairId || `${w.txId}→${w.rxId}`;
+      items.push({
+        id: `link-cw-${index}`,
+        content: linkName,
+        start: new Date(w.simStart),
+        end: new Date(w.simEnd),
+        type: 'range',
+        group: `link-${pairId}`,  // own row per link pair
+        className: 'link-bar',
+        editable: false,
+        selectable: false,
+        style: `background-color: ${color}; border: 1px solid rgba(255,255,255,0.3); pointer-events: none;`,
+      });
+    });
+    return items;
+  }
+
+  // ── Legacy fallback: extract from individual records ──────────
+  if (!linkHistory || linkHistory.length === 0) return [];
+
   const linkPairs = new Set(
     linkHistory.map(r => `${r.txId}→${r.rxId}`)
   );
-  
+
   linkPairs.forEach(linkId => {
     const windows = extractContactWindows(linkHistory, linkId);
     const [txId, rxId] = linkId.split('→');
@@ -243,11 +310,11 @@ export const createLinkItems = (linkHistory, satellites, groundStations) => {
         start: new Date(window.start),
         end: new Date(window.end),
         type: 'range',
-        group: 2, // Event group
+        group: `link-${linkId}`,  // own row per link pair
         className: 'link-bar',
         editable: false,
         selectable: false,
-        style: `background-color: ${color}; border: 1px solid rgba(255,255,255,0.3);`
+        style: `background-color: ${color}; border: 1px solid rgba(255,255,255,0.3); pointer-events: none;`
       });
     });
   });
@@ -268,15 +335,9 @@ export const createRenderTimePoint = (renderTime) => {
     start: renderTime,
     type: 'point', // Point type for vertical line indicator
     className: 'render-time-point',
-    editable: {
-      remove: false,
-      updateTime: true, // ENABLED - makes it draggable left/right
-      updateGroup: false, // Prevent vertical dragging
-    },
-    selectable: true,
-    group: 2,
-    // No item-level callbacks - they don't work with DataSet!
-    // Global options.onMove/onMoving handle this with item.id filtering
+    editable: false,   // Custom mouse handler in useTimeline.js handles drag
+    selectable: false,
+    group: 'playhead',
   };
 };
 
@@ -286,9 +347,10 @@ export const createRenderTimePoint = (renderTime) => {
  * @param {number} starttime - Timeline start timestamp
  * @param {number} elapsedTime - Current elapsed time in seconds
  * @param {number} renderTime - Current render time in seconds
- * @param {Array} linkHistory - Link history records (optional)
+ * @param {Array} linkHistory - Legacy link history records (optional)
  * @param {Array} satellites - Satellite configs (optional)
  * @param {Array} groundStations - Ground station configs (optional)
+ * @param {Array} contactWindows - Coalesced contact windows (optional)
  * @returns {DataSet} Complete timeline items
  */
 export const createTimelineItems = (
@@ -298,14 +360,14 @@ export const createTimelineItems = (
   renderTime,
   linkHistory = [],
   satellites = [],
-  groundStations = []
+  groundStations = [],
+  contactWindows = []
 ) => {
   const minTime = starttime || Date.now();
-  const currentTime = new Date(minTime + elapsedTime * 1000);
   const currentRenderTime = new Date(minTime + renderTime * 1000);
 
   const particleItems = createParticleItems(particles, minTime);
-  const linkItems = createLinkItems(linkHistory, satellites, groundStations);
+  const linkItems = createLinkItems(linkHistory, satellites, groundStations, contactWindows);
   const renderTimePoint = createRenderTimePoint(currentRenderTime);
 
   return new DataSet([...particleItems, ...linkItems, renderTimePoint]);

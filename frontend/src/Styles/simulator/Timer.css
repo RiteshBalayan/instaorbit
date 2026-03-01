@@ -336,6 +336,19 @@
   border-color: #106ebe;
 }
 
+/* Backend warning banner */
+.backend-warning {
+  background: #b91c1c;
+  color: #fff;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(185, 28, 28, 0.5);
+}
+
 /* Container that holds the button and the display */
 .starttime-container {
   display: flex;
@@ -556,9 +569,10 @@
   position: relative !important;
   z-index: 1000 !important;
   user-select: none !important;
-  width: 20px !important;
+  pointer-events: none !important;  /* Custom JS handler on container */
+  width: 30px !important;
   padding: 0 !important;
-  margin-left: -10px !important;
+  margin-left: -15px !important;
   font-size: 14px !important;
 }
 
@@ -588,7 +602,7 @@
   color: #2196F3;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   cursor: ew-resize;
-  pointer-events: auto;
+  pointer-events: none;
   z-index: 1001;
 }
 
@@ -652,7 +666,8 @@
 }
 
 .vis-timeline .satellites-group {
-  flex: 2 !important; /* Satellites take 2/3 of vertical space */
+  flex: 0 0 auto !important; /* Each satellite row sizes to content */
+  min-height: 28px !important;
 }
 
 .vis-timeline .satellites-group .vis-label {
@@ -661,6 +676,60 @@
   padding: 8px !important;
   display: flex !important;
   align-items: center !important;
+}
+
+/* ── Playhead group (render-time scrubber) ── */
+.vis-timeline .playhead-group {
+  flex: 0 0 28px !important;   /* Fixed thin row for the playhead */
+  max-height: 28px !important;
+  min-height: 28px !important;
+}
+
+.vis-timeline .playhead-group .vis-label {
+  height: 100% !important;
+  line-height: normal !important;
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+  color: #2196F3 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* ── Links group (communication windows – view-only) ── */
+.vis-timeline .links-group {
+  flex: 0 0 auto !important;
+  min-height: 24px !important;
+}
+
+.vis-timeline .links-group .vis-label {
+  height: 100% !important;
+  line-height: normal !important;
+  padding: 6px 8px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #4CAF50 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Link bars — completely non-interactive, view-only.
+   The ENTIRE group row (foreground + items) is pass-through so the
+   playhead drag is never interrupted when crossing link rows. */
+.vis-timeline .links-group .vis-foreground,
+.vis-timeline .links-group .vis-item,
+.vis-timeline .link-bar,
+.vis-timeline .link-bar.vis-item {
+  pointer-events: none !important;
+  cursor: default !important;
+  user-select: none !important;
+}
+
+/* Satellite bars are also non-draggable — pass-through their rows too */
+.vis-timeline .satellites-group .vis-foreground,
+.vis-timeline .satellites-group .vis-item {
+  pointer-events: none !important;
+  cursor: default !important;
+  user-select: none !important;
 }
 
 .vis-timeline .events-group {
@@ -727,12 +796,12 @@
   border: 1px solid #4a6a8a !important;
   color: #e0e0e0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
-  height: auto !important; /* Scale with group height */
-  min-height: 32px !important;
+  height: auto !important;
+  min-height: 22px !important;
   line-height: normal !important;
   font-weight: 500 !important;
-  font-size: 11px !important;
-  padding: 8px 10px !important;
+  font-size: 10px !important;
+  padding: 4px 8px !important;
   text-align: left !important;
   overflow: hidden !important;
   white-space: nowrap !important;
@@ -755,7 +824,8 @@
 }
 
 /* Events/current time styling - shorter, lighter bars that scale */
-.vis-timeline .events-group .vis-item.vis-range {
+.vis-timeline .events-group .vis-item.vis-range,
+.vis-timeline .playhead-group .vis-item.vis-range {
   background: linear-gradient(to bottom, rgba(120, 120, 180, 0.3), rgba(100, 100, 160, 0.25)) !important;
   border: 1px solid rgba(140, 140, 200, 0.4) !important;
   color: rgba(200, 200, 220, 0.8) !important;
@@ -770,9 +840,26 @@
   align-items: center !important;
 }
 
-.vis-timeline .events-group .vis-item.vis-range:hover {
+.vis-timeline .events-group .vis-item.vis-range:hover,
+.vis-timeline .playhead-group .vis-item.vis-range:hover {
   background: linear-gradient(to bottom, rgba(140, 140, 200, 0.4), rgba(120, 120, 180, 0.35)) !important;
   border-color: rgba(160, 160, 220, 0.5) !important;
+}
+
+/* Link bars in the dedicated Links group — view-only colored bars */
+.vis-timeline .links-group .vis-item.vis-range {
+  border-radius: 3px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 18px !important;
+  line-height: normal !important;
+  font-size: 9px !important;
+  font-weight: 500 !important;
+  padding: 2px 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  opacity: 0.85;
 }
 
 /* Current time bar in events group - HIDDEN (only show draggable playhead) */
@@ -805,15 +892,17 @@
   background: #4a4a4a;
 }
 
-/* Point items (playhead) - hide default vis-timeline vertical line */
+/* Point items (playhead) - keep vis-timeline drag surface alive */
 .vis-timeline .vis-item.vis-point {
   background: transparent !important;
   border: none !important;
 }
 
-/* Hide the default vis-timeline point vertical line */
+/* Keep overflow element present (vis-timeline uses it for drag detection)
+   but make it invisible. */
 .vis-timeline .vis-item.vis-point .vis-item-overflow {
-  display: none !important;
+  opacity: 0 !important;
+  overflow: visible !important;
 }
 
 .vis-timeline .vis-item.vis-point .vis-item-content {
@@ -821,8 +910,24 @@
   margin: 0 !important;
 }
 
-/* Hide the default point dot */
+/* Hide the default point dot visually but keep it for hit-testing */
 .vis-timeline .vis-item.vis-point .vis-dot {
-  display: none !important;
+  opacity: 0 !important;
+}
+
+/* ── Playhead visual elements ──
+   Dragging is handled by a custom mousedown/mousemove handler in
+   useTimeline.js that converts page-X to time.  vis-timeline's own
+   item-drag is disabled, so pointer-events on these items doesn't
+   matter for drag.  We keep them pass-through so the container div's
+   listener always fires.  The cursor rule is purely cosmetic. */
+.vis-timeline .playhead-group .vis-foreground,
+.vis-timeline .playhead-group .vis-foreground .vis-item {
+  pointer-events: none !important;
+}
+.vis-timeline .render-time-point,
+.vis-timeline .render-time-point * {
+  pointer-events: none !important;
+  cursor: ew-resize !important;
 }
 

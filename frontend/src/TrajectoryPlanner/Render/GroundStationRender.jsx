@@ -2,56 +2,46 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSelector } from 'react-redux';
-
-const SCALE_TO_KM = 3185.5;
+import { geodeticToScene, geodeticToSceneECI } from '../../transforms';
 
 const GroundStation = ({ stationId, lat, lon, altKm = 0, name }) => {
   const groupRef = useRef();
   const antennaRef = useRef();
   const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
   const elapsedTime = useSelector((state) => state.timer.RenderTime);
+  const starttime = useSelector((state) => state.timer.starttime);
 
-  // Calculate position on Earth surface
+  // Calculate position using centralized transforms
   const position = useMemo(() => {
-    const latRad = (lat * Math.PI) / 180;
-    const lonRad = (lon * Math.PI) / 180;
-    const earthRadius = 2; // Earth radius in scene units
-    const r = (6378.137 + altKm) / SCALE_TO_KM; // Convert to scene units
-    
-    let adjustedLon = lonRad;
+    const geo = { lat, lon, alt: altKm };
+    let pos;
     if (referenceSystem === 'EarthInertial') {
-      // In EarthInertial frame: Ground stations must rotate with Earth
-      // because Earth mesh rotates in this non-rotating reference frame
-      const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60); // radians per second
-      adjustedLon = lonRad + (earthRotationRate * elapsedTime);
+      // In EarthInertial frame: transform geodetic → ECEF → ECI using GMST
+      const utcMs = starttime + elapsedTime * 1000;
+      pos = geodeticToSceneECI(geo, utcMs);
+    } else {
+      // In EarthFixed frame: transform geodetic → ECEF → scene units
+      pos = geodeticToScene(geo);
     }
-    // In EarthFixed frame: Ground stations remain at fixed lat/lon
-    // because the reference frame itself rotates with Earth
-    
-    return {
-      x: r * Math.cos(latRad) * Math.cos(adjustedLon),
-      y: r * Math.cos(latRad) * Math.sin(adjustedLon),
-      z: r * Math.sin(latRad),
-    };
-  }, [lat, lon, altKm, referenceSystem, elapsedTime]);
+    return { x: pos[0], y: pos[1], z: pos[2] };
+  }, [lat, lon, altKm, referenceSystem, elapsedTime, starttime]);
 
-  // Calculate normal vector for orientation (must account for Earth rotation)
+  // Calculate normal vector for orientation (same frame as position)
   const normal = useMemo(() => {
-    const latRad = (lat * Math.PI) / 180;
-    let lonRad = (lon * Math.PI) / 180;
-    
-    // Adjust longitude for EarthInertial mode
+    const geo = { lat, lon, alt: altKm + 10 }; // slight offset for direction
+    let pos;
     if (referenceSystem === 'EarthInertial') {
-      const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60);
-      lonRad = lonRad + (earthRotationRate * elapsedTime);
+      const utcMs = starttime + elapsedTime * 1000;
+      pos = geodeticToSceneECI(geo, utcMs);
+    } else {
+      pos = geodeticToScene(geo);
     }
-    
     return new THREE.Vector3(
-      Math.cos(latRad) * Math.cos(lonRad),
-      Math.cos(latRad) * Math.sin(lonRad),
-      Math.sin(latRad)
+      pos[0] - position.x,
+      pos[1] - position.y,
+      pos[2] - position.z
     ).normalize();
-  }, [lat, lon, referenceSystem, elapsedTime]);
+  }, [lat, lon, altKm, referenceSystem, elapsedTime, starttime, position]);
 
   useFrame(() => {
     if (groupRef.current) {

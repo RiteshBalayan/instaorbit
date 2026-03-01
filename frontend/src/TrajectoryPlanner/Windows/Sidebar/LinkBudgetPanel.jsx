@@ -17,9 +17,9 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import '../../../Styles/simulator/LinkBudget.css';
-import { setActiveLinks, addLinkRecord, setLinks } from '../../../Store/communicationSlice';
+import { setLinks } from '../../../Store/communicationSlice';
+import { computeGMST, geodeticToSceneECI, SCALE_FACTOR } from '../../../transforms';
 
-const SCALE_TO_KM = 3185.5;
 const SPEED_OF_LIGHT = 299792458;
 const PLANCK = 6.62607015e-34;
 
@@ -60,9 +60,11 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
   const satellites = useSelector((state) => state.satellites.satellitesConfig);
   const currentStates = useSelector((state) => state.CurrentState.satelite);
   const groundStations = useSelector((state) => state.groundStations.groundStations);
-  const linkHistory = useSelector((state) => state.communication.linkHistory);
+  const contactWindows = useSelector((state) => state.communication.contactWindows);
   const savedLinks = useSelector((state) => state.communication.links);
+  const particles = useSelector((state) => state.particles?.particles || []);
   const renderTime = useSelector((state) => state.timer.RenderTime);
+  const starttime = useSelector((state) => state.timer.starttime);
   const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
   const dispatch = useDispatch();
   const [linkConfigs, setLinkConfigs] = useState([]);
@@ -71,7 +73,6 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
   const [historyFilter, setHistoryFilter] = useState('selected');
   const [historyPage, setHistoryPage] = useState(0);
   const [itemsPerPage] = useState(20);
-  const lastRecordTimeRef = useRef({});
   const initializedRef = useRef(false);
 
   // Reset page when filter changes
@@ -131,64 +132,33 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
     if (!id) return null;
     if (id.startsWith('sat-')) {
       const numericId = parseFloat(id.replace('sat-', ''));
+      // Prefer trace point at RenderTime (works during playback)
+      const particle = particles.find((p) => p.id === numericId);
+      if (particle?.tracePoints?.length) {
+        let best = null;
+        for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
+          if (particle.tracePoints[i].time <= renderTime) {
+            best = particle.tracePoints[i]; break;
+          }
+        }
+        if (best) {
+          return { x: best.x * SCALE_FACTOR, y: best.y * SCALE_FACTOR, z: best.z * SCALE_FACTOR };
+        }
+      }
       const satState = currentStates.find((s) => s.id === numericId);
       if (!satState?.coordinates) return null;
       return {
-        x: satState.coordinates.x * SCALE_TO_KM,
-        y: satState.coordinates.y * SCALE_TO_KM,
-        z: satState.coordinates.z * SCALE_TO_KM,
+        x: satState.coordinates.x * SCALE_FACTOR,
+        y: satState.coordinates.y * SCALE_FACTOR,
+        z: satState.coordinates.z * SCALE_FACTOR,
       };
     }
-    // Ground station - must account for reference frame rotation
+    // Ground station → proper GMST-based geodetic→ECI
     const gs = groundStations.find((g) => g.id === id);
     if (!gs) return null;
-    const latRad = (gs.lat * Math.PI) / 180;
-    const lonRad = (gs.lon * Math.PI) / 180;
-    const r = 6378.137 + (gs.altKm || 0);
-    
-    let adjustedLon = lonRad;
-    if (referenceSystem === 'EarthInertial') {
-      // In EarthInertial frame, ground stations rotate with Earth
-      const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60); // rad/s
-      adjustedLon = lonRad + (earthRotationRate * renderTime);
-    }
-    
-    return {
-      x: r * Math.cos(latRad) * Math.cos(adjustedLon),
-      y: r * Math.cos(latRad) * Math.sin(adjustedLon),
-      z: r * Math.sin(latRad),
-    };
-  };
-
-  const getRenderPosition = (id) => {
-    if (!id) return null;
-    if (id.startsWith('sat-')) {
-      const numericId = parseFloat(id.replace('sat-', ''));
-      const satState = currentStates.find((s) => s.id === numericId);
-      if (!satState?.coordinates) return null;
-      const { x, y, z } = satState.coordinates;
-      if (![x, y, z].every(Number.isFinite)) return null;
-      return { x, y, z };
-    }
-    // Ground station - must account for reference frame
-    const gs = groundStations.find((g) => g.id === id);
-    if (!gs) return null;
-    const latRad = (gs.lat * Math.PI) / 180;
-    const lonRad = (gs.lon * Math.PI) / 180;
-    const r = (6378.137 + (gs.altKm || 0)) / SCALE_TO_KM;
-    
-    let adjustedLon = lonRad;
-    if (referenceSystem === 'EarthInertial') {
-      // In EarthInertial frame, ground stations rotate with Earth
-      const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60);
-      adjustedLon = lonRad + (earthRotationRate * renderTime);
-    }
-    
-    const x = r * Math.cos(latRad) * Math.cos(adjustedLon);
-    const y = r * Math.cos(latRad) * Math.sin(adjustedLon);
-    const z = r * Math.sin(latRad);
-    if (![x, y, z].every(Number.isFinite)) return null;
-    return { x, y, z };
+    const utcMs = starttime + renderTime * 1000;
+    const scenePos = geodeticToSceneECI({ lat: gs.lat, lon: gs.lon, alt: gs.altKm || 0 }, utcMs);
+    return { x: scenePos[0] * SCALE_FACTOR, y: scenePos[1] * SCALE_FACTOR, z: scenePos[2] * SCALE_FACTOR };
   };
 
   const computeLink = (cfg) => {
@@ -235,21 +205,20 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
       const gs = groundStations.find((g) => g.id === groundId);
       if (!gs || !satPos || !groundPos) return { ready: false, id: cfg.id, txId, rxId };
       const latRad = (gs.lat * Math.PI) / 180;
-      let lonRad = (gs.lon * Math.PI) / 180;
+      const lonRad = (gs.lon * Math.PI) / 180;
       
-      // Adjust longitude for ENU frame in EarthInertial mode
-      if (referenceSystem === 'EarthInertial') {
-        const earthRotationRate = (2 * Math.PI) / (24 * 60 * 60);
-        lonRad = lonRad + (earthRotationRate * renderTime);
-      }
+      // ENU frame uses ECI-rotated longitude via GMST
+      const utcMs = starttime + renderTime * 1000;
+      const gmst = computeGMST(utcMs);
+      const enuLon = lonRad + gmst;
       
       const dxg = satPos.x - groundPos.x;
       const dyg = satPos.y - groundPos.y;
       const dzg = satPos.z - groundPos.z;
       const sinLat = Math.sin(latRad);
       const cosLat = Math.cos(latRad);
-      const sinLon = Math.sin(lonRad);
-      const cosLon = Math.cos(lonRad);
+      const sinLon = Math.sin(enuLon);
+      const cosLon = Math.cos(enuLon);
       const east = -sinLon * dxg + cosLon * dyg;
       const north = -sinLat * cosLon * dxg - sinLat * sinLon * dyg + cosLat * dzg;
       const up = cosLat * cosLon * dxg + cosLat * sinLon * dyg + sinLat * dzg;
@@ -357,80 +326,12 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
     satPositionKey,
   ]);
 
+  // Sync link configs to Redux whenever they change, so LinkBudgetBoard picks them up
   useEffect(() => {
-    const active = [];
-    const timestamp = Date.now();
-    const RECORD_THROTTLE_MS = 1000; // Record to history every 1 second
-
-    linkResults.forEach((result) => {
-      if (!result.ready || !result.inLink) return;
-      const txRender = getRenderPosition(result.txId);
-      const rxRender = getRenderPosition(result.rxId);
-      if (
-        !txRender ||
-        !rxRender ||
-        ![txRender.x, txRender.y, txRender.z, rxRender.x, rxRender.y, rxRender.z].every(Number.isFinite)
-      ) {
-        return;
-      }
-      
-      active.push({
-        id: `${result.txId}-${result.rxId}`,
-        from: txRender,
-        to: rxRender,
-        txId: result.txId,
-        rxId: result.rxId,
-        metrics: {
-          rangeKm: result.rangeKm,
-          channelLoss: result.channelLoss,
-          rxPowerDbm: result.rxPowerDbm,
-          snrDb: result.snrDb,
-          linkMargin: result.linkMargin,
-          receivedPhotonRate: result.receivedPhotonRate,
-          dataRateMbps: result.dataRateMbps,
-          elevationDeg: result.elevationDeg,
-          txPowerMw: result.txPowerMw,
-          wavelengthNm: result.wavelengthNm,
-          txGain: result.txGain,
-          rxGain: result.rxGain,
-          fspl: result.fspl,
-          timestamp,
-        },
-      });
-
-      // Throttle link history recording to avoid excessive records
-      const linkKey = `${result.txId}-${result.rxId}`;
-      const lastRecordTime = lastRecordTimeRef.current[linkKey] || 0;
-      
-      if (timestamp - lastRecordTime >= RECORD_THROTTLE_MS) {
-        lastRecordTimeRef.current[linkKey] = timestamp;
-        dispatch(
-          addLinkRecord({
-            id: `${linkKey}-${timestamp}`,
-            timestamp,
-            txId: result.txId,
-            rxId: result.rxId,
-            metrics: {
-              rangeKm: result.rangeKm,
-              channelLoss: result.channelLoss,
-              rxPowerDbm: result.rxPowerDbm,
-              snrDb: result.snrDb,
-              linkMargin: result.linkMargin,
-              receivedPhotonRate: result.receivedPhotonRate,
-              dataRateMbps: result.dataRateMbps,
-              elevationDeg: result.elevationDeg,
-              txPowerMw: result.txPowerMw,
-              wavelengthNm: result.wavelengthNm,
-              txGain: result.txGain,
-              rxGain: result.rxGain,
-              fspl: result.fspl,
-            },
-          })
-        );
-      }
-    });
-    dispatch(setActiveLinks(active));
-  }, [dispatch, linkResults]);
+    if (linkConfigs.length > 0) {
+      dispatch(setLinks(linkConfigs));
+    }
+  }, [linkConfigs, dispatch]);
 
   const renderSelect = (label, value, onChange) => (
     <Box className="link-field">
@@ -555,16 +456,30 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
                       alert('You need at least 2 endpoints (satellite and ground station) to create a link!');
                       return;
                     }
-                    const tx = endpoints[0].id;
-                    const rx = endpoints[1]?.id || endpoints[0].id;
-                    
-                    // Check if this link already exists
-                    const linkExists = linkConfigs.some(link => 
-                      (link.txId === tx && link.rxId === rx) || (link.txId === rx && link.rxId === tx)
-                    );
-                    
-                    if (linkExists) {
-                      alert('A link between these endpoints already exists!');
+
+                    // Find the first unused endpoint pair
+                    let tx = null;
+                    let rx = null;
+                    for (let i = 0; i < endpoints.length && !tx; i++) {
+                      for (let j = 0; j < endpoints.length; j++) {
+                        if (i === j) continue;
+                        const a = endpoints[i].id;
+                        const b = endpoints[j].id;
+                        const exists = linkConfigs.some(
+                          (link) =>
+                            (link.txId === a && link.rxId === b) ||
+                            (link.txId === b && link.rxId === a)
+                        );
+                        if (!exists) {
+                          tx = a;
+                          rx = b;
+                          break;
+                        }
+                      }
+                    }
+
+                    if (!tx || !rx) {
+                      alert('All possible endpoint pairs already have links configured.');
                       return;
                     }
                     
@@ -754,7 +669,7 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
           <Divider className="link-divider" />
 
           <Dialog 
-            open={showHistory && linkHistory.length > 0} 
+            open={showHistory && contactWindows.length > 0} 
             onClose={() => setShowHistory(false)} 
             fullWidth 
             maxWidth="md"
@@ -766,7 +681,7 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
               }
             }}
           >
-            <DialogTitle sx={{ color: '#fff' }}>Link History</DialogTitle>
+            <DialogTitle sx={{ color: '#fff' }}>Contact Windows</DialogTitle>
             <DialogContent dividers sx={{ borderColor: 'rgba(255,255,255,0.1)' }}>
               <Box className="history-header" sx={{ mb: 2 }}>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 1 }}>Filter</Typography>
@@ -819,51 +734,44 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
                 </Select>
               </Box>
               <Box sx={{ overflowX: 'auto', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 1, p: 1, maxHeight: '400px', overflowY: 'auto' }}>
-                <table className="history-table-modal" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                <table className="history-table-modal" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}>
                     <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.3)' }}>
-                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Time</th>
-                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Transmitter</th>
-                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Receiver</th>
-                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Elevation</th>
-                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Rx Power</th>
-                      <th style={{ color: '#4ade80', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Channel Loss</th>
-                      <th style={{ color: '#60a5fa', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Photon Rate</th>
+                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Link</th>
+                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Start (UTC)</th>
+                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>End (UTC)</th>
+                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Duration</th>
+                      <th style={{ color: 'rgba(255,255,255,0.95)', padding: '10px 8px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Status</th>
                     </tr>
                   </thead>
-                <tbody>
+                  <tbody>
                     {(() => {
-                      const filtered = linkHistory
-                    .filter((rec) => {
-                          if (historyFilter === 'all') return true;
-                          if (!historyFilter) return true;
+                      const filtered = contactWindows
+                        .filter((w) => {
+                          if (historyFilter === 'all' || !historyFilter) return true;
                           const cfg = linkConfigs.find((c) => c.id === historyFilter);
                           if (!cfg) return true;
-                          return rec.txId === cfg.txId && rec.rxId === cfg.rxId;
+                          const cfgKey = `${cfg.txId}→${cfg.rxId}`;
+                          return w.pairId === cfgKey;
                         })
-                        .reverse();
-                      
+                        .slice()
+                        .sort((a, b) => b.simStart - a.simStart);
+
                       const startIndex = historyPage * itemsPerPage;
-                      const endIndex = startIndex + itemsPerPage;
-                      const paginatedData = filtered.slice(startIndex, endIndex);
-                      
-                      return paginatedData.map((rec) => {
-                        // Check if these fields exist to differentiate between 0 and missing data
-                        const hasChannelLoss = rec.metrics?.channelLoss !== undefined && rec.metrics?.channelLoss !== null;
-                        const hasPhotonRate = rec.metrics?.receivedPhotonRate !== undefined && rec.metrics?.receivedPhotonRate !== null;
-                        
+                      const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+                      return paginatedData.map((w) => {
+                        const durationSec = ((w.simEnd - w.simStart) / 1000).toFixed(1);
+                        // Parse tx/rx from linkId (e.g. "sat-1-gs-abc123")
+                        const parts = w.pairId || '';
                         return (
-                          <tr key={rec.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{new Date(rec.timestamp).toLocaleTimeString()}</td>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{getLabel(rec.txId)}</td>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{getLabel(rec.rxId)}</td>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{formatNumber(rec.metrics?.elevationDeg, 1)}°</td>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{formatNumber(rec.metrics?.rxPowerDbm, 2)} dBm</td>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap', fontWeight: hasChannelLoss ? 'normal' : '300' }}>
-                              {hasChannelLoss ? `${formatNumber(rec.metrics.channelLoss, 2)} dB` : '—'}
-                            </td>
-                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap', fontWeight: hasPhotonRate ? 'normal' : '300' }}>
-                              {hasPhotonRate ? `${formatNumber(rec.metrics.receivedPhotonRate, 2)} cps` : '—'}
+                          <tr key={w.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{parts}</td>
+                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{new Date(w.simStart).toUTCString()}</td>
+                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{new Date(w.simEnd).toUTCString()}</td>
+                            <td style={{ color: 'rgba(255,255,255,0.9)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{durationSec}s</td>
+                            <td style={{ color: w.open ? '#4ade80' : 'rgba(255,255,255,0.5)', padding: '8px', fontSize: '0.875rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                              {w.open ? 'Active' : 'Closed'}
                             </td>
                           </tr>
                         );
@@ -875,15 +783,14 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, px: 1 }}>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
                   {(() => {
-                    const filtered = linkHistory.filter((rec) => {
-                      if (historyFilter === 'all') return true;
-                      if (!historyFilter) return true;
+                    const filtered = contactWindows.filter((w) => {
+                      if (historyFilter === 'all' || !historyFilter) return true;
                       const cfg = linkConfigs.find((c) => c.id === historyFilter);
                       if (!cfg) return true;
-                      return rec.txId === cfg.txId && rec.rxId === cfg.rxId;
+                      return w.pairId === `${cfg.txId}→${cfg.rxId}`;
                     });
                     const totalPages = Math.ceil(filtered.length / itemsPerPage);
-                    return `Page ${historyPage + 1} of ${Math.max(1, totalPages)} (${filtered.length} total records)`;
+                    return `Page ${historyPage + 1} of ${Math.max(1, totalPages)} (${filtered.length} contact windows)`;
                   })()}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
@@ -911,12 +818,11 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
                     size="small" 
                     variant="outlined"
                     disabled={(() => {
-                      const filtered = linkHistory.filter((rec) => {
-                        if (historyFilter === 'all') return true;
-                        if (!historyFilter) return true;
+                      const filtered = contactWindows.filter((w) => {
+                        if (historyFilter === 'all' || !historyFilter) return true;
                         const cfg = linkConfigs.find((c) => c.id === historyFilter);
                         if (!cfg) return true;
-                        return rec.txId === cfg.txId && rec.rxId === cfg.rxId;
+                        return w.pairId === `${cfg.txId}→${cfg.rxId}`;
                       });
                       const totalPages = Math.ceil(filtered.length / itemsPerPage);
                       return historyPage >= totalPages - 1;

@@ -19,13 +19,22 @@ const calculateDerivedValues = (coordinates, velocity, elements) => {
   const radiusKm = Math.sqrt(xKm * xKm + yKm * yKm + zKm * zKm);
 
   // Altitude above Earth surface (km)
-  const altitudeKm = radiusKm - EARTH_RADIUS_KM;
+  // Prefer geodetic alt from backend if available, else compute from ECI radius
+  const altitudeKm = (coordinates.alt != null) ? coordinates.alt : (radiusKm - EARTH_RADIUS_KM);
 
-  // Latitude and Longitude (geocentric)
-  const latRad = Math.asin(zKm / radiusKm);
-  const lonRad = Math.atan2(yKm, xKm);
-  const latDeg = latRad * (180 / Math.PI);
-  const lonDeg = lonRad * (180 / Math.PI);
+  // Latitude and Longitude
+  // Prefer proper geodetic lat/lon from backend (GMST-based ECEF→geodetic)
+  // Fall back to ECI-based spherical coords (incorrect for Earth-fixed display)
+  let latDeg, lonDeg;
+  if (coordinates.lat != null && coordinates.lon != null) {
+    latDeg = coordinates.lat;
+    lonDeg = coordinates.lon;
+  } else {
+    const latRad = Math.asin(zKm / radiusKm);
+    const lonRad = Math.atan2(yKm, xKm);
+    latDeg = latRad * (180 / Math.PI);
+    lonDeg = lonRad * (180 / Math.PI);
+  }
 
   // Speed magnitude (km/s)
   let speedKmS = 0;

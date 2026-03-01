@@ -1,5 +1,6 @@
 import React from 'react';
 import { Item, RippleButton, Input, LoadingIndicator } from '../TopBar.styles';
+import ViewModeButton from './ViewModeButton';
 
 /**
  * Component containing all action buttons for the TopBar
@@ -32,7 +33,13 @@ const ActionButtons = ({
   newTrajInputRef,
   saveAsInputRef,
   user,
-  hasTrajectory
+  hasTrajectory,
+  currentViewMode,
+  onChangeView,
+  showControlPanel,
+  showLinkBudget,
+  onToggleControlPanel,
+  onToggleLinkBudget
 }) => {
   const isDisabled = !user;
   const isProjectDisabled = !user || !hasTrajectory;
@@ -53,6 +60,17 @@ const ActionButtons = ({
           Open
         </RippleButton>
       </Item>
+
+      {/* View button adjacent to Open */}
+      <ViewModeButton
+        currentViewMode={currentViewMode}
+        onChange={onChangeView}
+        handleRipple={handleRipple}
+        showControlPanel={showControlPanel}
+        showLinkBudget={showLinkBudget}
+        onToggleControlPanel={onToggleControlPanel}
+        onToggleLinkBudget={onToggleLinkBudget}
+      />
 
       <Item 
         data-tooltip={!user ? "Login required to see versions" : !hasTrajectory ? "No project loaded" : "See different iteration of this project"}
