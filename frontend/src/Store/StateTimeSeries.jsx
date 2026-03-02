@@ -30,6 +30,13 @@ const particleSlice = createSlice({
         }
       }
     },
+    bulkLoadTracePoints: (state, action) => {
+      const { id, tracePoints } = action.payload;
+      const particle = state.particles.find(p => p.id === id);
+      if (particle) {
+        particle.tracePoints = tracePoints;
+      }
+    },
     resetTracePoints: (state, action) => {
       const id = action.payload;
       const particle = state.particles.find(p => p.id === id);
@@ -49,5 +56,5 @@ const particleSlice = createSlice({
   },
 });
 
-export const { initializeParticles, addTracePoint, resetTracePoints, deleteParticle } = particleSlice.actions;
+export const { initializeParticles, addTracePoint, bulkLoadTracePoints, resetTracePoints, deleteParticle } = particleSlice.actions;
 export default particleSlice.reducer;

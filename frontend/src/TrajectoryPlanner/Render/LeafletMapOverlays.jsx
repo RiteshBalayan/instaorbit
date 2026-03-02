@@ -275,7 +275,23 @@ const LinkLines = () => {
   const RenderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
 
+  // ── Bulk pre-computed data ─────────────────────────────────
+  const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
+
   const linkLines = useMemo(() => {
+    // ── BULK MODE: use pre-computed activeLinks, resolve lat/lon from tracePoints ──
+    if (activeLinksAtTime) {
+      const timeKey = Math.floor(RenderTime);
+      const precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
+      return precomputed.map((link) => {
+        const txPos = resolveEndpointLatLon(link.txId, satStates, particles, groundStations, RenderTime);
+        const rxPos = resolveEndpointLatLon(link.rxId, satStates, particles, groundStations, RenderTime);
+        if (!txPos || !rxPos) return { id: link.id, positions: null, status: 'active' };
+        return { id: link.id, positions: [txPos, rxPos], status: 'active' };
+      });
+    }
+
+    // ── LIVE MODE: compute on-the-fly (original behavior) ────
     if (!savedLinks.length) return [];
 
     const ctx = {
@@ -297,7 +313,7 @@ const LinkLines = () => {
 
       return { id: link.id, positions: [txPos, rxPos], status };
     });
-  }, [savedLinks, satStates, particles, groundStations, RenderTime, starttime]);
+  }, [savedLinks, satStates, particles, groundStations, RenderTime, starttime, activeLinksAtTime]);
 
   return (
     <>

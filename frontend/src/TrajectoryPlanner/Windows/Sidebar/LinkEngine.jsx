@@ -2,9 +2,10 @@
  * LinkEngine — headless component that continuously computes link budgets
  * and dispatches activeLinks + contactWindows to Redux.
  *
- * This replaces the heavy LinkBudgetBoard.  It renders nothing visible —
- * it only runs the side-effects that GlobeRender (3D link lines) and
- * LeafletMapOverlays (2D link lines) depend on.
+ * In BULK mode (activeLinksAtTime exists in Redux), it simply looks up
+ * the pre-computed activeLinks for the current RenderTime — zero computation.
+ *
+ * In LIVE mode (normal sim), it computes links on-the-fly as before.
  *
  * Must stay mounted at all times (see Globe.jsx).
  */
@@ -25,6 +26,20 @@ const LinkEngine = () => {
   const starttime = useSelector((s) => s.timer.starttime);
   const lastWindowUpdateRef = useRef(0);
 
+  // ── Bulk pre-computed data (null when in live mode) ────────
+  const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
+
+  // ── BULK PATH: just look up pre-computed activeLinks ───────
+  useEffect(() => {
+    if (!activeLinksAtTime) return; // live mode — handled below
+
+    // Find the closest time key <= renderTime
+    const timeKey = Math.floor(renderTime);
+    const precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
+    dispatch(setActiveLinks(precomputed));
+  }, [activeLinksAtTime, renderTime, dispatch]);
+
+  // ── LIVE PATH: compute on-the-fly (original behavior) ─────
   // Build the context object that computeLink expects
   const ctx = useMemo(
     () => ({ currentStates, groundStations, particles, renderTime, starttime }),
@@ -43,16 +58,20 @@ const LinkEngine = () => {
 
   // Compute link results (reuses shared linkComputation.js)
   const linkResults = useMemo(
-    () => links.map((cfg) => computeLink(cfg, ctx)),
+    () => {
+      if (activeLinksAtTime) return []; // skip computation in bulk mode
+      return links.map((cfg) => computeLink(cfg, ctx));
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [links, renderTime, satPosKey],
+    [links, renderTime, satPosKey, activeLinksAtTime],
   );
 
-  // Dispatch activeLinks (3D line geometry) + contactWindows
+  // Dispatch activeLinks (3D line geometry) + contactWindows — LIVE mode only
   useEffect(() => {
+    if (activeLinksAtTime) return; // bulk mode — already handled above
+    if (!linkResults.length && !links.length) return;
+
     // ── Active links for 3D / 2D rendering ───────────────────
-    // getEndpointPos returns km; GlobeRender expects scene units,
-    // so we divide back by SCALE_FACTOR.
     const active = linkResults
       .filter((r) => r.ready && r.inLink)
       .map((r) => {
@@ -79,7 +98,7 @@ const LinkEngine = () => {
       const simTimeMs = starttime + renderTime * 1000;
       dispatch(updateContactWindows({ activeLinkIds, simTimeMs }));
     }
-  }, [linkResults, currentStates, particles, groundStations, dispatch, renderTime, starttime]);
+  }, [linkResults, currentStates, particles, groundStations, dispatch, renderTime, starttime, activeLinksAtTime, links]);
 
   // Headless — renders nothing
   return null;

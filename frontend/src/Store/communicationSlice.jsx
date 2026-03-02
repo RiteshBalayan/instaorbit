@@ -51,6 +51,13 @@ const initialState = {
   // Handover management
   handoverQueue: [],
   activeHandovers: [],
+
+  // ── Bulk-sim pre-computed link data ────────────────────────
+  // activeLinksAtTime: { [elapsedSeconds]: activeLinks[] }
+  // Populated by bulk sim response. When non-null, LinkEngine
+  // and LeafletMapOverlays look up by RenderTime instead of
+  // computing links on-the-fly.
+  activeLinksAtTime: null,
 };
 
 const communicationSlice = createSlice({
@@ -230,6 +237,20 @@ const communicationSlice = createSlice({
       state.activeHandovers = state.activeHandovers.filter(h => h.id !== id);
     },
     
+    // ── Bulk-sim data loaders ─────────────────────────────────
+    // Replace contact windows with pre-computed ones from backend
+    bulkLoadContactWindows: (state, action) => {
+      state.contactWindows = action.payload || [];
+    },
+    // Store the full pre-computed activeLinks map { time: activeLinks[] }
+    bulkLoadActiveLinksAtTime: (state, action) => {
+      state.activeLinksAtTime = action.payload || null;
+    },
+    // Clear bulk link data (when switching back to live mode)
+    clearBulkLinkData: (state) => {
+      state.activeLinksAtTime = null;
+    },
+
     // Reset all communication state
     resetCommunication: () => {
       return initialState;
@@ -252,6 +273,9 @@ export const {
   clearLinkHistory,
   updateContactWindows,
   clearContactWindows,
+  bulkLoadContactWindows,
+  bulkLoadActiveLinksAtTime,
+  clearBulkLinkData,
   addContactEvent,
   clearContactEvents,
   setPredictedContacts,

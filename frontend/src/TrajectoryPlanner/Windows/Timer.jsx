@@ -34,6 +34,8 @@ import {
   TIME_UNIT_CONFIG,
 } from './Timer/constants';
 
+import BulkSimControls from './BulkSimControls';
+
 const Timer = ({ analysisTab, onSwitchTab } = {}) => {
   const dispatch = useDispatch();
   const showControlPanel = useSelector((state) => state.view.showControlPanel);
@@ -232,6 +234,9 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
               onSimStepChange={handleTimeStepChange}
               onRenderStepChange={handleRenderStepChange}
             />
+
+            {/* Bulk Simulation Controls */}
+            <BulkSimControls />
           </div>
         </div>
       )}
