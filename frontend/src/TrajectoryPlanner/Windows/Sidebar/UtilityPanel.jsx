@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { IconButton, Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Typography, Divider } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import AddSatellite from './AddSatellite';
+import AddConstellation from './AddConstellation';
 import SatelliteList from './SatelliteList';
 import UTControl from './UtilityControlMain';
 import '../../../Styles/simulator/UtilityPanel.css';
-import LinkBudgetPanel from './LinkBudgetPanel';
+import LinkManager from './LinkManager';
 import { useDispatch, useSelector } from 'react-redux';
 import { addGroundStation, updateGroundStation, deleteGroundStation } from '../../../Store/groundStationSlice';
 import { deleteSatellite } from '../../../Store/satelliteSlice';
@@ -24,9 +25,9 @@ const UtilityPanel = () => {
   const [gsAlt, setGsAlt] = useState(0.1);
   const [showLinkManager, setShowLinkManager] = useState(false);
   const [showSatModal, setShowSatModal] = useState(false);
+  const [showConstellationModal, setShowConstellationModal] = useState(false);
   const [editingSatId, setEditingSatId] = useState(null);
   const [editingGsId, setEditingGsId] = useState(null);
-  const [editingLink, setEditingLink] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [mapCenter, setMapCenter] = useState([0, 0]);
   const groundStations = useSelector((state) => state.groundStations.groundStations);
@@ -146,16 +147,26 @@ const UtilityPanel = () => {
               <Box className="asset-block">
                 <Box className="asset-block-header">
                   <Typography variant="subtitle2">Satellites</Typography>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    onClick={() => {
-                      setEditingSatId(null);
-                      setShowSatModal(true);
-                    }}
-                  >
-                    Add
-                  </Button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => {
+                        setEditingSatId(null);
+                        setShowSatModal(true);
+                      }}
+                    >
+                      Add
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setShowConstellationModal(true)}
+                      sx={{ fontSize: 11, textTransform: 'none', color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}
+                    >
+                      Walker
+                    </Button>
+                  </div>
                 </Box>
                 <Box className="asset-list">
                   {satellites.length === 0 && <Typography variant="body2">None added yet</Typography>}
@@ -205,14 +216,13 @@ const UtilityPanel = () => {
               <Box className="asset-block">
                 <Box className="asset-block-header">
                   <Typography variant="subtitle2">Links</Typography>
-                  <Button size="small" variant="contained" onClick={() => { setEditingLink(null); setShowLinkManager(true); }}>Manage</Button>
+                  <Button size="small" variant="contained" onClick={() => setShowLinkManager(true)}>Manage</Button>
                 </Box>
                 <Box className="asset-list">
                   {savedLinks.length === 0 && <Typography variant="body2">No links configured</Typography>}
                   {savedLinks.map((link) => (
                     <Box key={link.id} className="asset-row">
                       <Typography variant="body2">{getEndpointName(link.txId)} → {getEndpointName(link.rxId)}</Typography>
-                      <Button size="small" onClick={() => { setEditingLink(link); setShowLinkManager(true); }}>Edit</Button>
                     </Box>
                   ))}
                 </Box>
@@ -369,11 +379,11 @@ const UtilityPanel = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog 
-        open={showLinkManager} 
-        onClose={() => setShowLinkManager(false)} 
-        fullWidth 
-        maxWidth="xl"
+      <Dialog
+        open={showConstellationModal}
+        onClose={() => setShowConstellationModal(false)}
+        maxWidth="md"
+        fullWidth
         PaperProps={{
           sx: {
             backgroundColor: 'rgba(45, 55, 72, 0.98)',
@@ -382,11 +392,34 @@ const UtilityPanel = () => {
           }
         }}
       >
-        <DialogTitle sx={{ color: '#fff' }}>Link & Ground Manager</DialogTitle>
+        <DialogTitle sx={{ color: '#fff' }}>Walker Constellation</DialogTitle>
         <DialogContent dividers sx={{ borderColor: 'rgba(255,255,255,0.1)' }}>
           <Box className="modal-card">
-            <LinkBudgetPanel presetLink={editingLink} />
+            <AddConstellation onClose={() => setShowConstellationModal(false)} />
           </Box>
+        </DialogContent>
+        <DialogActions sx={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+          <Button onClick={() => setShowConstellationModal(false)} sx={{ color: '#fff' }}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog 
+        open={showLinkManager} 
+        onClose={() => setShowLinkManager(false)} 
+        fullWidth 
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(30, 41, 59, 0.98)',
+            backdropFilter: 'blur(10px)',
+            color: '#fff',
+            maxHeight: '80vh',
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#fff', pb: 0.5 }}>Link Manager</DialogTitle>
+        <DialogContent dividers sx={{ borderColor: 'rgba(255,255,255,0.1)', p: 2 }}>
+          <LinkManager />
         </DialogContent>
         <DialogActions sx={{ borderColor: 'rgba(255,255,255,0.1)' }}>
           <Button onClick={() => setShowLinkManager(false)} sx={{ color: '#fff' }}>Close</Button>

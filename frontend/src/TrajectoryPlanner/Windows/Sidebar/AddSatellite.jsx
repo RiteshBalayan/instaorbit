@@ -7,6 +7,7 @@ import { updateSatellite, togglePreview, addSatellite, deleteSatellite, updateSa
 import { initializeParticles, deleteParticle, resetTracePoints } from '../../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../../Store/CurrentState';
 import { keplerianToCartesian, trueToEccentricAnomaly, eccentricToMeanAnomaly } from '../../Simulation/Functions';
+import { computeGMST, eci2ecef, ecef2geodetic } from '../../../transforms';
 import * as THREE from 'three';
 import './SatelliteConfig.css';
 import { SketchPicker } from 'react-color';
@@ -106,6 +107,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
   const [color, setColor] = useState('#fff'); // Default color is white
   const [displayColorPicker, setDisplayColorPicker] = useState(false);
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
+  const starttime = useSelector((state) => state.timer.starttime);
   const editing = editId !== null;
   const [toast, setToast] = useState({ open: false, message: '', severity: 'info' });
 
@@ -315,21 +317,28 @@ const AddSatellite = ({ editId = null, onClose }) => {
     };
 
     const [position, velocity] = keplerianToCartesian(elements);
-    let newX, newY, newZ;
-    [newX, newY, newZ] = position;
-    newX /= 3185.5;
-    newY /= 3185.5;
-    newZ /= 3185.5;
+    const [posKmX, posKmY, posKmZ] = position;  // km (ECI)
+    let newX = posKmX / 3185.5;
+    let newY = posKmY / 3185.5;
+    let newZ = posKmZ / 3185.5;
+
+    // Compute geodetic lat/lon for the initial trace point so
+    // the 2D ground track also starts at the real position.
+    const gmst0 = computeGMST(starttime || Date.now());
+    const ecef0 = eci2ecef([posKmX, posKmY, posKmZ], gmst0);
+    const geo0  = ecef2geodetic(ecef0);
+    const mapX0 = (geo0.lon / 180) * 7.5;
+    const mapY0 = (geo0.lat / 90) * 3.75;
 
     if (editing) {
       dispatch(updateSatellite({ id: baseSatellite.id, conf: { ...baseSatellite, InitialCondition: baseSatellite.InitialCondition } }));
       // Delete and recreate particle to ensure fresh trace points
       dispatch(deleteParticle(baseSatellite.id));
-      dispatch(initializeParticles({ id: baseSatellite.id, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+      dispatch(initializeParticles({ id: baseSatellite.id, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: mapX0, mapY: mapY0, lat: geo0.lat, lon: geo0.lon, alt: geo0.alt }] }));
       dispatch(updateCoordinate({ 
         id: baseSatellite.id, 
         timefix: null, 
-        coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, 
+        coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: mapX0, mapY: mapY0, lat: geo0.lat, lon: geo0.lon, alt: geo0.alt }, 
         velocity: null,
         elements: {
           a: SM,
@@ -341,11 +350,11 @@ const AddSatellite = ({ editId = null, onClose }) => {
       } }));
     } else {
       dispatch(togglePreview({id: baseSatellite.id, preview: false}));
-      dispatch(initializeParticles({ id: baseSatellite.id, name: newSatelliteName, tracePoints: [{ time: 0, x: 0, y: 0, z: 0, mapX: 0, mapY: 0 }] }));
+      dispatch(initializeParticles({ id: baseSatellite.id, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: mapX0, mapY: mapY0, lat: geo0.lat, lon: geo0.lon, alt: geo0.alt }] }));
       dispatch(updateCoordinate({ 
         id: baseSatellite.id, 
         timefix: null, 
-        coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: 0, mapY: 0 }, 
+        coordinates: { time: 0, x: newX, y: newY, z: newZ, mapX: mapX0, mapY: mapY0, lat: geo0.lat, lon: geo0.lon, alt: geo0.alt }, 
         velocity: null,
         elements: {
           a: SM,

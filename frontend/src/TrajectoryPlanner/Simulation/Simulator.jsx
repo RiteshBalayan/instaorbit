@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly } from '../Simulation/Functions';
 
 /**
  * RealSimulator – calls the backend /simulate endpoint every time RenderTime
@@ -67,10 +68,16 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
         };
         
         // Initialize orbitalelements in CurrentState
+        // Compute real initial position so CurrentState never holds (0,0,0)
+        const [initPos] = keplerianToCartesianTrueAnomly(initialElements);
+        const initSceneX = initPos[0] / 3185.5;
+        const initSceneY = initPos[1] / 3185.5;
+        const initSceneZ = initPos[2] / 3185.5;
+
         dispatch(updateCoordinate({
           id: particleId,
           timefix: null,
-          coordinates: { x: 0, y: 0, z: 0 },
+          coordinates: { x: initSceneX, y: initSceneY, z: initSceneZ },
           elements: initialElements,
         }));
         

@@ -15,8 +15,18 @@ const TimelineZoomControls = ({
   onFastBackward,
   onFastForward,
   onPlayPause,
-  isPlaying
+  isPlaying,
+  showSatBars,
+  onToggleSatBars,
+  analysisTab,
+  onSwitchTab,
 }) => {
+  const isLinkTab = analysisTab === 'link-analysis';
+  const handleToggleLinkAnalysis = () => {
+    if (onSwitchTab) {
+      onSwitchTab(isLinkTab ? 'timeline' : 'link-analysis');
+    }
+  };
   return (
     <div className="timeline-zoom-controls">
       {/* Fast backward */}
@@ -123,6 +133,34 @@ const TimelineZoomControls = ({
           <path d="M7 3h2v4h4v2H9v4H7V9H3V7h4V3z" />
         </svg>
       </button>
+
+      {/* Divider */}
+      <div className="controls-divider"></div>
+
+      {/* Toggle satellite bars */}
+      <button
+        className={`zoom-btn sat-toggle-btn${showSatBars ? ' active' : ''}`}
+        onClick={onToggleSatBars}
+        title={showSatBars ? 'Hide Satellite Bars' : 'Show Satellite Bars'}
+        aria-label={showSatBars ? 'Hide satellite bars' : 'Show satellite bars'}
+      >
+        🛰
+      </button>
+
+      {/* Toggle Link Analysis tab */}
+      {onSwitchTab && (
+        <>
+          <div className="controls-divider"></div>
+          <button
+            className={`zoom-btn link-toggle-btn${isLinkTab ? ' active' : ''}`}
+            onClick={handleToggleLinkAnalysis}
+            title={isLinkTab ? 'Back to Timeline' : 'Link Analysis'}
+            aria-label={isLinkTab ? 'Back to Timeline' : 'Link Analysis'}
+          >
+            📡
+          </button>
+        </>
+      )}
     </div>
   );
 };

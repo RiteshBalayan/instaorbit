@@ -3,7 +3,7 @@
  * Encapsulates vis-timeline initialization and updates
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { Timeline } from 'vis-timeline/standalone';
 import {
@@ -14,13 +14,22 @@ import {
 
 /**
  * Hook for managing vis-timeline instance
- * @param {Function} onRenderTimeUpdate - Callback when render time is moved
  * @returns {object} Timeline reference and control functions
  */
 export const useTimeline = () => {
   const timelineRef = useRef(null);
-  const lastUpdateRef = useRef({ renderTime: 0, elapsedTime: 0 });
-  
+  const lastUpdateRef = useRef({ renderTime: 0 });
+  // Satellite bars hidden by default — links are more important
+  const [showSatBars, setShowSatBars] = useState(false);
+  const showSatBarsRef = useRef(showSatBars);
+  showSatBarsRef.current = showSatBars;
+  // Refs to hold latest Redux values so the rebuild helper can always
+  // read fresh data without needing them as effect dependencies.
+  const contactWindowsRef = useRef([]);
+  const linkHistoryRef = useRef([]);
+  const satellitesRef = useRef([]);
+  const groundStationsRef = useRef([]);
+
   // Redux state
   const particles = useSelector((state) => state.particles.particles);
   const starttime = useSelector((state) => state.timer.starttime);
@@ -33,104 +42,93 @@ export const useTimeline = () => {
   const satellites = useSelector((state) => state.satellites?.satellitesConfig || []);
   const groundStations = useSelector((state) => state.groundStations?.groundStations || []);
 
-  // Derive a stable count of contact windows so we only rebuild the
-  // timeline when a window is opened or closed — not every time an
-  // existing window's end-time is extended.
-  const windowCount = contactWindows.length;
+  // Keep refs in sync (cheap — no re-renders)
+  contactWindowsRef.current = contactWindows;
+  linkHistoryRef.current = linkHistory;
+  satellitesRef.current = satellites;
+  groundStationsRef.current = groundStations;
 
-  // Timeline initialization - only create once and on major changes
-  useEffect(() => {
-    if (!timelineRef.current) return;
+  // ── Helper: full rebuild from current refs ──────────────────
+  const rebuildTimeline = () => {
+    const container = timelineRef.current;
+    if (!container) return;
 
-    const currentTimeline = timelineRef.current.timeline;
-    const groups = createTimelineGroups(particles, contactWindows, satellites, groundStations);
-    
+    const cw = contactWindowsRef.current;
+    const sats = satellitesRef.current;
+    const gs = groundStationsRef.current;
+    const lh = linkHistoryRef.current;
+
+    const groups = createTimelineGroups(particles, cw, sats, gs, showSatBarsRef.current);
     const items = createTimelineItems(
-      particles,
-      starttime,
-      elapsedTime,
-      renderTime,
-      linkHistory,
-      satellites,
-      groundStations,
-      contactWindows
+      particles, starttime, elapsedTime, renderTime,
+      lh, sats, gs, cw, showSatBarsRef.current,
     );
-    
-    // Options — playhead drag is handled by our custom mouse handler below,
-    // so we disable vis-timeline's built-in item dragging entirely.
     const minTime = starttime || Date.now();
     const options = createTimelineOptions(minTime, () => {});
 
-    // Initialize timeline if it doesn't exist
-    if (!currentTimeline) {
-      const newTimeline = new Timeline(timelineRef.current, items, groups, options);
-      timelineRef.current.timeline = newTimeline;
-      lastUpdateRef.current = { renderTime, elapsedTime };
+    if (!container.timeline) {
+      const tl = new Timeline(container, items, groups, options);
+      container.timeline = tl;
     } else {
-      // Rebuild items when satellites or contact windows change
-      currentTimeline.setItems(items);
-      currentTimeline.setGroups(groups);
-      currentTimeline.setOptions(options);
+      container.timeline.setItems(items);
+      container.timeline.setGroups(groups);
+      container.timeline.setOptions(options);
     }
-  }, [particles.length, starttime, isRunning, windowCount]);
+    lastUpdateRef.current = { renderTime };
+  };
 
-  // Extend open contact-window bars during LIVE SIMULATION only.
-  // This runs when elapsedTime advances (simulation is running forward)
-  // and stretches any still-open window's end edge.  It does NOT run
-  // when the user scrubs renderTime backward.
-  const prevElapsedRef = useRef(0);
+  // ── 1.  Initial build & structural changes ─────────────────
+  // Rebuild when the number of satellites, start-time, or satellite
+  // visibility toggle changes.
+  // We intentionally do NOT depend on contactWindows / windowCount
+  // here — link bars are added by the periodic refresh below.
   useEffect(() => {
-    const timeline = timelineRef.current?.timeline;
-    if (!timeline || !isRunning) return;
-    // Only extend when simulation moves forward
-    if (elapsedTime <= prevElapsedRef.current) {
-      prevElapsedRef.current = elapsedTime;
-      return;
+    rebuildTimeline();
+  }, [particles.length, starttime, showSatBars]);
+
+  // ── 2.  Refresh link bars when simulation pauses ────────────
+  // When the user stops the simulation (isRunning false → true → false),
+  // rebuild so all accumulated contact windows appear at once.
+  const prevRunningRef = useRef(isRunning);
+  useEffect(() => {
+    const wasPreviouslyRunning = prevRunningRef.current;
+    prevRunningRef.current = isRunning;
+    // Rebuild only on the transition running → paused
+    if (wasPreviouslyRunning && !isRunning) {
+      rebuildTimeline();
     }
-    prevElapsedRef.current = elapsedTime;
+  }, [isRunning]);
 
-    requestAnimationFrame(() => {
-      try {
-        const items = timeline.itemsData;
-        contactWindows.forEach((w, index) => {
-          if (!w.closed && w.simEnd) {
-            try {
-              items.updateOnly({ id: `link-cw-${index}`, end: new Date(w.simEnd) });
-            } catch (_) {
-              // Item may not exist yet
-            }
-          }
-        });
-      } catch (_) { /* ignore */ }
-    });
-  }, [elapsedTime, isRunning, contactWindows]);
+  // ── 3.  Periodic low-frequency refresh while running ────────
+  // Every 5 seconds during live simulation, snapshot the current
+  // contactWindows and rebuild so bars grow visibly.  This is far
+  // less frequent than per-tick updates and avoids glitching.
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => {
+      rebuildTimeline();
+    }, 5000);
+    return () => clearInterval(id);
+  }, [isRunning, particles.length, starttime]);
 
-  // Smoothly update ONLY the playhead position.
-  // Contact-window bars and satellite bars are STATIC — they are set once
-  // in the initialization effect and only rebuilt when windowCount or
-  // particles.length changes.  Touching them here caused broken /
-  // overlapping bars when the user scrubbed the playhead backward.
+  // ── 4.  Playhead-only update ────────────────────────────────
+  // Moves the render-time marker.  Never touches link or sat bars.
   useEffect(() => {
     const timeline = timelineRef.current?.timeline;
     if (!timeline) return;
-
     if (lastUpdateRef.current.renderTime === renderTime) return;
-    lastUpdateRef.current = { renderTime, elapsedTime };
+    lastUpdateRef.current = { renderTime };
 
     const minTime = starttime || Date.now();
-
     requestAnimationFrame(() => {
       try {
         const items = timeline.itemsData;
-        const currentRenderTime = new Date(minTime + renderTime * 1000);
-        items.updateOnly({ id: 'Render-time', start: currentRenderTime });
-      } catch (_) {
-        // Timeline may not be ready yet
-      }
+        items.updateOnly({ id: 'Render-time', start: new Date(minTime + renderTime * 1000) });
+      } catch (_) { /* timeline not ready */ }
     });
   }, [renderTime, starttime]);
 
-  // Control functions
+  // ── Control functions ───────────────────────────────────────
   const zoomToFit = () => {
     if (timelineRef.current?.timeline) {
       timelineRef.current.timeline.fit();
@@ -181,6 +179,10 @@ export const useTimeline = () => {
     }
   };
 
+  const toggleSatBars = useCallback(() => {
+    setShowSatBars(prev => !prev);
+  }, []);
+
   // Mouse wheel zoom support - ALWAYS enabled without Alt key
   useEffect(() => {
     const timelineElement = timelineRef.current;
@@ -204,14 +206,13 @@ export const useTimeline = () => {
   }, []);
 
   return {
-    // Refs
     timelineRef,
-    
-    // Actions
     zoomToFit,
     zoomIn,
     zoomOut,
     setWindow,
     moveTo,
+    showSatBars,
+    toggleSatBars,
   };
 };

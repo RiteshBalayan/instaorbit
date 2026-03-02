@@ -18,6 +18,7 @@ import { useSelector } from 'react-redux';
 import L from 'leaflet';
 import { mapXYToLatLon, splitAtAntimeridian } from './mapUtils';
 import { sunGeodetic } from '../../transforms';
+import { computeLink } from '../Windows/Sidebar/linkComputation';
 
 /* Longitude offsets to cover the three visible world copies */
 const WORLD_OFFSETS = [-360, 0, 360];
@@ -234,6 +235,92 @@ const GroundStationMarkers = () => {
   );
 };
 
+/* ─── Communication link lines (rendered at all copies) ───── */
+
+/** Resolve a link-endpoint ID to [lat, lon] using the same logic as SatelliteMarker */
+const resolveEndpointLatLon = (id, satellites, particles, groundStations, RenderTime) => {
+  if (id.startsWith('sat-')) {
+    const numId = parseFloat(id.replace('sat-', ''));
+    const particle = particles.find((p) => p.id === numId);
+    if (particle?.tracePoints?.length) {
+      for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
+        const pt = particle.tracePoints[i];
+        if (pt.time <= RenderTime) {
+          if (pt.lat != null && pt.lon != null) return [pt.lat, pt.lon];
+          if (pt.mapX != null) return mapXYToLatLon(pt.mapX, pt.mapY);
+          break;
+        }
+      }
+    }
+    const sat = satellites.find((s) => s.id === numId);
+    if (sat?.coordinates?.lat != null) return [sat.coordinates.lat, sat.coordinates.lon];
+    if (sat?.coordinates?.mapX != null) return mapXYToLatLon(sat.coordinates.mapX, sat.coordinates.mapY);
+    return null;
+  }
+  // Ground station
+  const gs = groundStations.find((g) => g.id === id);
+  if (!gs) return null;
+  return [gs.lat, gs.lon];
+};
+
+const LINK_ACTIVE_COLOR = 'rgba(74, 222, 128, 0.45)';   // green, translucent
+const LINK_INACTIVE_COLOR = 'rgba(248, 113, 113, 0.3)';  // red, very translucent
+const LINK_WAITING_COLOR = 'rgba(148, 163, 184, 0.25)';  // gray, very translucent
+
+const LinkLines = () => {
+  const savedLinks = useSelector((s) => s.communication.links) || [];
+  const satStates = useSelector((s) => s.CurrentState.satelite) || [];
+  const particles = useSelector((s) => s.particles.particles) || [];
+  const groundStations = useSelector((s) => s.groundStations.groundStations) || [];
+  const RenderTime = useSelector((s) => s.timer.RenderTime);
+  const starttime = useSelector((s) => s.timer.starttime);
+
+  const linkLines = useMemo(() => {
+    if (!savedLinks.length) return [];
+
+    const ctx = {
+      currentStates: satStates,
+      groundStations,
+      particles,
+      renderTime: RenderTime,
+      starttime,
+    };
+
+    return savedLinks.map((link) => {
+      const txPos = resolveEndpointLatLon(link.txId, satStates, particles, groundStations, RenderTime);
+      const rxPos = resolveEndpointLatLon(link.rxId, satStates, particles, groundStations, RenderTime);
+      if (!txPos || !rxPos) return { id: link.id, positions: null, status: 'waiting' };
+
+      // Use computeLink to get inLink status
+      const result = computeLink(link, ctx);
+      const status = !result.ready ? 'waiting' : result.inLink ? 'active' : 'inactive';
+
+      return { id: link.id, positions: [txPos, rxPos], status };
+    });
+  }, [savedLinks, satStates, particles, groundStations, RenderTime, starttime]);
+
+  return (
+    <>
+      {linkLines.map((ll) => {
+        if (!ll.positions || ll.status !== 'active') return null;
+
+        return WORLD_OFFSETS.map((dLon) => (
+          <Polyline
+            key={`link-${ll.id}_${dLon}`}
+            positions={[shiftPos(ll.positions[0], dLon), shiftPos(ll.positions[1], dLon)]}
+            pathOptions={{
+              color: LINK_ACTIVE_COLOR,
+              weight: 2.5,
+              opacity: 1,
+              dashArray: null, // solid — distinct from dashed ground tracks
+            }}
+          />
+        ));
+      })}
+    </>
+  );
+};
+
 /* ─── Map legend (positioned bottom-left over the map) ──────── */
 const LEGEND_STYLES = {
   container: {
@@ -278,7 +365,7 @@ const LEGEND_STYLES = {
   }),
 };
 
-const MapLegend = ({ satelliteColors }) => {
+const MapLegend = ({ satelliteColors, hasLinks }) => {
   return (
     <div style={LEGEND_STYLES.container}>
       <div style={LEGEND_STYLES.title}>Legend</div>
@@ -310,6 +397,14 @@ const MapLegend = ({ satelliteColors }) => {
           Ground Track
         </div>
       )}
+
+      {/* Communication links */}
+      {hasLinks && (
+        <div style={LEGEND_STYLES.row}>
+          <span style={{ ...LEGEND_STYLES.swatch('rgba(74, 222, 128, 0.7)', 'line'), height: 2.5 }} />
+          Active Link
+        </div>
+      )}
     </div>
   );
 };
@@ -318,6 +413,7 @@ const MapLegend = ({ satelliteColors }) => {
 const LeafletMapOverlays = () => {
   const satellites = useSelector((s) => s.CurrentState.satelite) || [];
   const particles = useSelector((s) => s.particles.particles) || [];
+  const savedLinks = useSelector((s) => s.communication.links) || [];
 
   /* Build legend colour list */
   const satelliteColors = useMemo(
@@ -333,6 +429,7 @@ const LeafletMapOverlays = () => {
     <>
       <SubSolarMarker />
       <GroundStationMarkers />
+      <LinkLines />
       {satellites.map((sat, idx) => {
         const color = TRACK_COLOURS[idx % TRACK_COLOURS.length];
         const particle = particles.find((p) => p.id === sat.id);
@@ -343,7 +440,7 @@ const LeafletMapOverlays = () => {
           </React.Fragment>
         );
       })}
-      <MapLegend satelliteColors={satelliteColors} />
+      <MapLegend satelliteColors={satelliteColors} hasLinks={savedLinks.length > 0} />
     </>
   );
 };

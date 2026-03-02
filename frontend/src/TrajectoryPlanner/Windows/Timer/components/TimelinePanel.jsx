@@ -19,8 +19,12 @@ export const TimelinePanel = ({
   onFastForward,
   onPlayPause,
   isPlaying,
+  showSatBars,
+  onToggleSatBars,
   onRenderTimeUpdate,
   starttime,
+  analysisTab,
+  onSwitchTab,
 }) => {
   return (
     <div ref={panelRef} className="timeline-panel" style={{ position: 'relative' }}>
@@ -32,8 +36,12 @@ export const TimelinePanel = ({
         onStepForward={onStepForward}
         onFastBackward={onFastBackward}
         onFastForward={onFastForward}
+        analysisTab={analysisTab}
+        onSwitchTab={onSwitchTab}
         onPlayPause={onPlayPause}
         isPlaying={isPlaying}
+        showSatBars={showSatBars}
+        onToggleSatBars={onToggleSatBars}
       />
       <div ref={timelineRef} className="timeline-container"></div>
       {/* Transparent drag-handle overlay — always sits above vis-timeline DOM */}

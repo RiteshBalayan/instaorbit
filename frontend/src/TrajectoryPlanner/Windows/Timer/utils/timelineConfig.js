@@ -59,20 +59,23 @@ export const createTimelineGroups = (
   contactWindows = [],
   satellites = [],
   groundStations = [],
+  showSatBars = true,
 ) => {
   const groups = [];
 
-  // ── One row per satellite ────────────────────────────────────
-  particles.forEach((p, index) => {
-    const sat = satellites.find(s => s.id === p.id);
-    const label = sat?.name || p.name || `Satellite ${index + 1}`;
-    groups.push({
-      id: `sat-${p.id ?? index}`,
-      content: `🛰 ${label}`,
-      className: 'satellites-group',
-      order: index,
+  // ── One row per satellite (hidden by default) ────────────────
+  if (showSatBars) {
+    particles.forEach((p, index) => {
+      const sat = satellites.find(s => s.id === p.id);
+      const label = sat?.name || p.name || `Satellite ${index + 1}`;
+      groups.push({
+        id: `sat-${p.id ?? index}`,
+        content: `🛰 ${label}`,
+        className: 'satellites-group',
+        order: index,
+      });
     });
-  });
+  }
 
   // ── Playhead row (always present) ────────────────────────────
   groups.push({
@@ -167,7 +170,7 @@ export const createParticleItems = (particles, minTime) => {
       const tracePoints = particle.tracePoints;
       
       if (tracePoints && tracePoints.length >= 2) {
-        const start = new Date(minTime + tracePoints[1].time * 1000);
+        const start = new Date(minTime + tracePoints[0].time * 1000);
         const end = new Date(minTime + tracePoints[tracePoints.length - 1].time * 1000);
         return {
           id: `satellite-${particle.id || index}`,
@@ -361,12 +364,13 @@ export const createTimelineItems = (
   linkHistory = [],
   satellites = [],
   groundStations = [],
-  contactWindows = []
+  contactWindows = [],
+  showSatBars = true,
 ) => {
   const minTime = starttime || Date.now();
   const currentRenderTime = new Date(minTime + renderTime * 1000);
 
-  const particleItems = createParticleItems(particles, minTime);
+  const particleItems = showSatBars ? createParticleItems(particles, minTime) : [];
   const linkItems = createLinkItems(linkHistory, satellites, groundStations, contactWindows);
   const renderTimePoint = createRenderTimePoint(currentRenderTime);
 

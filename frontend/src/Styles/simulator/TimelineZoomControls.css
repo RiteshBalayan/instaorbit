@@ -66,3 +66,30 @@
   background: #3a3a3a;
   margin: 0 4px;
 }
+
+/* Satellite toggle button */
+.sat-toggle-btn {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.45;
+}
+
+.sat-toggle-btn.active {
+  opacity: 1;
+  background: rgba(0, 120, 215, 0.15);
+  border-color: #0078D7;
+}
+
+/* Link Analysis toggle button */
+.link-toggle-btn {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.45;
+}
+
+.link-toggle-btn.active {
+  opacity: 1;
+  background: rgba(0, 255, 204, 0.12);
+  border-color: #00ffcc;
+  color: #00ffcc;
+}

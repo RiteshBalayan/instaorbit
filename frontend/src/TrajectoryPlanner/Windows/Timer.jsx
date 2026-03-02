@@ -34,7 +34,7 @@ import {
   TIME_UNIT_CONFIG,
 } from './Timer/constants';
 
-const Timer = () => {
+const Timer = ({ analysisTab, onSwitchTab } = {}) => {
   const dispatch = useDispatch();
   const showControlPanel = useSelector((state) => state.view.showControlPanel);
   const [backendAvailable, setBackendAvailable] = useState(true);
@@ -248,8 +248,12 @@ const Timer = () => {
         onFastForward={handleFastForward}
         onPlayPause={handleStartPause}
         isPlaying={simulation.isRunning}
+        showSatBars={timeline.showSatBars}
+        onToggleSatBars={timeline.toggleSatBars}
         onRenderTimeUpdate={(newRenderTime) => render.setRenderTime(newRenderTime)}
         starttime={simulation.starttime}
+        analysisTab={analysisTab}
+        onSwitchTab={onSwitchTab}
       />
 
       <DatePickerModal
