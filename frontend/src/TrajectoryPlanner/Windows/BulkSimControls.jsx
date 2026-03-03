@@ -22,7 +22,7 @@ import {
 } from '../../Store/communicationSlice';
 import './BulkSimControls.css';
 
-const BulkSimControls = () => {
+const BulkSimControls = ({ compact = false } = {}) => {
   const dispatch = useDispatch();
 
   // Read what we need from Redux
@@ -138,18 +138,18 @@ const BulkSimControls = () => {
   }, [satellites, particles, links, groundStations, starttime, duration, stepSize, dispatch]);
 
   return (
-    <div className="bulk-sim-section">
-      <div className="bulk-sim-title">Bulk Simulation</div>
+    <div className={`bulk-sim-section ${compact ? 'bulk-sim-section--compact' : ''}`}>
+      <div className="bulk-sim-title">BULK</div>
       <div className="bulk-sim-row">
         <div className="bulk-sim-field">
-          <label>Duration</label>
+          <label>Dur (s)</label>
           <input
             type="number"
             min="1"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
+            placeholder="s"
           />
-          <label>s</label>
         </div>
         <div className="bulk-sim-field">
           <label>Step</label>
@@ -159,15 +159,16 @@ const BulkSimControls = () => {
             step="0.1"
             value={stepSize}
             onChange={(e) => setStepSize(e.target.value)}
+            placeholder="s"
           />
-          <label>s</label>
+          {!compact && <label>s</label>}
         </div>
         <button
           className="bulk-sim-btn bulk-sim-btn-run"
           onClick={handleRun}
           disabled={status === 'running' || !satellites.length}
         >
-          {status === 'running' ? '⏳ Running…' : '🚀 Run Bulk Sim'}
+          {status === 'running' ? 'RUN…' : 'RUN'}
         </button>
       </div>
       {statusMsg && (

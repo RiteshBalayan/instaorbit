@@ -37,9 +37,8 @@ const ActionButtons = ({
   currentViewMode,
   onChangeView,
   showControlPanel,
-  showLinkBudget,
   onToggleControlPanel,
-  onToggleLinkBudget
+  // Link Budget overlay removed (UI/UX simplification)
 }) => {
   const isDisabled = !user;
   const isProjectDisabled = !user || !hasTrajectory;
@@ -67,9 +66,7 @@ const ActionButtons = ({
         onChange={onChangeView}
         handleRipple={handleRipple}
         showControlPanel={showControlPanel}
-        showLinkBudget={showLinkBudget}
         onToggleControlPanel={onToggleControlPanel}
-        onToggleLinkBudget={onToggleLinkBudget}
       />
 
       <Item 

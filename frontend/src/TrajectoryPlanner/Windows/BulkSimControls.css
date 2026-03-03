@@ -21,6 +21,38 @@
   flex-wrap: wrap;
 }
 
+.bulk-sim-section--compact .bulk-sim-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.bulk-sim-section--compact .bulk-sim-field {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.bulk-sim-section--compact .bulk-sim-field label {
+  width: auto;
+}
+
+.bulk-sim-section--compact .bulk-sim-field input,
+.bulk-sim-section--compact .bulk-sim-field select {
+  width: 48px;
+  text-align: right;
+}
+
+.bulk-sim-section--compact .bulk-sim-btn {
+  width: 100%;
+  padding: 6px 8px;
+}
+
+.bulk-sim-section--compact .bulk-sim-status {
+  max-height: 34px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .bulk-sim-field {
   display: flex;
   align-items: center;

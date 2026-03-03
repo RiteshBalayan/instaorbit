@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import moment from 'moment';
-import { toggleCoupled, setstarttime } from '../../Store/timeSlice';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../../Styles/simulator/Timer.css';
 
@@ -16,36 +13,19 @@ import {
 
 // Import components
 import {
-  TimeDisplay,
-  TimeControls,
-  RenderControls,
-  CouplingControl,
-  TimeStepControls,
-  StartTimeControl,
-  DatePickerModal,
   TimelinePanel,
 } from './Timer/components';
-import { CircularClock } from './Timer/components/CircularClock';
 
 // Import constants
 import {
   DEFAULT_TIME_STEP,
   DEFAULT_SIM_STEP,
-  TIME_UNIT_CONFIG,
 } from './Timer/constants';
 
-import BulkSimControls from './BulkSimControls';
-
 const Timer = ({ analysisTab, onSwitchTab } = {}) => {
-  const dispatch = useDispatch();
-  const showControlPanel = useSelector((state) => state.view.showControlPanel);
-  const [backendAvailable, setBackendAvailable] = useState(true);
-  
   // Local state
   const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
   const [simStep, setSimStep] = useState(DEFAULT_SIM_STEP);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Custom hooks for timer logic
   const simulation = useSimulationTimer(timeStep);
@@ -58,43 +38,8 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
     simulation.togglePlayPause();
   };
 
-  const handleRenderStartPause = () => {
-    render.togglePlayPause();
-  };
-
   const handleReset = () => {
     simulation.reset();
-  };
-
-  const handleTimeStepChange = (e) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      setTimeStep(value);
-    }
-  };
-
-  const handleRenderStepChange = (e) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      setSimStep(value);
-    }
-  };
-
-  const handleTimeUnitChange = (unit) => {
-    formatting.setTimeUnit(unit);
-  };
-
-  const handleCoupleToggle = () => {
-    dispatch(toggleCoupled());
-  };
-
-  const handleSetStartTime = () => {
-    dispatch(setstarttime(selectedDate.valueOf()));
-    setShowDatePicker(false);
-  };
-
-  const handleSetCurrentTime = () => {
-    setSelectedDate(moment());
   };
 
   const handleZoomToFit = () => {
@@ -166,81 +111,8 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
     };
   }, []);
 
-  // Backend health polling
-  useEffect(() => {
-    let intervalId;
-    const checkBackend = async () => {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const resp = await fetch('http://localhost:3001/health', { signal: controller.signal });
-        clearTimeout(timeout);
-        // Consider any successful response (even 404/500) as server reachable
-        setBackendAvailable(true);
-      } catch (e) {
-        setBackendAvailable(false);
-      }
-    };
-    // Initial check and periodic polling
-    checkBackend();
-    intervalId = setInterval(checkBackend, 15000);
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-
   return (
     <div className="exptimer-container">
-      {showControlPanel && (
-        <div className="time-controller">
-          <div className="control-panel-title">Control Panel</div>
-          {!backendAvailable && (
-            <div className="backend-warning">
-              Backend simulator not connected — simulation will not work. Contact admin.
-            </div>
-          )}
-          <div className="controller-content">
-            {/* Time Display Section */}
-            <TimeDisplay
-              currentTime={formatting.currentTime}
-              elapsedTime={formatting.formattedElapsedTime}
-              timeUnit={formatting.timeUnit}
-              onUnitChange={handleTimeUnitChange}
-              timeUnitConfig={TIME_UNIT_CONFIG}
-            />
-            
-            {/* All Transport Controls in one horizontal line */}
-            <TimeControls
-              isRunning={simulation.isRunning}
-              onPlayPause={handleStartPause}
-              onReset={handleReset}
-              renderRunning={render.renderRunning}
-              coupled={simulation.coupled}
-              onRenderPlayPause={handleRenderStartPause}
-              onCouplingToggle={handleCoupleToggle}
-            />
-            
-            {/* Start Time Control */}
-            <StartTimeControl
-              startTime={formatting.standardStartTime}
-              onOpenPicker={() => setShowDatePicker(true)}
-            />
-            
-            {/* Playback Speed Controls */}
-            <TimeStepControls
-              simStep={timeStep}
-              renderStep={simStep}
-              coupled={simulation.coupled}
-              onSimStepChange={handleTimeStepChange}
-              onRenderStepChange={handleRenderStepChange}
-            />
-
-            {/* Bulk Simulation Controls */}
-            <BulkSimControls />
-          </div>
-        </div>
-      )}
-
       <TimelinePanel
         panelRef={timelinePanelRef}
         timelineRef={timeline.timelineRef}
@@ -261,14 +133,6 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
         onSwitchTab={onSwitchTab}
       />
 
-      <DatePickerModal
-        isOpen={showDatePicker}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        onConfirm={handleSetStartTime}
-        onSetNow={handleSetCurrentTime}
-        onCancel={() => setShowDatePicker(false)}
-      />
     </div>
   );
 };

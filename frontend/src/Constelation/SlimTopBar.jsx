@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './SlimTopBar.css'; // Import your CSS file for styling
 import { uploadStateField, downloadStateField } from '../firebase/firebaseUtils';
 import { useSelector, useDispatch } from 'react-redux';
@@ -6,7 +6,10 @@ import { auth } from '../firebase/firebase'; // Assuming you have an authenticat
 
 const SlimTopBar = () => {
   const dispatch = useDispatch();
-  const state = useSelector((state) => state);
+  const timer = useSelector((state) => state.timer);
+  const particles = useSelector((state) => state.particles);
+  const CurrentState = useSelector((state) => state.CurrentState);
+  const satellites = useSelector((state) => state.satellites);
   const user = auth.currentUser; // Get current user from Firebase Auth
 
   const [uploading, setUploading] = useState(false);
@@ -16,10 +19,10 @@ const SlimTopBar = () => {
     if (user) {
       setUploading(true);
       try {
-        await uploadStateField(state.timer, 'timer');
-        await uploadStateField(state.particles, 'particles');
-        await uploadStateField(state.CurrentState, 'CurrentState');
-        await uploadStateField(state.satellites, 'satellites');
+        await uploadStateField(timer, 'timer');
+        await uploadStateField(particles, 'particles');
+        await uploadStateField(CurrentState, 'CurrentState');
+        await uploadStateField(satellites, 'satellites');
         console.log('Upload successful');
       } catch (error) {
         console.error('Upload failed:', error);

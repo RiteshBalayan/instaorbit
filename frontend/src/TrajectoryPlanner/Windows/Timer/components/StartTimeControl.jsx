@@ -8,17 +8,18 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 export const StartTimeControl = ({ 
   startTime, 
-  onOpenPicker 
+  onOpenPicker,
+  compact = false,
 }) => {
   return (
-    <div className='starttime-container'>
-      <div className="starttime-label">Start Time <span style={{fontSize: '8px', color: '#666'}}>UTC</span></div>
-      <div className="starttime-display">
+    <div className={`starttime-container ${compact ? 'starttime-container--compact' : ''}`}>
+      <div className="starttime-label">START (UTC)</div>
+      <div className="starttime-display" title={startTime}>
         {startTime}
       </div>
-      <button className="starttime-btn" onClick={onOpenPicker}>
+      <button className={`starttime-btn ${compact ? 'starttime-btn--icon' : ''}`} onClick={onOpenPicker} aria-label="Set start time" title="Set start time">
         <CalendarTodayIcon sx={{ fontSize: 16 }} />
-        Set Start Time
+        {!compact && 'Set Start Time'}
       </button>
     </div>
   );

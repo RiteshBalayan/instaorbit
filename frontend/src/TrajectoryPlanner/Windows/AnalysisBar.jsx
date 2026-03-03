@@ -14,6 +14,7 @@
 
 import React, { useState, Suspense } from 'react';
 import Timer from './Timer';
+import ControlBarPanel from './ControlBarPanel';
 import './AnalysisBar.css';
 
 const LinkAnalysisTab = React.lazy(() => import('./LinkAnalysisTab'));
@@ -68,6 +69,9 @@ const AnalysisBar = () => {
 
   return (
     <div className="analysis-bar">
+      {/* ── Persistent left control bar (survives tab switches) ── */}
+      <ControlBarPanel />
+
       {/* ── Tab strip ─────────────────────────────────────── */}
       {ANALYSIS_TABS.length > 1 && (
         <div className="ab-tab-strip">

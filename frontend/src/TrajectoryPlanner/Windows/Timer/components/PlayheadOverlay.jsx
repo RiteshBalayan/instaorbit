@@ -8,15 +8,13 @@
  * render-time updates via the timeline's visible window range.
  */
 
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 const HANDLE_WIDTH = 28; // px — total clickable width of the drag strip
 
 const PlayheadOverlay = ({ timelineRef, onRenderTimeUpdate, starttime }) => {
   const isDragging = useRef(false);
-  const [offsetPx, setOffsetPx] = useState(0); // px from left edge of center panel
-  const [centerLeft, setCenterLeft] = useState(0); // left edge of center panel relative to timeline-panel
-  const [centerWidth, setCenterWidth] = useState(0);
+  const overlayRef = useRef(null);
 
   const minTime = starttime || Date.now();
 
@@ -58,11 +56,10 @@ const PlayheadOverlay = ({ timelineRef, onRenderTimeUpdate, starttime }) => {
       const timeline = getTimeline();
       const centerEl = getCenterEl();
       const panelEl = timelineRef?.current?.parentElement; // timeline-panel
-      if (timeline && centerEl && panelEl) {
+      const overlayEl = overlayRef.current;
+      if (timeline && centerEl && panelEl && overlayEl) {
         const panelRect = panelEl.getBoundingClientRect();
         const centerRect = centerEl.getBoundingClientRect();
-        setCenterLeft(centerRect.left - panelRect.left);
-        setCenterWidth(centerRect.width);
 
         const range = timeline.getWindow();
         const items = timeline.itemsData;
@@ -73,11 +70,20 @@ const PlayheadOverlay = ({ timelineRef, onRenderTimeUpdate, starttime }) => {
         } catch {
           playheadMs = null;
         }
-        if (playheadMs != null) {
+        if (playheadMs != null && centerRect.width > 0) {
           const windowStart = range.start.valueOf();
           const windowEnd = range.end.valueOf();
-          const fraction = (playheadMs - windowStart) / (windowEnd - windowStart);
-          setOffsetPx(fraction * centerRect.width);
+          const denom = windowEnd - windowStart;
+          const fraction = denom > 0 ? (playheadMs - windowStart) / denom : 0;
+
+          const centerLeft = centerRect.left - panelRect.left;
+          const offsetPx = fraction * centerRect.width;
+          const left = centerLeft + offsetPx - HANDLE_WIDTH / 2;
+
+          // Update DOM style directly to avoid forcing a React rerender every frame
+          overlayEl.style.left = `${left}px`;
+          overlayEl.style.top = '0px';
+          overlayEl.style.height = '100%';
         }
       }
       rafId = requestAnimationFrame(tick);
@@ -120,18 +126,14 @@ const PlayheadOverlay = ({ timelineRef, onRenderTimeUpdate, starttime }) => {
     };
   }, [pageXToRenderTime, onRenderTimeUpdate]);
 
-  // ── Render ──────────────────────────────────────────────────
-  // Position: absolute inside timeline-panel (which must be position:relative).
-  // Left = center panel's left offset + playhead fraction offset − half handle width.
-  const left = centerLeft + offsetPx - HANDLE_WIDTH / 2;
-
   return (
     <div
       className="playhead-drag-overlay"
       onMouseDown={handleMouseDown}
+      ref={overlayRef}
       style={{
         position: 'absolute',
-        left,
+        left: 0,
         top: 0,
         width: HANDLE_WIDTH,
         height: '100%',

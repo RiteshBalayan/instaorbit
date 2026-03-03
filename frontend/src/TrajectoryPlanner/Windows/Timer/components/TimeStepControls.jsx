@@ -12,16 +12,17 @@ export const TimeStepControls = ({
   renderStep, 
   coupled, 
   onSimStepChange, 
-  onRenderStepChange 
+  onRenderStepChange,
+  compact = false,
 }) => {
   const handleSimSliderChange = (value) => {
     onSimStepChange({ target: { value } });
   };
 
   return (
-    <div className="step-slider-container">
+    <div className={`step-slider-container ${compact ? 'step-slider-container--compact' : ''}`}>
       <div className="slider-header">
-        <span className="slider-label">Step Size</span>
+        <span className="slider-label">STEP</span>
         <span className="slider-value">{simStep}s</span>
       </div>
       <Slider
@@ -29,15 +30,17 @@ export const TimeStepControls = ({
         max={50}
         value={simStep}
         onChange={handleSimSliderChange}
-        railStyle={{ backgroundColor: 'rgba(80, 80, 80, 0.4)', height: 4 }}
-        trackStyle={{ backgroundColor: '#0078d4', height: 4 }}
+        vertical={false}
+        style={{ width: compact ? '100%' : '100%' }}
+        railStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.10)', height: 4 }}
+        trackStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.24)', height: 4 }}
         handleStyle={{
-          backgroundColor: '#0078d4',
-          border: '2px solid #005a9e',
-          width: 16,
-          height: 16,
-          marginTop: -6,
-          boxShadow: '0 2px 8px rgba(0, 120, 212, 0.4)'
+          backgroundColor: 'rgba(255, 255, 255, 0.55)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          width: 12,
+          height: 12,
+          marginTop: -4,
+          boxShadow: 'none'
         }}
       />
     </div>

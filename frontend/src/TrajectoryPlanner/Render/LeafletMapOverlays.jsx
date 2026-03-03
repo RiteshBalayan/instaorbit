@@ -13,7 +13,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { CircleMarker, Polyline, Tooltip, Marker, useMap } from 'react-leaflet';
+import { CircleMarker, Polyline, Tooltip, Marker } from 'react-leaflet';
 import { useSelector } from 'react-redux';
 import L from 'leaflet';
 import { mapXYToLatLon, splitAtAntimeridian } from './mapUtils';
@@ -31,6 +31,33 @@ const TRACK_COLOURS = [
 
 /* Ground station marker colour */
 const GS_COLOR = '#4a9eff';
+
+function findLastIndexLE(sortedByTimePoints, tSec) {
+  let lo = 0;
+  let hi = sortedByTimePoints.length - 1;
+  let ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedByTimePoints[mid].time <= tSec) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return ans;
+}
+
+function lowerBoundTime(sortedByTimePoints, tSec) {
+  let lo = 0;
+  let hi = sortedByTimePoints.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedByTimePoints[mid].time < tSec) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
 
 /** Shift a [lat, lon] by a longitude offset */
 const shiftPos = ([lat, lon], dLon) => [lat, lon + dLon];
@@ -64,10 +91,8 @@ const SatelliteMarker = ({ satellite, particle, color }) => {
     if (particle?.tracePoints?.length) {
       // Find the last trace point at or before the current playhead
       const pts = particle.tracePoints;
-      let best = null;
-      for (let i = pts.length - 1; i >= 0; i--) {
-        if (pts[i].time <= RenderTime) { best = pts[i]; break; }
-      }
+      const idx = findLastIndexLE(pts, RenderTime);
+      const best = idx >= 0 ? pts[idx] : null;
       if (best) {
         if (best.lat != null && best.lon != null) return [best.lat, best.lon];
         if (best.mapX != null) return mapXYToLatLon(best.mapX, best.mapY);
@@ -118,16 +143,18 @@ const GroundTrack = ({ particle, color }) => {
   const baseSegments = useMemo(() => {
     if (!particle?.tracePoints?.length) return [];
 
-    // Always clip to RenderTime so scrubbing backward shows only the
-    // portion of the ground track up to the playhead position.
-    let pts = particle.tracePoints.filter((p) => p.time <= RenderTime);
+    const all = particle.tracePoints;
+    const idxEnd = findLastIndexLE(all, RenderTime);
+    if (idxEnd < 0) return [];
 
-    // Track Horizon: further narrow to ±1 hr window around RenderTime
+    let idxStart = 0;
     if (trackWindow) {
       const HORIZON = 3600; // seconds
       const tMin = RenderTime - HORIZON;
-      pts = pts.filter((p) => p.time >= tMin);
+      idxStart = lowerBoundTime(all, tMin);
     }
+
+    const pts = all.slice(idxStart, idxEnd + 1);
 
     const points = pts.map((p) => {
       // Prefer proper lat/lon (GMST-based), fall back to legacy mapXY
@@ -238,34 +265,31 @@ const GroundStationMarkers = () => {
 /* ─── Communication link lines (rendered at all copies) ───── */
 
 /** Resolve a link-endpoint ID to [lat, lon] using the same logic as SatelliteMarker */
-const resolveEndpointLatLon = (id, satellites, particles, groundStations, RenderTime) => {
+const resolveEndpointLatLon = (id, satById, particleById, gsById, RenderTime) => {
   if (id.startsWith('sat-')) {
     const numId = parseFloat(id.replace('sat-', ''));
-    const particle = particles.find((p) => p.id === numId);
+    const particle = particleById.get(numId);
     if (particle?.tracePoints?.length) {
-      for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
-        const pt = particle.tracePoints[i];
-        if (pt.time <= RenderTime) {
-          if (pt.lat != null && pt.lon != null) return [pt.lat, pt.lon];
-          if (pt.mapX != null) return mapXYToLatLon(pt.mapX, pt.mapY);
-          break;
-        }
+      const pts = particle.tracePoints;
+      const idx = findLastIndexLE(pts, RenderTime);
+      const pt = idx >= 0 ? pts[idx] : null;
+      if (pt) {
+        if (pt.lat != null && pt.lon != null) return [pt.lat, pt.lon];
+        if (pt.mapX != null) return mapXYToLatLon(pt.mapX, pt.mapY);
       }
     }
-    const sat = satellites.find((s) => s.id === numId);
+    const sat = satById.get(numId);
     if (sat?.coordinates?.lat != null) return [sat.coordinates.lat, sat.coordinates.lon];
     if (sat?.coordinates?.mapX != null) return mapXYToLatLon(sat.coordinates.mapX, sat.coordinates.mapY);
     return null;
   }
   // Ground station
-  const gs = groundStations.find((g) => g.id === id);
+  const gs = gsById.get(id);
   if (!gs) return null;
   return [gs.lat, gs.lon];
 };
 
 const LINK_ACTIVE_COLOR = 'rgba(74, 222, 128, 0.45)';   // green, translucent
-const LINK_INACTIVE_COLOR = 'rgba(248, 113, 113, 0.3)';  // red, very translucent
-const LINK_WAITING_COLOR = 'rgba(148, 163, 184, 0.25)';  // gray, very translucent
 
 const LinkLines = () => {
   const savedLinks = useSelector((s) => s.communication.links) || [];
@@ -278,14 +302,18 @@ const LinkLines = () => {
   // ── Bulk pre-computed data ─────────────────────────────────
   const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
 
+  const satById = useMemo(() => new Map(satStates.map((s) => [s.id, s])), [satStates]);
+  const particleById = useMemo(() => new Map(particles.map((p) => [p.id, p])), [particles]);
+  const gsById = useMemo(() => new Map(groundStations.map((g) => [g.id, g])), [groundStations]);
+
   const linkLines = useMemo(() => {
     // ── BULK MODE: use pre-computed activeLinks, resolve lat/lon from tracePoints ──
     if (activeLinksAtTime) {
       const timeKey = Math.floor(RenderTime);
       const precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
       return precomputed.map((link) => {
-        const txPos = resolveEndpointLatLon(link.txId, satStates, particles, groundStations, RenderTime);
-        const rxPos = resolveEndpointLatLon(link.rxId, satStates, particles, groundStations, RenderTime);
+        const txPos = resolveEndpointLatLon(link.txId, satById, particleById, gsById, RenderTime);
+        const rxPos = resolveEndpointLatLon(link.rxId, satById, particleById, gsById, RenderTime);
         if (!txPos || !rxPos) return { id: link.id, positions: null, status: 'active' };
         return { id: link.id, positions: [txPos, rxPos], status: 'active' };
       });
@@ -303,8 +331,8 @@ const LinkLines = () => {
     };
 
     return savedLinks.map((link) => {
-      const txPos = resolveEndpointLatLon(link.txId, satStates, particles, groundStations, RenderTime);
-      const rxPos = resolveEndpointLatLon(link.rxId, satStates, particles, groundStations, RenderTime);
+      const txPos = resolveEndpointLatLon(link.txId, satById, particleById, gsById, RenderTime);
+      const rxPos = resolveEndpointLatLon(link.rxId, satById, particleById, gsById, RenderTime);
       if (!txPos || !rxPos) return { id: link.id, positions: null, status: 'waiting' };
 
       // Use computeLink to get inLink status
@@ -313,7 +341,7 @@ const LinkLines = () => {
 
       return { id: link.id, positions: [txPos, rxPos], status };
     });
-  }, [savedLinks, satStates, particles, groundStations, RenderTime, starttime, activeLinksAtTime]);
+  }, [savedLinks, RenderTime, starttime, activeLinksAtTime, satById, particleById, gsById, satStates, groundStations, particles]);
 
   return (
     <>
@@ -431,6 +459,8 @@ const LeafletMapOverlays = () => {
   const particles = useSelector((s) => s.particles.particles) || [];
   const savedLinks = useSelector((s) => s.communication.links) || [];
 
+  const particleById = useMemo(() => new Map(particles.map((p) => [p.id, p])), [particles]);
+
   /* Build legend colour list */
   const satelliteColors = useMemo(
     () =>
@@ -448,7 +478,7 @@ const LeafletMapOverlays = () => {
       <LinkLines />
       {satellites.map((sat, idx) => {
         const color = TRACK_COLOURS[idx % TRACK_COLOURS.length];
-        const particle = particles.find((p) => p.id === sat.id);
+        const particle = particleById.get(sat.id);
         return (
           <React.Fragment key={sat.id}>
             <SatelliteMarker satellite={sat} particle={particle} color={color} />

@@ -1,13 +1,10 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
-import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
-import { updateCoordinate } from '../../Store/CurrentState';
-import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from '../Simulation/Functions';
+import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian } from '../Simulation/Functions';
 import { Shape, TubeGeometry } from 'three'; 
 
-import { Sgp4, Satellite as sat } from 'ootk';
-import { PositionPoint, useGLTF } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { computeGMST, computeGMSTFromSim } from '../../transforms';
 
@@ -75,6 +72,33 @@ const OrbitEllipse = ({ elements, color }) => {
   );
 };
 
+function findLastIndexLE(sortedByTimePoints, tSec) {
+  let lo = 0;
+  let hi = sortedByTimePoints.length - 1;
+  let ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedByTimePoints[mid].time <= tSec) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return ans;
+}
+
+function lowerBoundTime(sortedByTimePoints, tSec) {
+  let lo = 0;
+  let hi = sortedByTimePoints.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedByTimePoints[mid].time < tSec) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burns = [], color }) => {
   const satelliteRef = useRef();
   const satelliteGlowRef = useRef();
@@ -90,6 +114,19 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const starttime = useSelector((state) => state.timer.starttime);
   const trackWindow = useSelector((state) => state.view.trackWindow);
   const showOrbit = useSelector((state) => state.view.showOrbit);
+
+  const gmstCacheRef = useRef(new Map());
+  const getGmstCached = (utcMs) => {
+    const key = Math.floor(utcMs / 1000);
+    const cache = gmstCacheRef.current;
+    const existing = cache.get(key);
+    if (existing != null) return existing;
+    const gmst = computeGMST(utcMs);
+    cache.set(key, gmst);
+    // Bound cache growth (e.g., long sessions / lots of scrubbing)
+    if (cache.size > 5000) cache.clear();
+    return gmst;
+  };
 
   // Track Horizon: ±1 hour window in seconds
   const TRACK_HORIZON_SEC = 3600;
@@ -109,23 +146,19 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
 
       // Update satellite position from tracePoints if available
       if (satelliteRef.current && particle?.tracePoints?.length > 0) {
-        // Points up to the current playhead — used for satellite position
-        // and as the default track display (full history up to now).
-        let pointsUpToNow = particle.tracePoints.filter(p => p.time <= RenderTime);
-
-        // Track display points: may be narrowed by Track Horizon
-        let filteredPoints = pointsUpToNow;
-        if (trackWindow && pointsUpToNow.length > 0) {
-          const tMin = RenderTime - TRACK_HORIZON_SEC;
-          filteredPoints = pointsUpToNow.filter((p) => p.time >= tMin);
-        }
+        const pts = particle.tracePoints;
+        const idxEnd = findLastIndexLE(pts, RenderTime);
+        const hasAny = idxEnd >= 0;
+        const tMin = RenderTime - TRACK_HORIZON_SEC;
+        const idxStart = trackWindow && hasAny ? lowerBoundTime(pts, tMin) : 0;
+        const filteredPoints = hasAny ? pts.slice(idxStart, idxEnd + 1) : [];
 
         // Satellite position: always the last trace point at or before RenderTime
-        if (pointsUpToNow.length > 0) {
-          const lastPoint = pointsUpToNow[pointsUpToNow.length - 1];
+        if (hasAny) {
+          const lastPoint = pts[idxEnd];
           if (lastPoint && [lastPoint.x, lastPoint.y, lastPoint.z].every(Number.isFinite)) {
             if (isFixed) {
-              const gmst = computeGMST(starttime + lastPoint.time * 1000);
+              const gmst = getGmstCached(starttime + lastPoint.time * 1000);
               const [ex, ey, ez] = eciSceneToEcef(lastPoint.x, lastPoint.y, lastPoint.z, gmst);
               satelliteRef.current.position.set(ex, ey, ez);
             } else {
@@ -143,14 +176,20 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
             traceArray = new Float32Array(filteredPoints.length * 3);
             for (let k = 0; k < filteredPoints.length; k++) {
               const p = filteredPoints[k];
-              const gmst = computeGMST(starttime + p.time * 1000);
+              const gmst = getGmstCached(starttime + p.time * 1000);
               const [ex, ey, ez] = eciSceneToEcef(p.x, p.y, p.z, gmst);
               traceArray[k * 3]     = ex;
               traceArray[k * 3 + 1] = ey;
               traceArray[k * 3 + 2] = ez;
             }
           } else {
-            traceArray = new Float32Array(filteredPoints.flatMap(p => [p.x, p.y, p.z]));
+            traceArray = new Float32Array(filteredPoints.length * 3);
+            for (let k = 0; k < filteredPoints.length; k++) {
+              const p = filteredPoints[k];
+              traceArray[k * 3] = p.x;
+              traceArray[k * 3 + 1] = p.y;
+              traceArray[k * 3 + 2] = p.z;
+            }
           }
           const positionAttribute = lineRef.current.geometry.getAttribute('position');
           
@@ -175,7 +214,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
           const tubePoints = filteredPoints
             .map(p => {
               if (isFixed) {
-                const gmst = computeGMST(starttime + p.time * 1000);
+                const gmst = getGmstCached(starttime + p.time * 1000);
                 const [ex, ey, ez] = eciSceneToEcef(p.x, p.y, p.z, gmst);
                 return new THREE.Vector3(ex, ey, ez);
               }
@@ -415,15 +454,12 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       // 1) Primary: derive position from the trace point at RenderTime
       if (particle?.tracePoints?.length) {
         const pts = particle.tracePoints;
-        // Find last trace point with time <= RenderTime (reverse scan)
-        let best = null;
-        for (let i = pts.length - 1; i >= 0; i--) {
-          if (pts[i].time <= RenderTime) { best = pts[i]; break; }
-        }
+        const idx = findLastIndexLE(pts, RenderTime);
+        const best = idx >= 0 ? pts[idx] : null;
         if (best && [best.x, best.y, best.z].every(Number.isFinite)) {
           px = best.x; py = best.y; pz = best.z;
           if (isFixed) {
-            const gmst = computeGMST(starttime + best.time * 1000);
+            const gmst = getGmstCached(starttime + best.time * 1000);
             [px, py, pz] = eciSceneToEcef(best.x, best.y, best.z, gmst);
           }
           found = true;
