@@ -1,5 +1,5 @@
 import React from 'react';
-import UtilityPanel from './Windows/Sidebar/UtilityPanel';
+import RightToolbar from './Windows/Sidebar/RightToolbar';
 import { useSelector } from 'react-redux';
 import '../Styles/simulator/Simulator.css';
 import GlobeAndTimer from './Windows/GlobeAndTimer';
@@ -12,8 +12,7 @@ function TrajectoryPlanner() {
   return (
     <div className="simulator">
       <GlobeAndTimer />
-      <UtilityPanel />
-
+      <RightToolbar />
     </div>
   );
 }

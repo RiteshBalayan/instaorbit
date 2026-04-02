@@ -20,6 +20,9 @@ const TimelineZoomControls = ({
   onToggleSatBars,
   analysisTab,
   onSwitchTab,
+  filterEndpoint,
+  onFilterChange,
+  endpoints,
 }) => {
   const isLinkTab = analysisTab === 'link-analysis';
   const handleToggleLinkAnalysis = () => {
@@ -29,6 +32,31 @@ const TimelineZoomControls = ({
   };
   return (
     <div className="timeline-zoom-controls">
+      {/* Link Filter Dropdown */}
+      {endpoints && endpoints.length > 0 && (
+        <>
+          <select
+            className="timeline-filter-select"
+            value={filterEndpoint || ''}
+            onChange={(e) => onFilterChange && onFilterChange(e.target.value)}
+            title="Filter timeline by endpoint"
+          >
+            <option value="">All Links</option>
+            <optgroup label="🛰 Satellites">
+              {endpoints.filter((ep) => ep.type === 'sat').map((ep) => (
+                <option key={ep.id} value={ep.id}>{ep.label}</option>
+              ))}
+            </optgroup>
+            <optgroup label="📡 Ground Stations">
+              {endpoints.filter((ep) => ep.type === 'gs').map((ep) => (
+                <option key={ep.id} value={ep.id}>{ep.label}</option>
+              ))}
+            </optgroup>
+          </select>
+          <div className="controls-divider"></div>
+        </>
+      )}
+
       {/* Fast backward */}
       <button
         className="transport-btn"

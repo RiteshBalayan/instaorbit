@@ -454,7 +454,7 @@ const MapLegend = ({ satelliteColors, hasLinks }) => {
 };
 
 /* ─── Composite overlay that loops over all satellites ─────── */
-const LeafletMapOverlays = () => {
+const LeafletMapOverlays = ({ showLegend = true }) => {
   const satellites = useSelector((s) => s.CurrentState.satelite) || [];
   const particles = useSelector((s) => s.particles.particles) || [];
   const savedLinks = useSelector((s) => s.communication.links) || [];
@@ -486,7 +486,9 @@ const LeafletMapOverlays = () => {
           </React.Fragment>
         );
       })}
-      <MapLegend satelliteColors={satelliteColors} hasLinks={savedLinks.length > 0} />
+      {showLegend && (
+        <MapLegend satelliteColors={satelliteColors} hasLinks={savedLinks.length > 0} />
+      )}
     </>
   );
 };

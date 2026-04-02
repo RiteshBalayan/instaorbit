@@ -211,7 +211,7 @@ const AddConstellation = ({ onClose }) => {
     <div className="satellite-config" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
       <div className="input-container">
         <h3>Walker Constellation</h3>
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', mb: 1, display: 'block' }}>
+        <Typography variant="caption" sx={{ color: '#6b7280', mb: 1, display: 'block' }}>
           Notation: i:T/P/F — generates T satellites across P planes with phase offset F.
         </Typography>
 
@@ -253,7 +253,7 @@ const AddConstellation = ({ onClose }) => {
                 backgroundColor: baseColor,
                 width: 36,
                 height: 36,
-                border: '2px solid rgba(255,255,255,0.3)',
+                border: '2px solid #d1d5db',
                 borderRadius: 6,
                 cursor: 'pointer',
               }}
@@ -277,22 +277,22 @@ const AddConstellation = ({ onClose }) => {
           style={{
             marginTop: 12,
             padding: 12,
-            backgroundColor: 'rgba(0,0,0,0.3)',
+            backgroundColor: '#f0f4f8',
             borderRadius: 8,
-            border: '1px solid rgba(255,255,255,0.2)',
+            border: '1px solid #d1d5db',
             fontSize: 12,
-            color: 'rgba(255,255,255,0.85)',
+            color: '#374151',
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 14, color: 'rgba(255,255,255,0.9)' }}>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#1f2937' }}>
             Constellation Summary
           </div>
           <div style={{ marginBottom: 3 }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Walker Notation: </span>
+            <span style={{ color: '#6b7280' }}>Walker Notation: </span>
             <span style={{ fontWeight: 600 }}>{inclination}° : {totalSats}/{planes}/{phasing}</span>
           </div>
           <div style={{ marginBottom: 3 }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Sats per Plane: </span>
+            <span style={{ color: '#6b7280' }}>Sats per Plane: </span>
             <span style={{ fontWeight: 600 }}>
               {satsPerPlane}
               {remainder !== 0 && (
@@ -301,32 +301,32 @@ const AddConstellation = ({ onClose }) => {
             </span>
           </div>
           <div style={{ marginBottom: 3 }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>RAAN spacing: </span>
+            <span style={{ color: '#6b7280' }}>RAAN spacing: </span>
             <span style={{ fontWeight: 600 }}>{(360 / planes).toFixed(2)}°</span>
           </div>
           <div style={{ marginBottom: 3 }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>In-plane spacing: </span>
+            <span style={{ color: '#6b7280' }}>In-plane spacing: </span>
             <span style={{ fontWeight: 600 }}>{satsPerPlane > 0 ? (360 / satsPerPlane).toFixed(2) : '—'}°</span>
           </div>
           <div style={{ marginBottom: 3 }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Perigee Alt: </span>
-            <span style={{ fontWeight: 600, color: perigeeAlt < 0 ? '#ef4444' : '#4ade80' }}>
+            <span style={{ color: '#6b7280' }}>Perigee Alt: </span>
+            <span style={{ fontWeight: 600, color: perigeeAlt < 0 ? '#ef4444' : '#16a34a' }}>
               {perigeeAlt.toFixed(1)} km {perigeeAlt < 0 && '⚠️'}
             </span>
           </div>
           <div style={{ marginBottom: 3 }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Apogee Alt: </span>
+            <span style={{ color: '#6b7280' }}>Apogee Alt: </span>
             <span style={{ fontWeight: 600 }}>{apogeeAlt.toFixed(1)} km</span>
           </div>
           <div>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Period: </span>
+            <span style={{ color: '#6b7280' }}>Period: </span>
             <span style={{ fontWeight: 600 }}>{period.toFixed(1)} min ({(period / 60).toFixed(2)} hr)</span>
           </div>
         </div>
 
         {/* ── Preset buttons ── */}
         <div style={{ marginTop: 12 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block', mb: 0.5 }}>
+          <Typography variant="caption" sx={{ color: '#6b7280', display: 'block', mb: 0.5 }}>
             Presets
           </Typography>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -340,7 +340,7 @@ const AddConstellation = ({ onClose }) => {
                 key={p.label}
                 size="small"
                 variant="outlined"
-                sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', fontSize: 11, textTransform: 'none' }}
+                sx={{ color: '#374151', borderColor: '#d1d5db', fontSize: 11, textTransform: 'none' }}
                 onClick={() => {
                   setTotalSats(p.t);
                   setPlanes(p.p);

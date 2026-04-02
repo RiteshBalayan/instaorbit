@@ -25,6 +25,9 @@ export const TimelinePanel = ({
   starttime,
   analysisTab,
   onSwitchTab,
+  filterEndpoint,
+  onFilterChange,
+  endpoints,
 }) => {
   return (
     <div ref={panelRef} className="timeline-panel" style={{ position: 'relative' }}>
@@ -42,6 +45,9 @@ export const TimelinePanel = ({
         isPlaying={isPlaying}
         showSatBars={showSatBars}
         onToggleSatBars={onToggleSatBars}
+        filterEndpoint={filterEndpoint}
+        onFilterChange={onFilterChange}
+        endpoints={endpoints}
       />
       <div ref={timelineRef} className="timeline-container"></div>
       {/* Transparent drag-handle overlay — always sits above vis-timeline DOM */}

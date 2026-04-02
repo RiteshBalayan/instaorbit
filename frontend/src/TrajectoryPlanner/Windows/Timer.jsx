@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../../Styles/simulator/Timer.css';
 
@@ -26,6 +27,30 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
   // Local state
   const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
   const [simStep, setSimStep] = useState(DEFAULT_SIM_STEP);
+
+  // Redux state for endpoints
+  const satellites = useSelector((s) => s.satellites?.satellitesConfig || []);
+  const groundStations = useSelector((s) => s.groundStations?.groundStations || []);
+
+  // Build endpoints list for filter dropdown
+  const endpoints = useMemo(() => {
+    const eps = [];
+    satellites.forEach((sat) => {
+      eps.push({
+        id: `sat-${sat.id}`,
+        type: 'sat',
+        label: sat.name || `Satellite ${sat.id}`,
+      });
+    });
+    groundStations.forEach((gs) => {
+      eps.push({
+        id: gs.id,
+        type: 'gs',
+        label: gs.name || gs.id,
+      });
+    });
+    return eps;
+  }, [satellites, groundStations]);
 
   // Custom hooks for timer logic
   const simulation = useSimulationTimer(timeStep);
@@ -131,6 +156,9 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
         starttime={simulation.starttime}
         analysisTab={analysisTab}
         onSwitchTab={onSwitchTab}
+        filterEndpoint={timeline.filterEndpoint}
+        onFilterChange={timeline.setFilterEndpoint}
+        endpoints={endpoints}
       />
 
     </div>

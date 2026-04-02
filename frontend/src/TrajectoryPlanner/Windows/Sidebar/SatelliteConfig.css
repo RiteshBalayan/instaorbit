@@ -253,3 +253,50 @@ body, html, #root {
 .drag-number-input-container:active {
   cursor: ew-resize; /* Shows the dragging cursor */
 }
+
+/* ── Light-theme overrides when inside MUI Dialog ────────── */
+.MuiDialog-root .satellite-config {
+  background-color: #fff;
+  color: #1a1a2e;
+  padding: 16px 20px;
+}
+
+.MuiDialog-root .satellite-config h3,
+.MuiDialog-root .satellite-config h4 {
+  color: #1f2937;
+}
+
+.MuiDialog-root .satellite-config .detail-label {
+  color: #374151;
+}
+
+.MuiDialog-root .satellite-config .detail-input,
+.MuiDialog-root .satellite-config .name-input {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.MuiDialog-root .satellite-config .detail-input:focus,
+.MuiDialog-root .satellite-config .name-input:focus {
+  border-color: #3b82f6;
+}
+
+.MuiDialog-root .satellite-config .detail-input::placeholder,
+.MuiDialog-root .satellite-config .name-input::placeholder {
+  color: #9ca3af;
+}
+
+.MuiDialog-root .satellite-config .options label {
+  color: #374151;
+}
+
+.MuiDialog-root .satellite-config .drag-number-input-container input {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.MuiDialog-root .satellite-config .drag-number-input-container input:focus {
+  border-color: #3b82f6;
+}

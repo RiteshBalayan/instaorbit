@@ -489,7 +489,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
                 backgroundColor: color, 
                 width: '40px', 
                 height: '40px', 
-                border: '2px solid rgba(255,255,255,0.3)', 
+                border: '2px solid #d1d5db', 
                 borderRadius: '6px',
                 cursor: 'pointer',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
@@ -560,11 +560,11 @@ const AddSatellite = ({ editId = null, onClose }) => {
           marginTop: '12px', 
           marginBottom: '12px', 
           padding: '12px', 
-          backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+          backgroundColor: '#f0f4f8', 
           borderRadius: '8px',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
+          border: '1px solid #d1d5db'
         }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'rgba(255,255,255,0.9)' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#1f2937' }}>
             Orbital Parameters
           </div>
           {(() => {
@@ -583,9 +583,9 @@ const AddSatellite = ({ editId = null, onClose }) => {
             const isLowOrbit = perigeeAltitude < 160 && perigeeAltitude >= 0;
             
             return (
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)' }}>
+              <div style={{ fontSize: '12px', color: '#374151' }}>
                 <div style={{ marginBottom: '4px' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.6)' }}>Perigee Altitude: </span>
+                  <span style={{ color: '#6b7280' }}>Perigee Altitude: </span>
                   <span style={{ 
                     fontWeight: 600,
                     color: isInvalid ? '#ef4444' : isLowOrbit ? '#f59e0b' : '#4ade80'
@@ -596,20 +596,20 @@ const AddSatellite = ({ editId = null, onClose }) => {
                   </span>
                 </div>
                 <div style={{ marginBottom: '4px' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.6)' }}>Apogee Altitude: </span>
-                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.95)' }}>
+                  <span style={{ color: '#6b7280' }}>Apogee Altitude: </span>
+                  <span style={{ fontWeight: 600, color: '#1f2937' }}>
                     {apogeeAltitude.toFixed(2)} km
                   </span>
                 </div>
                 <div style={{ marginBottom: '4px' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.6)' }}>Orbital Period: </span>
-                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.95)' }}>
+                  <span style={{ color: '#6b7280' }}>Orbital Period: </span>
+                  <span style={{ fontWeight: 600, color: '#1f2937' }}>
                     {orbitalPeriod.toFixed(2)} minutes ({(orbitalPeriod / 60).toFixed(2)} hours)
                   </span>
                 </div>
                 <div>
-                  <span style={{ color: 'rgba(255,255,255,0.6)' }}>Orbit Type: </span>
-                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.95)' }}>
+                  <span style={{ color: '#6b7280' }}>Orbit Type: </span>
+                  <span style={{ fontWeight: 600, color: '#1f2937' }}>
                     {e === 0 ? 'Circular' : e < 0.25 ? 'Near-Circular' : e < 0.5 ? 'Elliptical' : e < 1 ? 'High Eccentricity' : 'Invalid (e ≥ 1)'}
                   </span>
                 </div>
@@ -617,11 +617,11 @@ const AddSatellite = ({ editId = null, onClose }) => {
                   <div style={{ 
                     marginTop: '8px', 
                     padding: '6px', 
-                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    backgroundColor: '#fef2f2',
                     borderRadius: '4px',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    border: '1px solid #fecaca',
                     fontSize: '11px',
-                    color: '#fca5a5'
+                    color: '#dc2626'
                   }}>
                     This orbit is invalid and cannot be created. Adjust parameters above.
                   </div>

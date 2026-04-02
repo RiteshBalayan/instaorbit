@@ -287,7 +287,7 @@ const LinkRow = ({ cfg, result, endpoints, onDelete, onParamChange, contactWindo
 /*  Each node's diagram is unique to its connections.            */
 /* ═══════════════════════════════════════════════════════════════ */
 
-const NodeGraph = ({ endpoints, links, results, onAddLink, onDeleteLink }) => {
+const NodeGraph = ({ endpoints, links, results, onAddLink, onDeleteLink, onAddLinksMany, onDeleteLinksMany }) => {
   const [selectedId, setSelectedId] = useState(null);
 
   // ── helpers ──────────────────────────────────────────────
@@ -338,11 +338,15 @@ const NodeGraph = ({ endpoints, links, results, onAddLink, onDeleteLink }) => {
   };
   const connectAll = () => {
     if (!selectedId) return;
-    others.forEach((ep) => { if (!hasLink(selectedId, ep.id)) onAddLink(selectedId, ep.id); });
+    // Batch: collect all pairs to add, then call batch handler
+    const pairs = others.filter((ep) => !hasLink(selectedId, ep.id)).map((ep) => [selectedId, ep.id]);
+    if (pairs.length > 0) onAddLinksMany(pairs);
   };
   const disconnectAll = () => {
     if (!selectedId) return;
-    connections.forEach((c) => { if (c.connected && c.linkId) onDeleteLink(c.linkId); });
+    // Batch: collect all link ids to delete, then call batch handler
+    const ids = connections.filter((c) => c.connected && c.linkId).map((c) => c.linkId);
+    if (ids.length > 0) onDeleteLinksMany(ids);
   };
 
   const selEp = endpoints.find((e) => e.id === selectedId);
@@ -354,13 +358,13 @@ const NodeGraph = ({ endpoints, links, results, onAddLink, onDeleteLink }) => {
   // ────────────────────────────────────────────────────────
   if (selectedId && selEp) {
     const n = others.length;
-    const R = 90;           // orbit radius for outer nodes
-    const CX = 155;         // SVG center x
-    const CY = 110;         // SVG center y
-    const SVG_W = 310;
-    const SVG_H = Math.max(220, n > 6 ? 260 : 220);
-    const NODE_RX = 48;     // pill half-width
-    const NODE_RY = 13;     // pill half-height
+    const R = 120;          // orbit radius for outer nodes
+    const CX = 200;         // SVG center x
+    const CY = 150;         // SVG center y
+    const SVG_W = 400;
+    const SVG_H = Math.max(300, n > 6 ? 340 : 300);
+    const NODE_RX = 36;     // pill half-width (smaller)
+    const NODE_RY = 10;     // pill half-height (smaller)
 
     // distribute others evenly around the center
     const outerPositions = others.map((_, i) => {
@@ -471,15 +475,15 @@ const NodeGraph = ({ endpoints, links, results, onAddLink, onDeleteLink }) => {
             <rect
               x={CX - NODE_RX} y={CY - NODE_RY}
               width={NODE_RX * 2} height={NODE_RY * 2}
-              rx="8"
+              rx="6"
               className={`lm-node-rect ${selEp.type === 'sat' ? 'lm-node-sat' : 'lm-node-gs'} lm-node-center`}
             />
           </g>
-          <text x={CX - NODE_RX + 10} y={CY + 1} dominantBaseline="middle" className="lm-node-icon">
+          <text x={CX - NODE_RX + 6} y={CY + 1} dominantBaseline="middle" className="lm-node-icon">
             {selEp.type === 'sat' ? '🛰' : '📡'}
           </text>
-          <text x={CX - NODE_RX + 24} y={CY + 1} dominantBaseline="middle" className="lm-node-label lm-center-label">
-            {selEp.label.length > 10 ? selEp.label.slice(0, 9) + '…' : selEp.label}
+          <text x={CX - NODE_RX + 18} y={CY + 1} dominantBaseline="middle" className="lm-node-label lm-center-label">
+            {selEp.label.length > 8 ? selEp.label.slice(0, 7) + '…' : selEp.label}
           </text>
 
           {/* ── Outer nodes (radial) ────────────────────── */}
@@ -492,22 +496,22 @@ const NodeGraph = ({ endpoints, links, results, onAddLink, onDeleteLink }) => {
                 <rect
                   x={pos.x - NODE_RX} y={pos.y - NODE_RY}
                   width={NODE_RX * 2} height={NODE_RY * 2}
-                  rx="7"
+                  rx="5"
                   className={`lm-node-rect ${isSat ? 'lm-node-sat' : 'lm-node-gs'} ${
                     conn.connected ? 'lm-node-linked' : ''
                   }`}
                 />
-                <text x={pos.x - NODE_RX + 8} y={pos.y + 1} dominantBaseline="middle" className="lm-node-icon">
+                <text x={pos.x - NODE_RX + 5} y={pos.y + 1} dominantBaseline="middle" className="lm-node-icon">
                   {isSat ? '🛰' : '📡'}
                 </text>
-                <text x={pos.x - NODE_RX + 21} y={pos.y + 1} dominantBaseline="middle" className="lm-node-label">
-                  {conn.label.length > 9 ? conn.label.slice(0, 8) + '…' : conn.label}
+                <text x={pos.x - NODE_RX + 16} y={pos.y + 1} dominantBaseline="middle" className="lm-node-label">
+                  {conn.label.length > 7 ? conn.label.slice(0, 6) + '…' : conn.label}
                 </text>
                 {/* Connected indicator dot */}
                 {conn.connected && (
                   <circle
-                    cx={pos.x + NODE_RX - 6} cy={pos.y}
-                    r="3"
+                    cx={pos.x + NODE_RX - 4} cy={pos.y}
+                    r="2.5"
                     fill={conn.status === 'active' ? '#4ade80' : conn.status === 'inactive' ? '#f87171' : '#94a3b8'}
                   />
                 )}
@@ -678,8 +682,25 @@ const LinkManager = () => {
     persistLinks([...linkConfigs, newLink]);
   };
 
+  // Batch add: add many links at once (for Connect All)
+  const handleAddMany = (pairs) => {
+    const newLinks = pairs.map(([txId, rxId], i) => ({
+      id: `link-${Date.now()}-${i}`,
+      txId,
+      rxId,
+      ...defaultParams,
+    }));
+    persistLinks([...linkConfigs, ...newLinks]);
+  };
+
   const handleDelete = (linkId) => {
     persistLinks(linkConfigs.filter((l) => l.id !== linkId));
+  };
+
+  // Batch delete: remove many links at once (for Disconnect All)
+  const handleDeleteMany = (linkIds) => {
+    const idsSet = new Set(linkIds);
+    persistLinks(linkConfigs.filter((l) => !idsSet.has(l.id)));
   };
 
   const handleParamChange = (linkId, key, val) => {
@@ -726,6 +747,8 @@ const LinkManager = () => {
           results={linkResults}
           onAddLink={handleAdd}
           onDeleteLink={handleDelete}
+          onAddLinksMany={handleAddMany}
+          onDeleteLinksMany={handleDeleteMany}
         />
       )}
 

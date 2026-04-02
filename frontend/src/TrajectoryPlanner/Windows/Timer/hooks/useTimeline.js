@@ -23,6 +23,10 @@ export const useTimeline = () => {
   const [showSatBars, setShowSatBars] = useState(false);
   const showSatBarsRef = useRef(showSatBars);
   showSatBarsRef.current = showSatBars;
+  // Filter: '' = all links, or an endpoint id (sat-X or gs-X)
+  const [filterEndpoint, setFilterEndpoint] = useState('');
+  const filterEndpointRef = useRef(filterEndpoint);
+  filterEndpointRef.current = filterEndpoint;
   // Refs to hold latest Redux values so the rebuild helper can always
   // read fresh data without needing them as effect dependencies.
   const contactWindowsRef = useRef([]);
@@ -57,11 +61,17 @@ export const useTimeline = () => {
     const sats = satellitesRef.current;
     const gs = groundStationsRef.current;
     const lh = linkHistoryRef.current;
+    const filter = filterEndpointRef.current;
 
-    const groups = createTimelineGroups(particles, cw, sats, gs, showSatBarsRef.current);
+    // Filter contact windows by endpoint if filter is set
+    const filteredCw = filter
+      ? cw.filter((w) => w.txId === filter || w.rxId === filter)
+      : cw;
+
+    const groups = createTimelineGroups(particles, filteredCw, sats, gs, showSatBarsRef.current);
     const items = createTimelineItems(
       particles, starttime, elapsedTime, renderTime,
-      lh, sats, gs, cw, showSatBarsRef.current,
+      lh, sats, gs, filteredCw, showSatBarsRef.current,
     );
     const minTime = starttime || Date.now();
     const options = createTimelineOptions(minTime, () => {});
@@ -84,7 +94,7 @@ export const useTimeline = () => {
   // here — link bars are added by the periodic refresh below.
   useEffect(() => {
     rebuildTimeline();
-  }, [particles.length, starttime, showSatBars]);
+  }, [particles.length, starttime, showSatBars, filterEndpoint]);
 
   // ── 2.  Refresh link bars when simulation pauses ────────────
   // When the user stops the simulation (isRunning false → true → false),
@@ -214,5 +224,7 @@ export const useTimeline = () => {
     moveTo,
     showSatBars,
     toggleSatBars,
+    filterEndpoint,
+    setFilterEndpoint,
   };
 };

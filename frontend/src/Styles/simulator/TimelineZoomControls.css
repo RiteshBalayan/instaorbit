@@ -93,3 +93,48 @@
   border-color: #00ffcc;
   color: #00ffcc;
 }
+
+/* Timeline filter dropdown */
+.timeline-filter-select {
+  background: #252525;
+  border: 1px solid #3d3d3d;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 20px 3px 6px;
+  cursor: pointer;
+  outline: none;
+  min-width: 100px;
+  max-width: 140px;
+  height: 24px;
+  transition: border-color 0.15s, background 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath fill='%23909090' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  text-overflow: ellipsis;
+}
+
+.timeline-filter-select:hover {
+  border-color: #505050;
+  background-color: #2a2a2a;
+}
+
+.timeline-filter-select:focus {
+  border-color: #0078D7;
+  box-shadow: 0 0 0 1px rgba(0, 120, 215, 0.3);
+}
+
+.timeline-filter-select option {
+  background: #252525;
+  color: #e0e0e0;
+  padding: 4px 8px;
+}
+
+.timeline-filter-select optgroup {
+  background: #1a1a1a;
+  color: #707070;
+  font-weight: 600;
+  font-size: 9px;
+}

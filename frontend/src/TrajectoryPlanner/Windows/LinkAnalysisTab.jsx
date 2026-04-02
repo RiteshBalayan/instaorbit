@@ -301,7 +301,16 @@ const LinkAnalysisTab = () => {
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
 
+  // Filter state: '' = all, or an endpoint id
+  const [filterEndpoint, setFilterEndpoint] = useState('');
+
   const endpoints = useMemo(() => buildEndpoints(satellites, groundStations), [satellites, groundStations]);
+
+  // Filter links by selected endpoint (show links where tx or rx matches)
+  const filteredLinks = useMemo(() => {
+    if (!filterEndpoint) return links;
+    return links.filter((l) => l.txId === filterEndpoint || l.rxId === filterEndpoint);
+  }, [links, filterEndpoint]);
 
   // Shared computation context
   const ctx = useMemo(
@@ -317,16 +326,23 @@ const LinkAnalysisTab = () => {
     [currentStates, renderTime],
   );
 
-  // Compute all link results
-  const results = useMemo(
+  // Compute all link results (for all links, needed for global stats)
+  const allResults = useMemo(
     () => links.map((cfg) => computeLink(cfg, ctx)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [links, renderTime, satPosKey],
   );
 
-  // Summary stats
-  const activeCount = results.filter((r) => r.ready && r.inLink).length;
-  const totalCount = links.length;
+  // Filtered results (matching the filtered links)
+  const filteredResults = useMemo(
+    () => filteredLinks.map((cfg) => computeLink(cfg, ctx)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filteredLinks, renderTime, satPosKey],
+  );
+
+  // Summary stats (from filtered results)
+  const activeCount = filteredResults.filter((r) => r.ready && r.inLink).length;
+  const totalCount = filteredLinks.length;
 
   // Contact window stats per link
   const windowStats = useMemo(() => {
@@ -354,11 +370,32 @@ const LinkAnalysisTab = () => {
 
         {/* ── Right: Live link table ───────────────────────── */}
         <div className="la-table-side">
-          {/* Summary bar */}
+          {/* Summary bar with filter */}
           <div className="la-summary">
+            {/* Filter dropdown */}
+            <span className="la-summary-item la-filter-item">
+              <span className="la-sum-label">Filter</span>
+              <select
+                className="la-filter-select"
+                value={filterEndpoint}
+                onChange={(e) => setFilterEndpoint(e.target.value)}
+              >
+                <option value="">All Links</option>
+                <optgroup label="🛰 Satellites">
+                  {endpoints.filter((ep) => ep.type === 'sat').map((ep) => (
+                    <option key={ep.id} value={ep.id}>{ep.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="📡 Ground Stations">
+                  {endpoints.filter((ep) => ep.type === 'gs').map((ep) => (
+                    <option key={ep.id} value={ep.id}>{ep.label}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </span>
             <span className="la-summary-item">
               <span className="la-sum-label">Links</span>
-              <span className="la-sum-value">{totalCount}</span>
+              <span className="la-sum-value">{totalCount}{filterEndpoint && <span className="la-filter-total"> / {links.length}</span>}</span>
             </span>
             <span className="la-summary-item la-summary-active">
               <span className="la-sum-label">Active</span>
@@ -375,10 +412,12 @@ const LinkAnalysisTab = () => {
           </div>
 
           {/* Table */}
-          {links.length === 0 ? (
+          {filteredLinks.length === 0 ? (
             <div className="la-empty">
               <span className="la-empty-icon">📡</span>
-              <span className="la-empty-text">No links configured</span>
+              <span className="la-empty-text">
+                {filterEndpoint ? 'No links for selected endpoint' : 'No links configured'}
+              </span>
             </div>
           ) : (
             <div className="la-table-wrap">
@@ -397,8 +436,8 @@ const LinkAnalysisTab = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => {
-                    const cfg = links[i];
+                  {filteredResults.map((r, i) => {
+                    const cfg = filteredLinks[i];
                     const txName = nameFor(cfg.txId, satellites, groundStations);
                     const rxName = nameFor(cfg.rxId, satellites, groundStations);
                     const status = !r.ready ? 'waiting' : r.inLink ? 'active' : 'inactive';
