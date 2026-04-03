@@ -25,6 +25,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import FastForwardIcon from '@mui/icons-material/FastForward';
 import FastRewindIcon from '@mui/icons-material/FastRewind';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
 import { toggleConfigPanel } from '../../../Store/View';
 import { updateRenderTime } from '../../../Store/timeSlice';
@@ -216,6 +217,19 @@ const MenuBar = () => {
         >
           <SettingsIcon sx={{ fontSize: 14 }} />
           <span>Configuration</span>
+        </button>
+
+        {/* Open Display (daughter tab) */}
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/display`;
+            window.open(url, `instaorbit-display-${Date.now()}`, 'noopener');
+          }}
+          style={btnStyle}
+          title="Open a display-only tab for presentations or multi-view"
+        >
+          <OpenInNewIcon sx={{ fontSize: 14 }} />
+          <span>Open Display</span>
         </button>
 
         {/* ── Render controls separator ────────────────────── */}

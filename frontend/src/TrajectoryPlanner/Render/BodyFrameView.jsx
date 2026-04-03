@@ -321,15 +321,35 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
       }
     }
 
-    /* ── 6. Other satellites in LVLH ─────────────────────── */
-    satellites.forEach(oSat => {
-      if (oSat.id === satelliteId) return;
-      if (!oSat.coordinates || oSat.coordinates.x == null) return;
-      const ref = otherSatRefs.current[oSat.id];
+    /* ── 6. Other satellites in LVLH (from tracePoints) ──── */
+    particles.forEach(oPart => {
+      if (oPart.id === satelliteId) return;
+      const ref = otherSatRefs.current[oPart.id];
       if (!ref) return;
-      const oECI = [oSat.coordinates.x, oSat.coordinates.y, oSat.coordinates.z];
+
+      // Look up this satellite's position in tracePoints at RenderTime
+      const oPts = oPart.tracePoints;
+      if (!oPts?.length) { ref.visible = false; return; }
+      const oIdx = findLastIndexLE(oPts, RenderTime);
+      if (oIdx < 0) { ref.visible = false; return; }
+      const oSnap = oPts[oIdx];
+      if (![oSnap.x, oSnap.y, oSnap.z].every(Number.isFinite)) { ref.visible = false; return; }
+
+      ref.visible = true;
+      const oECI = [oSnap.x, oSnap.y, oSnap.z];
       const oLVLH = eci2lvlh(oECI, satPos, basis);
       ref.position.set(oLVLH[0], oLVLH[1], oLVLH[2]);
+
+      // Attitude: q_Body→ECI from tracePoint, then transform to LVLH
+      if (oSnap.qx != null && oSnap.qw != null) {
+        const qBodyECI  = new THREE.Quaternion(oSnap.qx, oSnap.qy, oSnap.qz, oSnap.qw);
+        const qLVLH2ECI = lvlhQuat(basis);
+        const qECI2LVLH = qLVLH2ECI.clone().conjugate();
+        const qBodyLVLH = qECI2LVLH.clone().multiply(qBodyECI);
+        ref.quaternion.copy(qBodyLVLH);
+      } else {
+        ref.quaternion.set(0, 0, 0, 1);
+      }
     });
 
     /* ── 7. Ground stations in LVLH ──────────────────────── */
@@ -365,8 +385,6 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
   });
 
   /* ── JSX ───────────────────────────────────────────────────── */
-  const otherSats = satellites.filter(s => s.id !== satelliteId);
-
   return (
     <>
       <Stars radius={300} depth={50} count={20000} factor={7} saturation={0} fade speed={1} />
@@ -417,18 +435,23 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
         />
       </mesh>
 
-      {/* ── Other satellites ───────────────────────────────── */}
-      {otherSats.map(oSat => {
-        if (!oSat.coordinates || oSat.coordinates.x == null) return null;
-        const cfg = allConfigs.find(c => c.id === oSat.id);
+      {/* ── Other satellites (3D body + attitude) ─────────── */}
+      {particles.filter(p => p.id !== satelliteId).map(oPart => {
+        const cfg = allConfigs.find(c => c.id === oPart.id);
         return (
-          <mesh
-            key={oSat.id}
-            ref={el => { if (el) otherSatRefs.current[oSat.id] = el; }}
+          <group
+            key={oPart.id}
+            ref={el => { if (el) otherSatRefs.current[oPart.id] = el; }}
+            scale={[0.6, 0.6, 0.6]}
           >
-            <sphereGeometry args={[0.03, 8, 8]} />
-            <meshBasicMaterial color={cfg?.color || '#facc15'} />
-          </mesh>
+            <SatelliteBodyModel
+              shape={cfg?.bodyFrame?.bodyShape || 'rectangle'}
+              color={cfg?.color || '#facc15'}
+              scale={1}
+              emissive={false}
+              showAxes={showBodyFrameAxes}
+            />
+          </group>
         );
       })}
 

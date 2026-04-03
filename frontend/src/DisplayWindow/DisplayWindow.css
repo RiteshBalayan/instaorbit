@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════════════
+ *  DisplayWindow — daughter display tab styles
+ * ═══════════════════════════════════════════════════════════════ */
+
+.display-window {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background: #0e0f1a;
+  overflow: hidden;
+}
+
+/* ── Top bar ───────────────────────────────────────────────── */
+.display-topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  background: linear-gradient(90deg, #1a1c2e 0%, #2a2d4a 100%);
+  border-bottom: 1px solid rgba(143, 148, 251, 0.18);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.display-logo {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8f94fb;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.display-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(143, 148, 251, 0.25);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.display-panel-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.display-panel-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: rgba(143, 148, 251, 0.5);
+  user-select: none;
+  margin-right: 2px;
+}
+
+.display-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(138, 130, 251, 0.08);
+  border: 1px solid rgba(138, 130, 251, 0.3);
+  color: #c4c8f0;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', 'Roboto', sans-serif;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.display-btn:hover {
+  background: rgba(138, 130, 251, 0.18);
+  color: #fff;
+}
+
+.display-btn.active {
+  background: rgba(138, 130, 251, 0.35);
+  border-color: rgba(138, 130, 251, 0.6);
+  color: #fff;
+}
+
+.display-sat-select {
+  background: rgba(20, 22, 40, 0.8);
+  border: 1px solid rgba(138, 130, 251, 0.3);
+  color: #c4c8f0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  max-width: 120px;
+}
+
+.display-hint {
+  font-size: 9px;
+  color: rgba(200, 200, 255, 0.3);
+  font-style: italic;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* ── Render area ───────────────────────────────────────────── */
+.display-render-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.display-render-area canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Split layout ──────────────────────────────────────────── */
+.display-split-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.display-split-pane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.display-split-divider {
+  width: 2px;
+  background: rgba(143, 148, 251, 0.25);
+  flex-shrink: 0;
+}
