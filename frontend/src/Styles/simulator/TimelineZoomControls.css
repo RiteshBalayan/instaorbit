@@ -138,3 +138,74 @@
   font-weight: 600;
   font-size: 9px;
 }
+
+/* ── Render-only label ─────────────────────────────────────── */
+.render-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #0078D7;
+  padding: 0 2px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Active render play button */
+.play-pause-btn.render-active {
+  background: rgba(0, 180, 120, 0.25);
+  border-color: #00b478;
+  color: #00b478;
+}
+.play-pause-btn.render-active:hover {
+  background: rgba(0, 180, 120, 0.35);
+  color: #00ffaa;
+}
+
+/* ── Inline render speed slider ────────────────────────────── */
+.render-speed-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px;
+}
+
+.render-speed-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #808080;
+  white-space: nowrap;
+}
+
+.render-speed-value {
+  font-size: 9px;
+  font-weight: 600;
+  color: #c0c0c0;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  min-width: 32px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── No-data toast ─────────────────────────────────────────── */
+.render-toast {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 8px;
+  background: rgba(255, 80, 60, 0.92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  animation: toastFadeIn 0.2s ease-out;
+  z-index: 200;
+  pointer-events: none;
+}
+
+@keyframes toastFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

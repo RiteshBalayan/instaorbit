@@ -26,7 +26,6 @@ import LeftControlBar from './Timer/components/LeftControlBar';
 
 import {
   DEFAULT_TIME_STEP,
-  DEFAULT_SIM_STEP,
   TIME_UNIT_CONFIG,
 } from './Timer/constants';
 
@@ -37,25 +36,20 @@ const ControlBarPanel = () => {
   const showControlPanel = useSelector((state) => state.view.showControlPanel);
   const [backendAvailable, setBackendAvailable] = useState(true);
 
-  const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
-  const [simStep, setSimStep] = useState(DEFAULT_SIM_STEP);
+  // Render speed multiplier: how many 1-second sim steps per tick (1×..50×)
+  const [speed, setSpeed] = useState(DEFAULT_TIME_STEP);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const simulation = useSimulationTimer(timeStep);
-  const render = useRenderTimer(simStep);
+  const simulation = useSimulationTimer(speed);
+  const render = useRenderTimer(1); // render step always 1s (unused in coupled)
   const formatting = useTimeFormatting(simulation.elapsedTime, simulation.starttime);
 
   const handleStartPause = () => simulation.togglePlayPause();
-  const handleReset = () => simulation.reset();
 
-  const handleTimeStepChange = (e) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) setTimeStep(value);
-  };
-  const handleRenderStepChange = (e) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) setSimStep(value);
+  const handleSpeedChange = (value) => {
+    const v = typeof value === 'number' ? value : parseFloat(value);
+    if (!isNaN(v) && v >= 1) setSpeed(Math.round(v));
   };
   const handleTimeUnitChange = (unit) => formatting.setTimeUnit(unit);
 
@@ -112,23 +106,19 @@ const ControlBarPanel = () => {
           compact
         />
 
-        <div className="control-bar__section" aria-label="Transport">
-          <div className="control-bar__caption">TRANSPORT</div>
+        <div className="control-bar__section" aria-label="Simulate">
+          <div className="control-bar__caption">SIMULATE</div>
           <TimeControls
             isRunning={simulation.isRunning}
             onPlayPause={handleStartPause}
-            onReset={handleReset}
             compact
           />
         </div>
 
-        <div className="control-bar__caption">SIM STEP</div>
+        <div className="control-bar__caption">SIM SPEED</div>
         <TimeStepControls
-          simStep={timeStep}
-          renderStep={simStep}
-          coupled={simulation.coupled}
-          onSimStepChange={handleTimeStepChange}
-          onRenderStepChange={handleRenderStepChange}
+          speed={speed}
+          onSpeedChange={handleSpeedChange}
           compact
         />
 

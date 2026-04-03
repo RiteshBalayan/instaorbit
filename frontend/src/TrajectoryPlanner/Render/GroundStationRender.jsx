@@ -85,14 +85,6 @@ const GroundStation = ({ stationId, lat, lon, altKm = 0, name }) => {
         <cylinderGeometry args={[0.01, 0.01, 0.02]} />
         <meshStandardMaterial color="#555555" />
       </mesh>
-      
-      {/* Glow effect */}
-      <pointLight
-        position={[0, 0, 0.1]}
-        color="#4a9eff"
-        intensity={0.5}
-        distance={0.5}
-      />
     </group>
   );
 };

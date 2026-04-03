@@ -1,6 +1,10 @@
 /**
  * Custom hook for simulation timer logic
  * Manages simulation time progression and control
+ *
+ * HARD RULE: simulation always advances in 1-second increments.
+ * The `speed` parameter controls how many 1-second steps are
+ * batched per real-time tick (render speed multiplier).
  */
 
 import { useEffect, useRef } from 'react';
@@ -12,14 +16,13 @@ import {
   addTimePoint,
 } from '../../../../Store/timeSlice';
 import { roundToThreeDecimals } from '../utils';
-import { TIMER_UPDATE_INTERVAL } from '../constants';
 
 /**
  * Hook for managing simulation timer
- * @param {number} timeStep - Time increment per step (seconds)
+ * @param {number} speed - Render speed multiplier (how many sim-seconds per tick)
  * @returns {object} Timer state and control functions
  */
-export const useSimulationTimer = (timeStep) => {
+export const useSimulationTimer = (speed = 1) => {
   const dispatch = useDispatch();
   const intervalRef = useRef(null);
   
@@ -30,7 +33,10 @@ export const useSimulationTimer = (timeStep) => {
   const coupled = useSelector((state) => state.timer.coupled);
   const timePoints = useSelector((state) => state.timer.timePoints);
 
-  // Timer effect
+  // Timer effect — ticks once per real second, jumps `speed` sim-seconds per tick.
+  // At speed=1  → 1 sim-sec / real-sec  (real time)
+  // At speed=20 → 20 sim-secs / real-sec (fast forward)
+  // The Simulator will fill in every 1-second step between ticks.
   useEffect(() => {
     if (!isRunning) {
       clearInterval(intervalRef.current);
@@ -38,15 +44,16 @@ export const useSimulationTimer = (timeStep) => {
     }
 
     intervalRef.current = setInterval(() => {
-      const newTime = roundToThreeDecimals(elapsedTime + timeStep);
+      const jump = Math.max(1, Math.round(speed));
+      const newTime = roundToThreeDecimals(elapsedTime + jump);
       dispatch(updateElapsedTime(newTime));
       dispatch(addTimePoint(newTime));
-    }, TIMER_UPDATE_INTERVAL);
+    }, 1000); // 1 tick per real second
 
     return () => {
       clearInterval(intervalRef.current);
     };
-  }, [isRunning, elapsedTime, timeStep, dispatch]);
+  }, [isRunning, elapsedTime, speed, dispatch]);
 
   // Control functions
   const togglePlayPause = () => {

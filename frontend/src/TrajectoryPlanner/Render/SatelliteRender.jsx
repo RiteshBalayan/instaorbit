@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
 import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian } from '../Simulation/Functions';
@@ -7,6 +7,7 @@ import { Shape, TubeGeometry } from 'three';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { computeGMST, computeGMSTFromSim } from '../../transforms';
+import SatelliteBodyModel from './SatelliteBodyModel';
 
 /**
  * Rotate an ECI scene-unit position [x,y,z] to ECEF by applying Rz(-gmst).
@@ -114,6 +115,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const starttime = useSelector((state) => state.timer.starttime);
   const trackWindow = useSelector((state) => state.view.trackWindow);
   const showOrbit = useSelector((state) => state.view.showOrbit);
+  const showBodyFrameAxes = useSelector((state) => state.view.showBodyFrameAxes !== false);
 
   const gmstCacheRef = useRef(new Map());
   const getGmstCached = (utcMs) => {
@@ -408,9 +410,13 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const satelliteModel = gltfResult?.scene || null;
   const modelRef = useRef();
 
+  // Get body shape from satellite config (default to 'rectangle')
+  const bodyShape = satelliteconfig?.bodyFrame?.bodyShape || 'rectangle';
+
   // Clone the model to avoid sharing geometry and make it brighter
+  // (GLTF model is used as fallback when bodyShape is not set)
   useEffect(() => {
-    if (satelliteModel && modelRef.current) {
+    if (satelliteModel && modelRef.current && !satelliteconfig?.bodyFrame) {
       const clonedModel = satelliteModel.clone();
       clonedModel.scale.set(0.05, 0.05, 0.05); // Scale down the model
       clonedModel.traverse((child) => {
@@ -450,6 +456,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
     if (satelliteRef.current) {
       let px, py, pz;
       let found = false;
+      let attitudeQ = null; // [qx, qy, qz, qw] from trace or live state
+      let gmstUsed = 0;     // GMST used for ECI→ECEF position conversion
 
       // 1) Primary: derive position from the trace point at RenderTime
       if (particle?.tracePoints?.length) {
@@ -460,9 +468,14 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
           px = best.x; py = best.y; pz = best.z;
           if (isFixed) {
             const gmst = getGmstCached(starttime + best.time * 1000);
+            gmstUsed = gmst;
             [px, py, pz] = eciSceneToEcef(best.x, best.y, best.z, gmst);
           }
           found = true;
+          // Read attitude from trace point if available
+          if (best.qx != null && best.qw != null) {
+            attitudeQ = [best.qx, best.qy, best.qz, best.qw];
+          }
         }
       }
 
@@ -473,10 +486,16 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
           px = coords.x; py = coords.y; pz = coords.z;
           if (isFixed) {
             const gmst = computeGMSTFromSim(starttime, RenderTime);
+            gmstUsed = gmst;
             [px, py, pz] = eciSceneToEcef(coords.x, coords.y, coords.z, gmst);
           }
           found = true;
         }
+      }
+
+      // Read live attitude from CurrentState if not from trace
+      if (!attitudeQ && satellitecurrentcoordinate?.attitude?.quaternion) {
+        attitudeQ = satellitecurrentcoordinate.attitude.quaternion;
       }
 
       if (found) {
@@ -486,7 +505,26 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         }
         if (modelRef.current) {
           modelRef.current.position.set(px, py, pz);
-          modelRef.current.rotation.y += 0.01;
+
+          // Apply attitude quaternion in the scene frame
+          if (attitudeQ) {
+            const targetQ = new THREE.Quaternion(attitudeQ[0], attitudeQ[1], attitudeQ[2], attitudeQ[3]);
+
+            // In EarthFixed mode, convert q_Body→ECI to q_Body→ECEF
+            // using the same GMST that was used for position conversion
+            if (isFixed) {
+              const qECI2ECEF = new THREE.Quaternion().setFromAxisAngle(
+                new THREE.Vector3(0, 0, 1), -gmstUsed,
+              );
+              targetQ.premultiply(qECI2ECEF);
+            }
+
+            // Set quaternion directly — no SLERP smoothing.
+            // SLERP caused visible drift at higher sim speeds because the
+            // per-frame 15% convergence rate could never keep up with
+            // rapidly changing trace-point targets.
+            modelRef.current.quaternion.copy(targetQ);
+          }
         }
       } else {
         satelliteRef.current.position.set(0, 0, 0);
@@ -527,9 +565,18 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   
   return (
     <>
-      {/* Satellite GLTF model */}
-      {satelliteModel && (
-        <group ref={modelRef} renderOrder={1000} />
+      {/* Satellite body model (configurable shape) — used when bodyFrame is configured */}
+      {satelliteconfig?.bodyFrame ? (
+        <group ref={modelRef} renderOrder={1000}>
+          <SatelliteBodyModel shape={bodyShape} color={satColor} showAxes={showBodyFrameAxes} />
+        </group>
+      ) : (
+        <>
+          {/* Satellite GLTF model (legacy) */}
+          {satelliteModel && (
+            <group ref={modelRef} renderOrder={1000} />
+          )}
+        </>
       )}
       
       {/* Fallback satellite mesh - properly occludes behind Earth */}

@@ -9,7 +9,6 @@ import {
   useRenderTimer,
   useTimeline,
   useTimeFormatting,
-  useTimelineKeyboard,
 } from './Timer/hooks';
 
 // Import components
@@ -17,17 +16,7 @@ import {
   TimelinePanel,
 } from './Timer/components';
 
-// Import constants
-import {
-  DEFAULT_TIME_STEP,
-  DEFAULT_SIM_STEP,
-} from './Timer/constants';
-
 const Timer = ({ analysisTab, onSwitchTab } = {}) => {
-  // Local state
-  const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
-  const [simStep, setSimStep] = useState(DEFAULT_SIM_STEP);
-
   // Redux state for endpoints
   const satellites = useSelector((s) => s.satellites?.satellitesConfig || []);
   const groundStations = useSelector((s) => s.groundStations?.groundStations || []);
@@ -52,64 +41,14 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
     return eps;
   }, [satellites, groundStations]);
 
-  // Custom hooks for timer logic
-  const simulation = useSimulationTimer(timeStep);
-  const render = useRenderTimer(simStep);
-  const formatting = useTimeFormatting(simulation.elapsedTime, simulation.starttime);
+  // Custom hooks for timer logic (needed for timeline visualization)
+  const simulation = useSimulationTimer(1);
+  const render = useRenderTimer(1);
   const timeline = useTimeline();
 
-  // Event handlers
-  const handleStartPause = () => {
-    simulation.togglePlayPause();
-  };
-
-  const handleReset = () => {
-    simulation.reset();
-  };
-
-  const handleZoomToFit = () => {
-    timeline.zoomToFit();
-  };
-
-  const handleZoomIn = () => {
-    timeline.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    timeline.zoomOut();
-  };
-
-  const handleStepForward = () => {
-    const newRenderTime = render.renderTime + 1; // Step forward 1 second
-    render.setRenderTime(newRenderTime);
-  };
-
-  const handleStepBackward = () => {
-    const newRenderTime = Math.max(0, render.renderTime - 1); // Step backward 1 second
-    render.setRenderTime(newRenderTime);
-  };
-
-  const handleFastForward = () => {
-    const newRenderTime = render.renderTime + 10; // Fast forward 10 seconds
-    render.setRenderTime(newRenderTime);
-  };
-
-  const handleFastBackward = () => {
-    const newRenderTime = Math.max(0, render.renderTime - 10); // Fast backward 10 seconds
-    render.setRenderTime(newRenderTime);
-  };
-
-  // Keyboard shortcuts - Premiere Pro style (with Shift for fast transport)
-  useTimelineKeyboard({
-    onPlayPause: handleStartPause,
-    onStepForward: handleStepForward,
-    onStepBackward: handleStepBackward,
-    onFastForward: handleFastForward,
-    onFastBackward: handleFastBackward,
-    onZoomIn: handleZoomIn,
-    onZoomOut: handleZoomOut,
-    onZoomToFit: handleZoomToFit,
-  });
+  const handleZoomToFit = () => timeline.zoomToFit();
+  const handleZoomIn = () => timeline.zoomIn();
+  const handleZoomOut = () => timeline.zoomOut();
 
   // Track timeline panel height and update CSS variable
   const timelinePanelRef = useRef(null);
@@ -122,10 +61,8 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
       }
     };
 
-    // Initial update
     updateTimelineHeight();
 
-    // Create ResizeObserver to watch for timeline height changes
     const resizeObserver = new ResizeObserver(updateTimelineHeight);
     if (timelinePanelRef.current) {
       resizeObserver.observe(timelinePanelRef.current);
@@ -144,23 +81,16 @@ const Timer = ({ analysisTab, onSwitchTab } = {}) => {
         onZoomToFit={handleZoomToFit}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        onStepBackward={handleStepBackward}
-        onStepForward={handleStepForward}
-        onFastBackward={handleFastBackward}
-        onFastForward={handleFastForward}
-        onPlayPause={handleStartPause}
-        isPlaying={simulation.isRunning}
-        showSatBars={timeline.showSatBars}
-        onToggleSatBars={timeline.toggleSatBars}
         onRenderTimeUpdate={(newRenderTime) => render.setRenderTime(newRenderTime)}
         starttime={simulation.starttime}
         analysisTab={analysisTab}
         onSwitchTab={onSwitchTab}
+        showSatBars={timeline.showSatBars}
+        onToggleSatBars={timeline.toggleSatBars}
         filterEndpoint={timeline.filterEndpoint}
         onFilterChange={timeline.setFilterEndpoint}
         endpoints={endpoints}
       />
-
     </div>
   );
 };

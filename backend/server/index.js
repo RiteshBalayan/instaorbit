@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const funcs = require('./functions');
 const transforms = require('./transforms');
 const linkLib = require('./linkComputation');
+const attitudeLib = require('./attitude');
 const { Sgp4 } = require('ootk');
 
 const app = express();
@@ -20,7 +21,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptim
 //       via GMST in this endpoint and on the frontend at render time.
 app.post('/simulate', (req, res) => {
   try {
-    const { propagator, orbitalelements, burn = [], elapsedTime = 0, starttime } = req.body;
+    const { propagator, orbitalelements, burn = [], elapsedTime = 0, starttime, bodyFrame, prevAttitude, dt: clientDt, allSatPositions, groundStations: gsForAttitude } = req.body;
 
     // copy orbital elements — always use the true inertial Ω (no hack)
     let { a, e, i, Ω, ω, ν } = orbitalelements.elements || orbitalelements;
@@ -97,6 +98,22 @@ app.post('/simulate', (req, res) => {
       lat: geo.lat, lon: geo.lon, alt: geo.alt,
     };
 
+    // ── Attitude computation ────────────────────────────────
+    let attitude = null;
+    if (bodyFrame) {
+      const satPositionsKm = allSatPositions || {};
+      attitude = attitudeLib.computeAttitude(
+        position,                    // ECI km
+        velocity,                    // ECI km/s
+        bodyFrame,
+        satPositionsKm,
+        gsForAttitude || [],
+        utcMs,
+        prevAttitude || null,
+        clientDt || 1,               // dt from frontend (accounts for sim speed)
+      );
+    }
+
     const result = {
       tracePoint,
       timefix: Timefix,
@@ -106,6 +123,7 @@ app.post('/simulate', (req, res) => {
       totalEnergy,
       elements: { a, e, ν, Ω, ω, i, M: meananomly },
       geodetic: geo,
+      attitude,
     };
 
     res.json(result);
@@ -147,6 +165,14 @@ app.post('/simulate-bulk', (req, res) => {
     // ── Per-satellite pre-computation ────────────────────────
     // Prepare orbital state for each satellite once, reuse across steps
     const satStates = {};
+    // Attitude tracking per satellite (prev quaternion for slew-rate limiting)
+    const satAttitudes = {};  // { satId: prevQuaternion }
+    // Attitude time-series output
+    const attitudeResult = {};  // { satId: [{ time, quaternion, pointingTargetId, isSlewing }] }
+    for (const sat of satellites) {
+      satAttitudes[sat.id] = null;
+      attitudeResult[sat.id] = [];
+    }
     for (const sat of satellites) {
       const el = sat.elements;
       let { a, e, i, Ω, ω, ν } = el;
@@ -178,8 +204,9 @@ app.post('/simulate-bulk', (req, res) => {
       const utcMs = starttime + t * 1000;
       const gmst = transforms.computeGMST(utcMs);
 
-      // Positions in ECI km for link computation
+      // Positions and velocities in ECI km for link and attitude computation
       const satPositionsKm = {};
+      const satVelocitiesKms = {};
 
       // ── Propagate every satellite ──────────────────────────
       for (const sat of satellites) {
@@ -220,8 +247,9 @@ app.post('/simulate-bulk', (req, res) => {
           [position, velocity] = funcs.keplerianToCartesian({ a: a_, e: e_, i: i_, Ω: Ω_, ω: ω_, M });
         }
 
-        // Store raw ECI km for link computation
+        // Store raw ECI km for link and attitude computation
         satPositionsKm[sat.id] = { x: position[0], y: position[1], z: position[2] };
+        satVelocitiesKms[sat.id] = { x: velocity[0], y: velocity[1], z: velocity[2] };
 
         // Scene-unit coords + geodetic
         const sx = position[0] / 3185.5;
@@ -237,7 +265,47 @@ app.post('/simulate-bulk', (req, res) => {
           x: sx, y: sy, z: sz,
           mapX, mapY,
           lat: geo.lat, lon: geo.lon, alt: geo.alt,
+          // Store velocity (km/s) for LVLH frame computation on frontend
+          vx: position[0] !== undefined ? velocity[0] : undefined,
+          vy: position[0] !== undefined ? velocity[1] : undefined,
+          vz: position[0] !== undefined ? velocity[2] : undefined,
         });
+      }
+
+      // ── Compute attitude for each satellite ────────────────
+      for (const sat of satellites) {
+        if (sat.bodyFrame) {
+          const pos = satPositionsKm[sat.id];
+          // We need velocity too — store it during propagation
+          const vel = satVelocitiesKms[sat.id];
+          if (pos && vel) {
+            const att = attitudeLib.computeAttitude(
+              [pos.x, pos.y, pos.z],
+              [vel.x, vel.y, vel.z],
+              sat.bodyFrame,
+              satPositionsKm,
+              groundStations,
+              utcMs,
+              satAttitudes[sat.id],
+              stepSize,
+            );
+            satAttitudes[sat.id] = att.quaternion;
+            attitudeResult[sat.id].push({
+              time: t,
+              quaternion: att.quaternion,
+              pointingTargetId: att.pointingTargetId,
+              isSlewing: att.isSlewing,
+            });
+            // Also merge attitude quaternion into the trace point
+            const tp = result[sat.id][result[sat.id].length - 1];
+            if (tp) {
+              tp.qx = att.quaternion[0];
+              tp.qy = att.quaternion[1];
+              tp.qz = att.quaternion[2];
+              tp.qw = att.quaternion[3];
+            }
+          }
+        }
       }
 
       // ── Compute links at this timestep ─────────────────────
@@ -280,6 +348,7 @@ app.post('/simulate-bulk', (req, res) => {
 
     res.json({
       satellites: result,
+      attitude: attitudeResult,
       linkData: {
         contactWindows,
         activeLinksAtTime,

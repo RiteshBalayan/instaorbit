@@ -1,6 +1,6 @@
 /**
  * TimelinePanel component
- * Timeline visualization with Premiere Pro-style zoom controls
+ * Timeline visualization with render-only playback controls
  */
 
 import React from 'react';
@@ -13,16 +13,10 @@ export const TimelinePanel = ({
   onZoomToFit,
   onZoomIn,
   onZoomOut,
-  onStepBackward,
-  onStepForward,
-  onFastBackward,
-  onFastForward,
-  onPlayPause,
-  isPlaying,
-  showSatBars,
-  onToggleSatBars,
   onRenderTimeUpdate,
   starttime,
+  showSatBars,
+  onToggleSatBars,
   analysisTab,
   onSwitchTab,
   filterEndpoint,
@@ -35,14 +29,8 @@ export const TimelinePanel = ({
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
         onZoomToFit={onZoomToFit}
-        onStepBackward={onStepBackward}
-        onStepForward={onStepForward}
-        onFastBackward={onFastBackward}
-        onFastForward={onFastForward}
         analysisTab={analysisTab}
         onSwitchTab={onSwitchTab}
-        onPlayPause={onPlayPause}
-        isPlaying={isPlaying}
         showSatBars={showSatBars}
         onToggleSatBars={onToggleSatBars}
         filterEndpoint={filterEndpoint}

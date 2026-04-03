@@ -3,7 +3,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Button, Snackbar, Alert, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DoneIcon from '@mui/icons-material/Done';
-import { updateSatellite, togglePreview, addSatellite, deleteSatellite, updateSatellites } from '../../../Store/satelliteSlice';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { updateSatellite, togglePreview, addSatellite, deleteSatellite, updateSatellites, defaultBodyFrame } from '../../../Store/satelliteSlice';
 import { initializeParticles, deleteParticle, resetTracePoints } from '../../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../../Store/CurrentState';
 import { keplerianToCartesian, trueToEccentricAnomaly, eccentricToMeanAnomaly } from '../../Simulation/Functions';
@@ -88,10 +91,12 @@ const DragNumberInput = ({ min = 6400, max = 50000, step = 1000, value, onChange
 const AddSatellite = ({ editId = null, onClose }) => {
   const dispatch = useDispatch();
   const satellitesConfig = useSelector(state => state.satellites.satellitesConfig);
+  const groundStations = useSelector(state => state.groundStations?.groundStations || []);
   const [newSatelliteName, setNewSatelliteName] = useState('New_Satelite');
   const [selectedOption, setSelectedOption] = useState('InstaOrbit');
   const [time, setTime] = useState('0');
   const [ID, setID] = useState(null);
+  const [bodyFrame, setBodyFrame] = useState(defaultBodyFrame());
   const [newSatelliteParams, setNewSatelliteParams] = useState({
     InitialCondition: {
       argumentOfPeriapsis: 0,
@@ -116,6 +121,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
     setSelectedOption('InstaOrbit');
     setTime('0');
     setColor('#fff');
+    setBodyFrame(defaultBodyFrame());
     setNewSatelliteParams({
       InitialCondition: {
         argumentOfPeriapsis: 0,
@@ -137,6 +143,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
         setSelectedOption(sat.propagator || 'InstaOrbit');
         setTime(sat.InitialCondition?.time ?? '0');
         setColor(sat.color || '#fff');
+        setBodyFrame(sat.bodyFrame ? { ...defaultBodyFrame(), ...sat.bodyFrame } : defaultBodyFrame());
         setNewSatelliteParams({
           ...sat,
           InitialCondition: {
@@ -152,6 +159,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
         setSelectedOption('InstaOrbit');
         setTime('0');
         setColor('#fff');
+        setBodyFrame(defaultBodyFrame());
         setNewSatelliteParams({
           InitialCondition: {
             argumentOfPeriapsis: 0,
@@ -221,6 +229,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
       FutureTrack: false,
       Tube: false,
       burns: newSatelliteParams?.burns || [],
+      bodyFrame: bodyFrame,
     };
     setNewSatelliteParams(baseSatellite);
     if (!editing) {
@@ -679,6 +688,222 @@ const AddSatellite = ({ editId = null, onClose }) => {
             onChange={(newValue) => handleParameterChange('assendingnode', newValue)}
           />
         </div>
+
+        {/* ─── Body Frame Configuration ──────────────────────────── */}
+        <h3 style={{ marginTop: '16px' }}>Body Frame</h3>
+
+        {/* Body Shape */}
+        <div className='detail-row'>
+          <label className='detail-label'>Body Shape</label>
+          <select
+            className='name-input'
+            value={bodyFrame.bodyShape}
+            onChange={(e) => setBodyFrame(prev => ({ ...prev, bodyShape: e.target.value }))}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#1a1a2e', color: '#fff', cursor: 'pointer' }}
+          >
+            <option value="rectangle">Rectangle (Box)</option>
+            <option value="cone">Cone</option>
+            <option value="circle">Sphere (Default Model)</option>
+          </select>
+        </div>
+
+        {/* Pointing Mode */}
+        <div className='detail-row'>
+          <label className='detail-label'>Pointing Mode</label>
+          <select
+            className='name-input'
+            value={bodyFrame.pointingMode}
+            onChange={(e) => setBodyFrame(prev => ({ ...prev, pointingMode: e.target.value }))}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#1a1a2e', color: '#fff', cursor: 'pointer' }}
+          >
+            <option value="nadir">Nadir (Earth-pointing)</option>
+            <option value="target">Target Tracking</option>
+          </select>
+        </div>
+
+        {/* Slew Rate */}
+        <div className='detail-row'>
+          <label className='detail-label'>Slew Rate (°/s)</label>
+          <DragNumberInput
+            min={0.1}
+            max={30}
+            step={0.1}
+            value={bodyFrame.slewRateDegSec}
+            onChange={(v) => setBodyFrame(prev => ({ ...prev, slewRateDegSec: v }))}
+          />
+        </div>
+
+        {/* Pointing Targets (only show when mode is 'target') */}
+        {bodyFrame.pointingMode === 'target' && (
+          <div style={{ marginTop: '8px', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <h4 style={{ margin: 0 }}>Pointing Targets</h4>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  const targets = bodyFrame.pointingTargets || [];
+                  const newId = targets.length > 0 ? Math.max(...targets.map(t => t.id ?? 0)) + 1 : 0;
+                  setBodyFrame(prev => ({
+                    ...prev,
+                    pointingTargets: [
+                      ...prev.pointingTargets,
+                      {
+                        id: newId,
+                        targetType: 'satellite',
+                        targetId: null,
+                        conditions: { minElevationDeg: 5 },
+                        priority: targets.length + 1,
+                      },
+                    ],
+                  }));
+                }}
+              >
+                Add Target
+              </Button>
+            </div>
+
+            {bodyFrame.pointingTargets.length === 0 && (
+              <Typography variant="caption" sx={{ color: '#9ca3af', display: 'block', mb: 1 }}>
+                No targets configured. The satellite will fall back to nadir pointing.
+              </Typography>
+            )}
+
+            {bodyFrame.pointingTargets.map((target, idx) => {
+              const isFirst = idx === 0;
+              const isLast = idx === bodyFrame.pointingTargets.length - 1;
+
+              return (
+                <div
+                  key={target.id}
+                  style={{
+                    background: '#16213e',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    marginBottom: '8px',
+                  }}
+                >
+                  {/* Priority badge + actions row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase' }}>
+                      Priority #{idx + 1}
+                    </span>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      <Button
+                        size="small"
+                        disabled={isFirst}
+                        onClick={() => {
+                          const arr = [...bodyFrame.pointingTargets];
+                          [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                          setBodyFrame(prev => ({ ...prev, pointingTargets: arr }));
+                        }}
+                        sx={{ minWidth: '28px', p: '2px' }}
+                      >
+                        <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+                      </Button>
+                      <Button
+                        size="small"
+                        disabled={isLast}
+                        onClick={() => {
+                          const arr = [...bodyFrame.pointingTargets];
+                          [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+                          setBodyFrame(prev => ({ ...prev, pointingTargets: arr }));
+                        }}
+                        sx={{ minWidth: '28px', p: '2px' }}
+                      >
+                        <ArrowDownwardIcon sx={{ fontSize: 16 }} />
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          setBodyFrame(prev => ({
+                            ...prev,
+                            pointingTargets: prev.pointingTargets.filter(t => t.id !== target.id),
+                          }));
+                        }}
+                        sx={{ minWidth: '28px', p: '2px' }}
+                      >
+                        <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Target type */}
+                  <div className='detail-row' style={{ marginBottom: '4px' }}>
+                    <label className='detail-label' style={{ fontSize: '12px' }}>Type</label>
+                    <select
+                      className='name-input'
+                      value={target.targetType}
+                      onChange={(e) => {
+                        const arr = bodyFrame.pointingTargets.map(t =>
+                          t.id === target.id ? { ...t, targetType: e.target.value, targetId: null } : t
+                        );
+                        setBodyFrame(prev => ({ ...prev, pointingTargets: arr }));
+                      }}
+                      style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #374151', background: '#0f172a', color: '#fff', fontSize: '12px' }}
+                    >
+                      <option value="satellite">Satellite</option>
+                      <option value="groundStation">Ground Station</option>
+                    </select>
+                  </div>
+
+                  {/* Target ID selector */}
+                  <div className='detail-row' style={{ marginBottom: '4px' }}>
+                    <label className='detail-label' style={{ fontSize: '12px' }}>Target</label>
+                    <select
+                      className='name-input'
+                      value={target.targetId ?? ''}
+                      onChange={(e) => {
+                        const arr = bodyFrame.pointingTargets.map(t =>
+                          t.id === target.id ? { ...t, targetId: e.target.value ? Number(e.target.value) : null } : t
+                        );
+                        setBodyFrame(prev => ({ ...prev, pointingTargets: arr }));
+                      }}
+                      style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #374151', background: '#0f172a', color: '#fff', fontSize: '12px' }}
+                    >
+                      <option value="">— Select —</option>
+                      {target.targetType === 'satellite'
+                        ? satellitesConfig
+                            .filter(s => s.id !== (editing ? editId : ID))
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.name || `Sat ${s.id}`}</option>
+                            ))
+                        : groundStations.map(gs => (
+                            <option key={gs.id} value={gs.id}>{gs.name || `GS ${gs.id}`}</option>
+                          ))
+                      }
+                    </select>
+                  </div>
+
+                  {/* Min elevation condition */}
+                  <div className='detail-row' style={{ marginBottom: '0' }}>
+                    <label className='detail-label' style={{ fontSize: '12px' }}>Min Elevation (°)</label>
+                    <input
+                      type="number"
+                      className='name-input'
+                      value={target.conditions?.minElevationDeg ?? 5}
+                      min={0}
+                      max={90}
+                      step={1}
+                      onChange={(e) => {
+                        const arr = bodyFrame.pointingTargets.map(t =>
+                          t.id === target.id
+                            ? { ...t, conditions: { ...t.conditions, minElevationDeg: Number(e.target.value) || 0 } }
+                            : t
+                        );
+                        setBodyFrame(prev => ({ ...prev, pointingTargets: arr }));
+                      }}
+                      style={{ width: '70px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #374151', background: '#0f172a', color: '#fff', fontSize: '12px' }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="button-row" style={{ gap: '8px', marginTop: '16px', display: 'flex', flexWrap: 'wrap' }}>
           <Button

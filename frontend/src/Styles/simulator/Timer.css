@@ -28,7 +28,7 @@
   top: var(--topbar-height, 44px);
   bottom: var(--timeline-height, 0px);
   width: 92px;
-  z-index: 1;
+  z-index: 0;           /* Sits behind the analysis panel */
   pointer-events: auto;
 }
 

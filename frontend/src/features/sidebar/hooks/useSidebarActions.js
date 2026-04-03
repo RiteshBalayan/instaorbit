@@ -10,6 +10,7 @@ import {
   setTrackWindow,
   setShowOrbit,
   setShowLinkLines,
+  setShowBodyFrameAxes,
 } from '../../../Store/View';
 
 export const useSidebarActions = () => {
@@ -25,8 +26,9 @@ export const useSidebarActions = () => {
   const setTrackWindowAction = (value) => dispatch(setTrackWindow(value));
   const setShowOrbitAction = (value) => dispatch(setShowOrbit(value));
   const setShowLinkLinesAction = (value) => dispatch(setShowLinkLines(value));
+  const setShowBodyFrameAxesAction = (value) => dispatch(setShowBodyFrameAxes(value));
 
-  return { setReferenceSystem, setGrid, setAxis, setVonAllenBelt, setHDEarth, setSun, setAmbientLight, setTrackWindow: setTrackWindowAction, setShowOrbit: setShowOrbitAction, setShowLinkLines: setShowLinkLinesAction };
+  return { setReferenceSystem, setGrid, setAxis, setVonAllenBelt, setHDEarth, setSun, setAmbientLight, setTrackWindow: setTrackWindowAction, setShowOrbit: setShowOrbitAction, setShowLinkLines: setShowLinkLinesAction, setShowBodyFrameAxes: setShowBodyFrameAxesAction };
 };
 
 export default useSidebarActions;

@@ -66,6 +66,7 @@ const BulkSimControls = ({ compact = false } = {}) => {
           },
           timefix: null,
           burns: sat.burns || [],
+          bodyFrame: sat.bodyFrame || null,
         };
       });
 

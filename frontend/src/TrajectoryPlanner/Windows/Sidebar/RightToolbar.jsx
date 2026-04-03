@@ -46,6 +46,7 @@ import {
   toggleSun,
   toggleAmbientLight,
   toggleRefrenaceSystem,
+  toggleConfigPanel,
   setTrackWindow,
   setShowOrbit,
   setShowLinkLines,
@@ -78,7 +79,11 @@ const RightToolbar = () => {
   const savedLinks = useSelector((s) => s.communication.links);
 
   /* ── Local UI state ───────────────────────────────────────── */
-  const [configOpen, setConfigOpen] = useState(false);
+  const configOpen = useSelector((s) => s.view.showConfigPanel);
+  const setConfigOpen = (val) => {
+    const next = typeof val === 'function' ? val(configOpen) : val;
+    if (next !== configOpen) dispatch(toggleConfigPanel());
+  };
   const [openSection, setOpenSection] = useState(null); // 'satellites' | 'gs' | 'links' | null
   const [showSatModal, setShowSatModal] = useState(false);
   const [editingSatId, setEditingSatId] = useState(null);
@@ -137,10 +142,7 @@ const RightToolbar = () => {
   /* ═══════════════════════════════════════════════════════════
    *  ICON DEFINITIONS — each group is separated by a divider
    * ═══════════════════════════════════════════════════════════ */
-  const quickActions = [
-    { tip: 'Add Satellite',       icon: <SatelliteAltIcon />, accent: true, onClick: () => { setEditingSatId(null); setShowSatModal(true); } },
-    { tip: 'Add Ground Station',  icon: <CellTowerIcon />,    accent: true, onClick: () => openGsModal(null) },
-  ];
+  const quickActions = [];
 
   const sceneToggles = [
     { tip: refIsInertial ? 'Frame: ECI (click → ECEF)' : 'Frame: ECEF (click → ECI)',
@@ -197,11 +199,6 @@ const RightToolbar = () => {
     <>
       {/* ═══ ICON STRIP ═══════════════════════════════════════ */}
       <div className="rt-strip">
-        {/* Quick actions */}
-        {quickActions.map((a, i) => <IconBtn key={i} {...a} />)}
-
-        <div className="rt-divider" />
-
         {/* Scene toggles */}
         {sceneToggles.map((a, i) => <IconBtn key={`s${i}`} {...a} />)}
 
@@ -211,16 +208,6 @@ const RightToolbar = () => {
         {overlayToggles.map((a, i) => <IconBtn key={`o${i}`} {...a} />)}
 
         <div className="rt-divider" />
-
-        {/* Config panel toggle */}
-        <Tooltip title="Configuration" placement="left" arrow>
-          <button
-            className={`rt-icon-btn${configOpen ? ' active' : ''}`}
-            onClick={() => setConfigOpen((p) => !p)}
-          >
-            <SettingsIcon />
-          </button>
-        </Tooltip>
       </div>
 
       {/* ═══ CONFIG FLYOUT ════════════════════════════════════ */}
