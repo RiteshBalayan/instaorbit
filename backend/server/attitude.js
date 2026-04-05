@@ -179,6 +179,12 @@ function resolveTargetPos(target, satPositionsKm, groundStations, utcMs) {
     const eci = transforms.ecef2eci(ecef, gmst);
     return { x: eci[0], y: eci[1], z: eci[2] };
   }
+  if (target.targetType === 'sun') {
+    const sunDir = transforms.sunDirectionECI(utcMs);
+    // Return a point very far along the sun direction (AU-scale)
+    const AU_KM = 1.496e8;
+    return { x: sunDir[0] * AU_KM, y: sunDir[1] * AU_KM, z: sunDir[2] * AU_KM };
+  }
   return null;
 }
 
@@ -314,6 +320,281 @@ function computeAttitude(
   return { quaternion: slewedQ, pointingTargetId, isSlewing: true };
 }
 
+// ─────────── Quaternion rotation helper ─────────────────────────
+
+/**
+ * Rotate a 3-vector by a unit quaternion q = [qx, qy, qz, qw].
+ */
+function quatRotateVec(q, v) {
+  const [qx, qy, qz, qw] = q;
+  // t = 2 * (q_vec × v)
+  const tx = 2 * (qy * v[2] - qz * v[1]);
+  const ty = 2 * (qz * v[0] - qx * v[2]);
+  const tz = 2 * (qx * v[1] - qy * v[0]);
+  return [
+    v[0] + qw * tx + (qy * tz - qz * ty),
+    v[1] + qw * ty + (qz * tx - qx * tz),
+    v[2] + qw * tz + (qx * ty - qy * tx),
+  ];
+}
+
+/**
+ * Quaternion conjugate (inverse for unit quaternions).
+ */
+function quatConj(q) {
+  return [-q[0], -q[1], -q[2], q[3]];
+}
+
+// ─────────── Parent axis helpers ────────────────────────────────
+
+/**
+ * Map a parentAxis string ('+X', '-Y', etc.) to a unit vector in body frame.
+ */
+function parentAxisToVec(axis) {
+  switch (axis) {
+    case '+X': return [1, 0, 0];
+    case '-X': return [-1, 0, 0];
+    case '+Y': return [0, 1, 0];
+    case '-Y': return [0, -1, 0];
+    case '+Z': return [0, 0, 1];
+    case '-Z': return [0, 0, -1];
+    default:   return [0, 1, 0];
+  }
+}
+
+// ─────────── Component attitude computation ─────────────────────
+
+/**
+ * Compute articulation angles for all components of a satellite.
+ *
+ * For each component we compute:
+ *   • solarPanel (1-DOF): a single rotation angle about the hinge axis
+ *     so the panel normal faces the target (sun by default).
+ *   • laserPointer (2-DOF): azimuth + elevation angles.
+ *
+ * The angles are expressed as deflections from the rest (zero) position
+ * in the parent-axis frame.
+ *
+ * @param {Object[]} components       – array of component configs
+ * @param {number[]} bodyQuaternion   – satellite body quaternion [qx,qy,qz,qw] (ECI→body)
+ * @param {number[]} posECI_km        – satellite ECI position [x,y,z] km
+ * @param {number[]} velECI_kms       – satellite ECI velocity km/s
+ * @param {Object}   satPositionsKm   – all satellites' positions
+ * @param {Array}    groundStations
+ * @param {number}   utcMs
+ * @param {Object}   prevComponentAngles – { compId: { a1, a2 } } from previous step
+ * @param {number}   dt               – timestep seconds
+ * @returns {Object} { compId: { a1, a2?, targetId } }
+ */
+function computeComponentAttitudes(
+  components,
+  bodyQuaternion,
+  posECI_km,
+  velECI_kms,
+  satPositionsKm,
+  groundStations,
+  utcMs,
+  prevComponentAngles,
+  dt,
+) {
+  if (!components || components.length === 0) return {};
+
+  const result = {};
+  const bodyQInv = quatConj(bodyQuaternion);
+
+  for (const comp of components) {
+    const prev = (prevComponentAngles && prevComponentAngles[comp.id]) || { a1: 0, a2: 0 };
+    const slewRate = comp.slewRateDegSec || 5;
+    // ── Constraint ranges ─────────────────────────────────────
+    // Solar panel (1-DOF): range for a1 (symmetric or asymmetric)
+    // Laser (2-DOF):       range for a1, and max half-angle cone for a2
+    //                      (a2 clamped so beam can't point through body)
+    const constraint = comp.constraint || {};
+    // Backward compat: if only maxAngleDeg exists, use it as symmetric ±range
+    const legacyMax = constraint.maxAngleDeg != null ? constraint.maxAngleDeg : 180;
+    const a1Min = constraint.minA1Deg != null ? constraint.minA1Deg : -legacyMax;
+    const a1Max = constraint.maxA1Deg != null ? constraint.maxA1Deg : legacyMax;
+    const a2Min = constraint.minA2Deg != null ? constraint.minA2Deg : -legacyMax;
+    const a2Max = constraint.maxA2Deg != null ? constraint.maxA2Deg : legacyMax;
+
+    // Fixed mode — just return the fixed angles
+    if (comp.pointingMode === 'fixed') {
+      const fa = comp.fixedAnglesDeg || { a1: 0, a2: 0 };
+      result[comp.id] = {
+        a1: clampRange(fa.a1, a1Min, a1Max),
+        a2: comp.dof === 2 ? clampRange(fa.a2 || 0, a2Min, a2Max) : 0,
+        targetId: null,
+      };
+      continue;
+    }
+
+    // Resolve target direction in ECI
+    let targetPosECI = null;
+    let targetId = null;
+
+    if (comp.pointingMode === 'target' && comp.pointingTargets && comp.pointingTargets.length > 0) {
+      const sorted = [...comp.pointingTargets].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+      for (const tgt of sorted) {
+        const tPos = resolveTargetPos(tgt, satPositionsKm, groundStations, utcMs);
+        if (!tPos) continue;
+        if (checkConditions(tgt, posECI_km, tPos, groundStations, utcMs)) {
+          targetPosECI = [tPos.x, tPos.y, tPos.z];
+          targetId = tgt.targetId || tgt.id;
+          break;
+        }
+      }
+    }
+
+    // Default target: sun for solar panels, nadir for laser pointers
+    if (!targetPosECI) {
+      if (comp.type === 'solarPanel') {
+        const sunDir = transforms.sunDirectionECI(utcMs);
+        const AU_KM = 1.496e8;
+        targetPosECI = [sunDir[0] * AU_KM, sunDir[1] * AU_KM, sunDir[2] * AU_KM];
+        targetId = 'sun';
+      } else {
+        // Nadir (Earth center)
+        targetPosECI = [0, 0, 0];
+        targetId = 'nadir';
+      }
+    }
+
+    // Direction from satellite to target in ECI
+    const dirECI = vec3Normalize(vec3Sub(targetPosECI, posECI_km));
+
+    // Transform direction to body frame using inverse body quaternion
+    const dirBody = quatRotateVec(bodyQInv, dirECI);
+
+    // Get the parent (mounting) axis in body frame
+    const pAxis = parentAxisToVec(comp.parentAxis || '+Y');
+
+    if (comp.type === 'solarPanel' || comp.dof === 1) {
+      // 1-DOF: rotate about the parent axis so the panel normal faces the target.
+      // The panel normal at rest points along the parent axis.
+      // The hinge axis is perpendicular to both the parent axis and a reference
+      // axis (we pick the body-X or body-Z depending on parentAxis orientation).
+      //
+      // Project the target direction onto the plane perpendicular to the parent axis,
+      // then measure the angle in that plane.
+
+      // Project dirBody onto the plane perpendicular to pAxis
+      const dot = vec3Dot(dirBody, pAxis);
+      const proj = [
+        dirBody[0] - dot * pAxis[0],
+        dirBody[1] - dot * pAxis[1],
+        dirBody[2] - dot * pAxis[2],
+      ];
+      const projLen = vec3Length(proj);
+
+      let desiredA1 = 0;
+      if (projLen > 1e-10) {
+        // Reference direction: find a vector perpendicular to pAxis
+        // If pAxis is ±Y, use X as reference; if ±X use Y; if ±Z use X
+        let refVec;
+        if (Math.abs(pAxis[1]) > 0.9) refVec = [1, 0, 0];
+        else if (Math.abs(pAxis[0]) > 0.9) refVec = [0, 1, 0];
+        else refVec = [1, 0, 0];
+
+        // Make refVec perpendicular to pAxis
+        const rDot = vec3Dot(refVec, pAxis);
+        refVec = vec3Normalize([
+          refVec[0] - rDot * pAxis[0],
+          refVec[1] - rDot * pAxis[1],
+          refVec[2] - rDot * pAxis[2],
+        ]);
+
+        const perpVec = vec3Normalize(vec3Cross(pAxis, refVec));
+        const projNorm = vec3Normalize(proj);
+        const c = vec3Dot(projNorm, refVec);
+        const s = vec3Dot(projNorm, perpVec);
+        desiredA1 = Math.atan2(s, c) * (180 / Math.PI);
+      }
+
+      // Apply constraint (per-axis range)
+      desiredA1 = clampRange(desiredA1, a1Min, a1Max);
+
+      // Apply slew rate limiting
+      const a1 = slewLimitAngle(prev.a1, desiredA1, slewRate, dt);
+
+      result[comp.id] = { a1, a2: 0, targetId };
+
+    } else {
+      // 2-DOF (alt-az gimbal, e.g. laserPointer)
+      // Azimuth: rotation about parent axis
+      // Elevation: tilt away from the parent-axis plane
+
+      const dot = vec3Dot(dirBody, pAxis);
+
+      // Project onto the plane perpendicular to pAxis for azimuth
+      const proj = [
+        dirBody[0] - dot * pAxis[0],
+        dirBody[1] - dot * pAxis[1],
+        dirBody[2] - dot * pAxis[2],
+      ];
+      const projLen = vec3Length(proj);
+
+      // Elevation: angle between dirBody and the projection plane
+      let desiredA2 = Math.atan2(dot, projLen) * (180 / Math.PI);
+
+      // Azimuth
+      let desiredA1 = 0;
+      if (projLen > 1e-10) {
+        let refVec;
+        if (Math.abs(pAxis[1]) > 0.9) refVec = [1, 0, 0];
+        else if (Math.abs(pAxis[0]) > 0.9) refVec = [0, 1, 0];
+        else refVec = [1, 0, 0];
+
+        const rDot = vec3Dot(refVec, pAxis);
+        refVec = vec3Normalize([
+          refVec[0] - rDot * pAxis[0],
+          refVec[1] - rDot * pAxis[1],
+          refVec[2] - rDot * pAxis[2],
+        ]);
+        const perpVec = vec3Normalize(vec3Cross(pAxis, refVec));
+        const projNorm = vec3Normalize(proj);
+        const c = vec3Dot(projNorm, refVec);
+        const s = vec3Dot(projNorm, perpVec);
+        desiredA1 = Math.atan2(s, c) * (180 / Math.PI);
+      }
+
+      // Apply per-axis range constraints
+      desiredA1 = clampRange(desiredA1, a1Min, a1Max);
+      desiredA2 = clampRange(desiredA2, a2Min, a2Max);
+
+      const a1 = slewLimitAngle(prev.a1, desiredA1, slewRate, dt);
+      const a2 = slewLimitAngle(prev.a2 || 0, desiredA2, slewRate, dt);
+
+      result[comp.id] = { a1, a2, targetId };
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Clamp an angle to [-maxAngle, +maxAngle].  (legacy, still used by body-level attitude)
+ */
+function clampAngle(deg, maxAngle) {
+  return Math.max(-maxAngle, Math.min(maxAngle, deg));
+}
+
+/**
+ * Clamp an angle to [minDeg, maxDeg] (asymmetric range).
+ */
+function clampRange(deg, minDeg, maxDeg) {
+  return Math.max(minDeg, Math.min(maxDeg, deg));
+}
+
+/**
+ * Apply slew-rate limiting to an angle transition.
+ */
+function slewLimitAngle(prevDeg, desiredDeg, slewRateDegSec, dt) {
+  const maxStep = slewRateDegSec * dt;
+  const diff = desiredDeg - prevDeg;
+  if (Math.abs(diff) <= maxStep + 0.001) return desiredDeg;
+  return prevDeg + Math.sign(diff) * maxStep;
+}
+
 module.exports = {
   computeLVLHQuaternion,
   computeTargetQuaternion,
@@ -322,4 +603,5 @@ module.exports = {
   computeAttitude,
   resolveTargetPos,
   checkConditions,
+  computeComponentAttitudes,
 };

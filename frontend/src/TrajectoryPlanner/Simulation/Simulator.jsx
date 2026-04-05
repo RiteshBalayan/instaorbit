@@ -101,7 +101,7 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
 
           if (!resp.ok) throw new Error(`Simulate error ${resp.status}`);
           const json = await resp.json();
-          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements, attitude } = json;
+          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements, attitude, componentAngles } = json;
 
           if (tracePoint && elements) {
             let enrichedTrace = { ...tracePoint };
@@ -115,6 +115,9 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
               enrichedTrace.qy = attitude.quaternion[1];
               enrichedTrace.qz = attitude.quaternion[2];
               enrichedTrace.qw = attitude.quaternion[3];
+            }
+            if (componentAngles) {
+              enrichedTrace.componentAngles = componentAngles;
             }
             dispatch(addTracePoint({ id: particleId, tracePoint: enrichedTrace }));
             dispatch(updateCoordinate({
@@ -201,7 +204,7 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
 
           if (!resp.ok) throw new Error(`Simulate error ${resp.status}`);
           const json = await resp.json();
-          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements, attitude } = json;
+          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements, attitude, componentAngles } = json;
 
           if (tracePoint && elements) {
             let enrichedTrace = { ...tracePoint };
@@ -215,6 +218,9 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
               enrichedTrace.qy = attitude.quaternion[1];
               enrichedTrace.qz = attitude.quaternion[2];
               enrichedTrace.qw = attitude.quaternion[3];
+            }
+            if (componentAngles) {
+              enrichedTrace.componentAngles = componentAngles;
             }
             dispatch(addTracePoint({ id: particleId, tracePoint: enrichedTrace }));
             dispatch(updateCoordinate({

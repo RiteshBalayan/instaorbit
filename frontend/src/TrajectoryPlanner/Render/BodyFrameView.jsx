@@ -181,6 +181,16 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
   const gsRefs        = useRef({});
   const linkLineRefs  = useRef({});
 
+  /* Refs for component angle state (updated each frame from trace points).
+     Using refs instead of useState to avoid re-renders inside useFrame
+     which cause "Maximum update depth exceeded" crashes. */
+  const mainComponentAnglesRef = useRef({});
+  const otherSatComponentAnglesRef = useRef({});
+  const mainAnglesJsonRef = useRef('{}');
+  const otherAnglesJsonRef = useRef('{}');
+  const [mainComponentAngles, setMainComponentAngles] = useState({});
+  const [otherSatComponentAngles, setOtherSatComponentAngles] = useState({});
+
   const satellites      = useSelector(s => s.CurrentState.satelite) || [];
   const particles       = useSelector(s => s.particles.particles) || [];
   const allConfigs      = useSelector(s => s.satellites.satellitesConfig) || [];
@@ -235,6 +245,10 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
         }
         if (best.qx != null && best.qw != null) {
           attQ = [best.qx, best.qy, best.qz, best.qw];
+        }
+        // Extract component angles for the main satellite
+        if (best.componentAngles) {
+          mainComponentAnglesRef.current = best.componentAngles;
         }
       }
     }
@@ -322,6 +336,7 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
     }
 
     /* ── 6. Other satellites in LVLH (from tracePoints) ──── */
+    const newOtherAngles = {};
     particles.forEach(oPart => {
       if (oPart.id === satelliteId) return;
       const ref = otherSatRefs.current[oPart.id];
@@ -350,7 +365,27 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
       } else {
         ref.quaternion.set(0, 0, 0, 1);
       }
+
+      // Track component angles for other sats
+      if (oSnap.componentAngles) {
+        newOtherAngles[oPart.id] = oSnap.componentAngles;
+      }
     });
+    otherSatComponentAnglesRef.current = newOtherAngles;
+
+    // Throttled sync: push ref values into React state only when changed
+    // so SatelliteBodyModel re-renders with updated angles without
+    // triggering every single frame.
+    const mainJson = JSON.stringify(mainComponentAnglesRef.current);
+    if (mainJson !== mainAnglesJsonRef.current) {
+      mainAnglesJsonRef.current = mainJson;
+      setMainComponentAngles(mainComponentAnglesRef.current);
+    }
+    const otherJson = JSON.stringify(otherSatComponentAnglesRef.current);
+    if (otherJson !== otherAnglesJsonRef.current) {
+      otherAnglesJsonRef.current = otherJson;
+      setOtherSatComponentAngles(otherSatComponentAnglesRef.current);
+    }
 
     /* ── 7. Ground stations in LVLH ──────────────────────── */
     const gmst = computeGMSTFromSim(starttime, RenderTime);
@@ -450,6 +485,8 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
               scale={1}
               emissive={false}
               showAxes={showBodyFrameAxes}
+              components={cfg?.bodyFrame?.components || []}
+              componentAngles={otherSatComponentAngles[oPart.id] || {}}
             />
           </group>
         );
@@ -505,6 +542,8 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
           scale={1}
           emissive={showGlow}
           showAxes={showBodyFrameAxes}
+          components={thisConfig?.bodyFrame?.components || []}
+          componentAngles={mainComponentAngles}
         />
       </group>
 

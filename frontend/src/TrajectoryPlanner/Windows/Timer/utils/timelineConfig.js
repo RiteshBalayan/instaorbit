@@ -374,7 +374,16 @@ export const createTimelineItems = (
   const linkItems = createLinkItems(linkHistory, satellites, groundStations, contactWindows);
   const renderTimePoint = createRenderTimePoint(currentRenderTime);
 
-  return new DataSet([...particleItems, ...linkItems, renderTimePoint]);
+  // Deduplicate by id — vis-timeline's DataSet throws if any id appears twice
+  const allItems = [...particleItems, ...linkItems, renderTimePoint];
+  const seen = new Set();
+  const uniqueItems = allItems.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+
+  return new DataSet(uniqueItems);
 };
 
 /**

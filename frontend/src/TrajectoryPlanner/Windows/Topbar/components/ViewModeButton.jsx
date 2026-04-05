@@ -63,7 +63,7 @@ const SatSubmenu = ({ side, currentConfig, onSelect }) => {
 
 const ViewModeButton = ({ currentViewMode, onChange, handleRipple, showControlPanel, onToggleControlPanel }) => {
   const [open, setOpen] = useState(false);
-  const [subSide, setSubSide] = useState(null); // which side's sat submenu is open
+  const [subSide, setSubSide] = useState(null);
   const dispatch = useDispatch();
   const layout = useSelector(s => s.view.layout) || { mode: 'single', left: { type: '3d' }, right: null };
   const ref = useRef();

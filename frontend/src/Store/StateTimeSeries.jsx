@@ -12,6 +12,8 @@ const particleSlice = createSlice({
   reducers: {
     initializeParticles: (state, action) => {
       const newParticle = action.payload;
+      // Prevent duplicate entries — remove any existing particle with same id first
+      state.particles = state.particles.filter(p => p.id !== newParticle.id);
       state.particles.push(newParticle);
     },
     addTracePoint: (state, action) => {

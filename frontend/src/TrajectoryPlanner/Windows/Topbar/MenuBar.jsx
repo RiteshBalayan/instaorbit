@@ -291,27 +291,23 @@ const MenuBar = () => {
 
       {/* ═══ DIALOGS ════════════════════════════════════════════ */}
 
-      {/* Add Satellite */}
-      <Dialog
-        open={showSatModal}
-        onClose={() => setShowSatModal(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{ sx: { ...dialogPaperSx, maxWidth: 520 } }}
-      >
-        <div style={dialogHeaderStyle}>
-          <span style={dialogTitleStyle}>
-            <SatelliteAltIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
-            Add Satellite
-          </span>
-          <button style={dialogCloseStyle} onClick={() => setShowSatModal(false)}>
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </button>
+      {/* Add Satellite — sidebar panel */}
+      {showSatModal && (
+        <div className="rt-sat-sidebar">
+          <div style={dialogHeaderStyle}>
+            <span style={dialogTitleStyle}>
+              <SatelliteAltIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+              Add Satellite
+            </span>
+            <button style={dialogCloseStyle} onClick={() => setShowSatModal(false)}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </button>
+          </div>
+          <div className="rt-sat-sidebar-body">
+            <AddSatellite editId={null} onClose={() => setShowSatModal(false)} />
+          </div>
         </div>
-        <DialogContent sx={{ p: 0 }}>
-          <AddSatellite editId={null} onClose={() => setShowSatModal(false)} />
-        </DialogContent>
-      </Dialog>
+      )}
 
       {/* Add Ground Station */}
       <Dialog

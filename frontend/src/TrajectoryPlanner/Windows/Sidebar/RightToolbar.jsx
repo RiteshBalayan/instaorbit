@@ -312,29 +312,25 @@ const RightToolbar = () => {
         </div>
       )}
 
-      {/* ═══ DIALOGS — Uniform compact light-theme ═══════════ */}
-
-      {/* Add / Edit Satellite */}
-      <Dialog
-        open={showSatModal}
-        onClose={() => setShowSatModal(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{ sx: { ...dialogPaperSx, maxWidth: 520 } }}
-      >
-        <div className="rt-dialog-header">
-          <span className="rt-dialog-title">
-            <SatelliteAltIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
-            {editingSatId !== null ? 'Edit Satellite' : 'Add Satellite'}
-          </span>
-          <button className="rt-dialog-close" onClick={() => setShowSatModal(false)}>
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </button>
+      {/* ═══ SATELLITE SIDEBAR (inline, not a dialog) ════════ */}
+      {showSatModal && (
+        <div className="rt-sat-sidebar">
+          <div className="rt-config-header">
+            <span className="rt-config-title">
+              <SatelliteAltIcon sx={{ fontSize: 16, color: '#3b82f6', mr: 0.5 }} />
+              {editingSatId !== null ? 'Edit Satellite' : 'Add Satellite'}
+            </span>
+            <button className="rt-config-close" onClick={() => setShowSatModal(false)}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </button>
+          </div>
+          <div className="rt-sat-sidebar-body">
+            <AddSatellite editId={editingSatId} onClose={() => setShowSatModal(false)} />
+          </div>
         </div>
-        <DialogContent sx={{ p: 0 }}>
-          <AddSatellite editId={editingSatId} onClose={() => setShowSatModal(false)} />
-        </DialogContent>
-      </Dialog>
+      )}
+
+      {/* ═══ DIALOGS — Uniform compact light-theme ═══════════ */}
 
       {/* Ground Station */}
       <Dialog
