@@ -15,6 +15,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setActiveLinks, updateContactWindows } from '../../../Store/communicationSlice';
 import { computeLink, getEndpointPos } from './linkComputation';
 import { SCALE_FACTOR } from '../../../transforms';
+import useLinkStates from '../../../hooks/useLinkStates';
 
 
 const LinkEngine = () => {
@@ -23,6 +24,7 @@ const LinkEngine = () => {
   const currentStates = useSelector((s) => s.CurrentState.satelite) || [];
   const groundStations = useSelector((s) => s.groundStations.groundStations) || [];
   const particles = useSelector((s) => s.particles?.particles || []);
+  const visibleTracePoints = useSelector((s) => s.particles?.visibleTracePoints || {});
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
   const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
@@ -30,22 +32,29 @@ const LinkEngine = () => {
 
   // ── Bulk pre-computed data (null when in live mode) ────────
   const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
+  // ── TSDB-backed link state lookup ──────────────────────────
+  const { getLinksAtTime, hasData: hasTsdbLinkData } = useLinkStates();
 
   // ── BULK PATH: just look up pre-computed activeLinks ───────
   useEffect(() => {
-    if (!activeLinksAtTime) return; // live mode — handled below
+    if (!activeLinksAtTime && !hasTsdbLinkData) return; // live mode — handled below
 
-    // Find the closest time key <= renderTime
-    const timeKey = Math.floor(renderTime);
-    const precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
+    // Try TSDB first, then legacy map
+    let precomputed;
+    if (hasTsdbLinkData) {
+      precomputed = getLinksAtTime(renderTime);
+    } else {
+      const timeKey = Math.floor(renderTime);
+      precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
+    }
     dispatch(setActiveLinks(precomputed));
-  }, [activeLinksAtTime, renderTime, dispatch]);
+  }, [activeLinksAtTime, hasTsdbLinkData, getLinksAtTime, renderTime, dispatch]);
 
   // ── LIVE PATH: compute on-the-fly (original behavior) ─────
   // Build the context object that computeLink expects
   const ctx = useMemo(
-    () => ({ currentStates, groundStations, particles, renderTime, starttime, globalThresholds }),
-    [currentStates, groundStations, particles, renderTime, starttime, globalThresholds],
+    () => ({ currentStates, groundStations, particles, renderTime, starttime, globalThresholds, visibleTracePoints }),
+    [currentStates, groundStations, particles, renderTime, starttime, globalThresholds, visibleTracePoints],
   );
 
   // A key that changes when satellite positions meaningfully change
@@ -61,24 +70,24 @@ const LinkEngine = () => {
   // Compute link results (reuses shared linkComputation.js)
   const linkResults = useMemo(
     () => {
-      if (activeLinksAtTime) return []; // skip computation in bulk mode
+      if (activeLinksAtTime || hasTsdbLinkData) return []; // skip computation in bulk mode
       return links.map((cfg) => computeLink(cfg, ctx));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [links, renderTime, satPosKey, activeLinksAtTime],
+    [links, renderTime, satPosKey, activeLinksAtTime, hasTsdbLinkData],
   );
 
   // Dispatch activeLinks (3D line geometry) + contactWindows — LIVE mode only
   useEffect(() => {
-    if (activeLinksAtTime) return; // bulk mode — already handled above
+    if (activeLinksAtTime || hasTsdbLinkData) return; // bulk mode — already handled above
     if (!linkResults.length && !links.length) return;
 
     // ── Active links for 3D / 2D rendering ───────────────────
     const active = linkResults
       .filter((r) => r.ready && r.inLink)
       .map((r) => {
-        const from = getEndpointPos(r.txId, currentStates, groundStations, particles, renderTime, starttime);
-        const to = getEndpointPos(r.rxId, currentStates, groundStations, particles, renderTime, starttime);
+        const from = getEndpointPos(r.txId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
+        const to = getEndpointPos(r.rxId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
         if (!from || !to) return null;
         // Convert km → scene units
         const f = { x: from.x / SCALE_FACTOR, y: from.y / SCALE_FACTOR, z: from.z / SCALE_FACTOR };

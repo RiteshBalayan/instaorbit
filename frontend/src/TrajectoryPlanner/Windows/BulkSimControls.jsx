@@ -20,6 +20,7 @@ import {
   bulkLoadActiveLinksAtTime,
   clearBulkLinkData,
 } from '../../Store/communicationSlice';
+import tsClient from '../../services/timeSeriesClient';
 import './BulkSimControls.css';
 
 const BulkSimControls = ({ compact = false } = {}) => {
@@ -102,13 +103,22 @@ const BulkSimControls = ({ compact = false } = {}) => {
       dispatch(clearBulkLinkData());
 
       // 2. Load tracePoints per satellite
+      const tsdbPromises = [];
       for (const sat of satellites) {
         const tracePoints = data.satellites[sat.id];
         if (tracePoints?.length) {
           // Reset existing trace points first
           dispatch(resetTracePoints(sat.id));
-          // Load bulk data
+          // Load bulk data into Redux (kept for backward compat)
           dispatch(bulkLoadTracePoints({ id: sat.id, tracePoints }));
+
+          // Also ingest into TSDB for windowed queries
+          if (tsClient.sessionId) {
+            tsdbPromises.push(
+              tsClient.ingestBulkTracePoints(sat.id, tracePoints)
+                .catch(err => console.warn(`[TSDB] Bulk ingest sat ${sat.id}:`, err))
+            );
+          }
         }
       }
 
@@ -116,10 +126,37 @@ const BulkSimControls = ({ compact = false } = {}) => {
       if (data.linkData) {
         if (data.linkData.contactWindows) {
           dispatch(bulkLoadContactWindows(data.linkData.contactWindows));
+          // Ingest contact windows into TSDB
+          if (tsClient.sessionId && data.linkData.contactWindows.length) {
+            tsdbPromises.push(
+              tsClient.ingestContactWindows(data.linkData.contactWindows)
+                .catch(err => console.warn('[TSDB] Bulk ingest contact windows:', err))
+            );
+          }
         }
         if (data.linkData.activeLinksAtTime) {
           dispatch(bulkLoadActiveLinksAtTime(data.linkData.activeLinksAtTime));
+          // Convert activeLinksAtTime map to array of link states for TSDB
+          if (tsClient.sessionId) {
+            const linkStates = Object.entries(data.linkData.activeLinksAtTime).map(
+              ([time, activeLinks]) => ({ time_s: Number(time), active_links: activeLinks })
+            );
+            if (linkStates.length) {
+              tsdbPromises.push(
+                tsClient.ingestBulkLinkStates(linkStates)
+                  .catch(err => console.warn('[TSDB] Bulk ingest link states:', err))
+              );
+            }
+          }
         }
+      }
+
+      // Wait for TSDB ingestion (non-blocking — don't fail if TSDB is down)
+      if (tsdbPromises.length) {
+        await Promise.allSettled(tsdbPromises);
+        // Refresh low-res cache so future syncToTime calls have data
+        const satIds = satellites.map(s => s.id);
+        tsClient.refreshLowRes(satIds).catch(() => {});
       }
 
       // 4. Set elapsed time to duration so Simulator won't re-compute

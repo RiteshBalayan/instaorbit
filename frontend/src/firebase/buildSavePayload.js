@@ -13,10 +13,15 @@
  * global thresholds, view preferences, groups, timer config) while
  * stripping large runtime/ephemeral arrays that are recomputed on sim start.
  *
+ * The TSDB session ID is persisted so that time-series data can be
+ * re-associated with the project on reload (without re-simulating).
+ *
  * @param {Object} reduxState – the full Redux store snapshot
+ * @param {Object} [opts] – optional extras
+ * @param {string} [opts.tsdbSessionId] – TSDB session ID from timeSeriesClient
  * @returns {Object} – cleaned state safe for Firestore upload
  */
-export function buildSavePayload(reduxState) {
+export function buildSavePayload(reduxState, opts = {}) {
   const s = reduxState;
 
   // ── Timer — keep config, drop transient events ────────────
@@ -38,6 +43,9 @@ export function buildSavePayload(reduxState) {
       ...p,
       tracePoints: [],  // recomputed on sim run — can be 100k+ entries
     })),
+    // Strip TSDB windowed data (ephemeral, reconstructed from TSDB on load)
+    visibleTracePoints: {},
+    lowResTimelines: {},
   };
 
   // ── CurrentState — keep satellite entries but clear coordinates ──
@@ -85,6 +93,7 @@ export function buildSavePayload(reduxState) {
     // Drop transient / huge runtime data
     activeLinks: [],
     activeLinksAtTime: null,  // huge bulk-sim lookup table
+    visibleLinkStates: {},    // TSDB windowed data — reconstructed from TSDB
     linkHistory: [],          // legacy, can be huge
     contactEvents: [],
     predictedContacts: [],
@@ -110,6 +119,8 @@ export function buildSavePayload(reduxState) {
     communication,
     view,
     groups,
+    // TSDB session ID — allows re-association of time-series data on reload
+    ...(opts.tsdbSessionId ? { tsdbSessionId: opts.tsdbSessionId } : {}),
   };
 }
 

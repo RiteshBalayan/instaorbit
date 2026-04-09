@@ -42,6 +42,7 @@ const LinkBudgetBoard = ({ hidden = false }) => {
   const groundStations = useSelector((state) => state.groundStations.groundStations);
   const currentStates = useSelector((state) => state.CurrentState.satelite);
   const particles = useSelector((state) => state.particles?.particles || []);
+  const visibleTracePoints = useSelector((state) => state.particles?.visibleTracePoints || {});
   const renderTime = useSelector((state) => state.timer.RenderTime);
   const starttime = useSelector((state) => state.timer.starttime);
   const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
@@ -128,12 +129,15 @@ const LinkBudgetBoard = ({ hidden = false }) => {
     if (id.startsWith('sat-')) {
       const numericId = parseFloat(id.replace('sat-', ''));
       // During playback, prefer trace-point position at RenderTime
+      // TSDB visibleTracePoints (high-res ±60s) → legacy particle.tracePoints → CurrentState
+      const tsPts = visibleTracePoints[numericId];
       const particle = particles.find((p) => p.id === numericId);
-      if (particle?.tracePoints?.length) {
+      const pts = tsPts?.length ? tsPts : particle?.tracePoints;
+      if (pts?.length) {
         let best = null;
-        for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
-          if (particle.tracePoints[i].time <= renderTime) {
-            best = particle.tracePoints[i];
+        for (let i = pts.length - 1; i >= 0; i--) {
+          if (pts[i].time <= renderTime) {
+            best = pts[i];
             break;
           }
         }
@@ -308,12 +312,14 @@ const LinkBudgetBoard = ({ hidden = false }) => {
     const getRenderPos = (endpointId) => {
       if (endpointId.startsWith('sat-')) {
         const numId = parseFloat(endpointId.replace('sat-', ''));
-        // Prefer trace point at RenderTime (works during playback)
+        // Prefer TSDB visibleTracePoints (high-res ±60s) → legacy → CurrentState
+        const tsPts = visibleTracePoints[numId];
         const particle = particles.find((p) => p.id === numId);
-        if (particle?.tracePoints?.length) {
-          for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
-            if (particle.tracePoints[i].time <= renderTime) {
-              const tp = particle.tracePoints[i];
+        const pts = tsPts?.length ? tsPts : particle?.tracePoints;
+        if (pts?.length) {
+          for (let i = pts.length - 1; i >= 0; i--) {
+            if (pts[i].time <= renderTime) {
+              const tp = pts[i];
               return { x: tp.x, y: tp.y, z: tp.z };
             }
           }

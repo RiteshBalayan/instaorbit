@@ -14,6 +14,7 @@ import {
   newTrajectory 
 } from '../../../firebase/firebaseUtils';
 import { buildSavePayload } from '../../../firebase/buildSavePayload';
+import { tsClient } from '../../../services/timeSeriesClient';
 
 export const useProjectOperations = (stateManager) => {
   const dispatch = useDispatch();
@@ -105,7 +106,7 @@ export const useProjectOperations = (stateManager) => {
               trajectoryName: newTrajMessage,
               itterationImage: imgData,
             },
-          });
+          }, { tsdbSessionId: tsClient.sessionId });
           const newIterationId = await uploadIteration(newTrajectoryId, savePayload, InitialCommitMessage);
           if (newIterationId) {
             dispatch(updateitterationID(newIterationId));
@@ -144,7 +145,7 @@ export const useProjectOperations = (stateManager) => {
           ...state.workingProject,
           itterationImage: imgData,
         },
-      });
+      }, { tsdbSessionId: tsClient.sessionId });
       const newIterationId = await updateIteration(trajectoryID, itterationID, savePayload);
       if (newIterationId) {
         dispatch(updateitterationID(newIterationId));
@@ -181,7 +182,7 @@ export const useProjectOperations = (stateManager) => {
           ...state.workingProject,
           itterationImage: imgData,
         },
-      });
+      }, { tsdbSessionId: tsClient.sessionId });
       const newIterationId = await uploadIteration(trajectoryID, savePayload, saveAsMessage);
       if (newIterationId) {
         dispatch(updateitterationID(newIterationId));

@@ -162,12 +162,17 @@ export const createTimelineOptions = (minTime, onRenderTimeUpdate) => {
  * Creates particle/satellite items for timeline
  * @param {Array} particles - Satellite particles data
  * @param {number} minTime - Timeline start time (timestamp)
+ * @param {Object} [lowResTimelines] - TSDB low-res timelines keyed by sat ID
+ * @param {Object} [visibleTracePoints] - TSDB visible trace points keyed by sat ID
  * @returns {Array} Timeline items for satellites
  */
-export const createParticleItems = (particles, minTime) => {
+export const createParticleItems = (particles, minTime, lowResTimelines = {}, visibleTracePoints = {}) => {
   return particles
     .map((particle, index) => {
-      const tracePoints = particle.tracePoints;
+      // Prefer TSDB low-res (full duration) → visible → legacy
+      const tsLow = lowResTimelines[particle.id];
+      const tsHigh = visibleTracePoints[particle.id];
+      const tracePoints = tsLow?.length ? tsLow : tsHigh?.length ? tsHigh : particle.tracePoints;
       
       if (tracePoints && tracePoints.length >= 2) {
         const start = new Date(minTime + tracePoints[0].time * 1000);
@@ -366,11 +371,13 @@ export const createTimelineItems = (
   groundStations = [],
   contactWindows = [],
   showSatBars = true,
+  lowResTimelines = {},
+  visibleTracePoints = {},
 ) => {
   const minTime = starttime || Date.now();
   const currentRenderTime = new Date(minTime + renderTime * 1000);
 
-  const particleItems = showSatBars ? createParticleItems(particles, minTime) : [];
+  const particleItems = showSatBars ? createParticleItems(particles, minTime, lowResTimelines, visibleTracePoints) : [];
   const linkItems = createLinkItems(linkHistory, satellites, groundStations, contactWindows);
   const renderTimePoint = createRenderTimePoint(currentRenderTime);
 

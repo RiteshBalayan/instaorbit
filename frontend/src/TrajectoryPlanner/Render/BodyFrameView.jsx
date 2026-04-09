@@ -18,6 +18,7 @@ import { useSelector } from 'react-redux';
 import { computeGMSTFromSim, sunDirectionECIFromSim } from '../../transforms';
 import SatelliteBodyModel from './SatelliteBodyModel';
 import EarthMaterial from './EarthMaterial';
+import useTracePoints from '../../hooks/useTracePoints';
 
 /* ─── Vector helpers ────────────────────────────────────────── */
 
@@ -195,6 +196,10 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
   const particles       = useSelector(s => s.particles.particles) || [];
   const allConfigs      = useSelector(s => s.satellites.satellitesConfig) || [];
   const groundStations  = useSelector(s => s.groundStations.groundStations) || [];
+  // TSDB-backed trace points for this satellite
+  const { combined: mainTracePoints } = useTracePoints(satelliteId);
+  // TSDB-backed visible trace points for all satellites (used for other-sat positions)
+  const visibleTracePoints = useSelector(s => s.particles.visibleTracePoints) || {};
   const activeLinks     = useSelector(s => s.communication.activeLinks) || [];
   const showLinkLines   = useSelector(s => s.view.showLinkLines !== false);
   const showBodyFrameAxes = useSelector(s => s.view.showBodyFrameAxes !== false);
@@ -232,8 +237,8 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
     let velScene = null;
     let attQ     = null;
 
-    if (thisParticle?.tracePoints?.length) {
-      const pts = thisParticle.tracePoints;
+    if (mainTracePoints?.length) {
+      const pts = mainTracePoints;
       const idx = findLastIndexLE(pts, RenderTime);
       const best = idx >= 0 ? pts[idx] : null;
       if (best && [best.x, best.y, best.z].every(Number.isFinite)) {
@@ -342,8 +347,9 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
       const ref = otherSatRefs.current[oPart.id];
       if (!ref) return;
 
-      // Look up this satellite's position in tracePoints at RenderTime
-      const oPts = oPart.tracePoints;
+      // Prefer TSDB visible trace points, fall back to legacy
+      const tsPts = visibleTracePoints?.[oPart.id];
+      const oPts = tsPts?.length ? tsPts : oPart.tracePoints;
       if (!oPts?.length) { ref.visible = false; return; }
       const oIdx = findLastIndexLE(oPts, RenderTime);
       if (oIdx < 0) { ref.visible = false; return; }

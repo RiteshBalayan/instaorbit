@@ -64,6 +64,11 @@ const initialState = {
   // and LeafletMapOverlays look up by RenderTime instead of
   // computing links on-the-fly.
   activeLinksAtTime: null,
+
+  // ── TSDB-backed windowed link states ──────────────────────
+  // Array of { time_s, active_links: [...] } for the visible time window.
+  // Set by TimeSeriesClient.syncToTime().
+  visibleLinkStates: [],
 };
 
 const communicationSlice = createSlice({
@@ -262,6 +267,12 @@ const communicationSlice = createSlice({
       state.activeLinksAtTime = null;
     },
 
+    // ── TSDB windowed link states ─────────────────────────────
+    // payload: [ { time_s, active_links: [...] } ]
+    setVisibleLinkStates: (state, action) => {
+      state.visibleLinkStates = action.payload || [];
+    },
+
     // Reset all communication state
     resetCommunication: () => {
       return initialState;
@@ -287,6 +298,7 @@ export const {
   bulkLoadContactWindows,
   bulkLoadActiveLinksAtTime,
   clearBulkLinkData,
+  setVisibleLinkStates,
   addContactEvent,
   clearContactEvents,
   setPredictedContacts,

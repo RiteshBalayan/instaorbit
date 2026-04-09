@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
 import { keplerianToCartesian, keplerianToCartesianTrueAnomly } from '../Simulation/Functions';
+import tsClient from '../../services/timeSeriesClient';
 
 /**
  * RealSimulator – calls the backend /simulate endpoint for every 1-second
@@ -120,6 +121,10 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
               enrichedTrace.componentAngles = componentAngles;
             }
             dispatch(addTracePoint({ id: particleId, tracePoint: enrichedTrace }));
+            // Ingest into TSDB for persistent time-series storage
+            if (tsClient.sessionId) {
+              tsClient.ingestTracePoint(particleId, enrichedTrace);
+            }
             dispatch(updateCoordinate({
               id: particleId,
               timefix,
@@ -223,6 +228,10 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
               enrichedTrace.componentAngles = componentAngles;
             }
             dispatch(addTracePoint({ id: particleId, tracePoint: enrichedTrace }));
+            // Ingest into TSDB for persistent time-series storage
+            if (tsClient.sessionId) {
+              tsClient.ingestTracePoint(particleId, enrichedTrace);
+            }
             dispatch(updateCoordinate({
               id: particleId,
               timefix,

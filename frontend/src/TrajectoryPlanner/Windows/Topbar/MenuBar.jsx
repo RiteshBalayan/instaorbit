@@ -46,6 +46,8 @@ const MenuBar = () => {
   const showConfigPanel = useSelector((s) => s.view.showConfigPanel);
   const groundStations = useSelector((s) => s.groundStations.groundStations);
   const particles = useSelector((s) => s.particles.particles) || [];
+  const visibleTracePoints = useSelector((s) => s.particles.visibleTracePoints) || {};
+  const lowResTimelines = useSelector((s) => s.particles.lowResTimelines) || {};
   const RenderTime = useSelector((s) => s.timer.RenderTime);
 
   /* ── Render playback (menu bar mirror of analysis-panel controls) ─── */
@@ -55,8 +57,12 @@ const MenuBar = () => {
   const renderIntervalRef = useRef(null);
 
   const maxSimTime = particles.reduce((mx, p) => {
-    if (!p.tracePoints?.length) return mx;
-    const last = p.tracePoints[p.tracePoints.length - 1];
+    // Prefer TSDB-backed timelines for max sim time
+    const tsLow = lowResTimelines[p.id];
+    const tsHigh = visibleTracePoints[p.id];
+    const bestArr = tsLow?.length ? tsLow : tsHigh?.length ? tsHigh : p.tracePoints;
+    if (!bestArr?.length) return mx;
+    const last = bestArr[bestArr.length - 1];
     return Math.max(mx, last.time ?? 0);
   }, 0);
   const hasSimData = maxSimTime > 0;
@@ -82,9 +88,12 @@ const MenuBar = () => {
         const state = getState();
         const crt = state.timer.RenderTime;
         const pts = state.particles.particles || [];
+        const tsLow = state.particles.lowResTimelines || {};
+        const tsHigh = state.particles.visibleTracePoints || {};
         const mx = pts.reduce((m, p) => {
-          if (!p.tracePoints?.length) return m;
-          return Math.max(m, p.tracePoints[p.tracePoints.length - 1].time ?? 0);
+          const arr = tsLow[p.id]?.length ? tsLow[p.id] : tsHigh[p.id]?.length ? tsHigh[p.id] : p.tracePoints;
+          if (!arr?.length) return m;
+          return Math.max(m, arr[arr.length - 1].time ?? 0);
         }, 0);
         if (crt >= mx && mx > 0) { setRenderPlaying(false); return; }
         dispatch(updateRenderTime(Math.round(Math.min(crt + stepPerTick, mx) * 1000) / 1000));

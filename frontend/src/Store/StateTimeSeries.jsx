@@ -4,6 +4,11 @@ const initialState = {
   particles: [
   ],
 
+  // ── TSDB-backed windowed data (replaces per-particle tracePoints) ──
+  // { [satId]: tracePoint[] }  — only ±60 s around current sim time
+  visibleTracePoints: {},
+  // { [satId]: tracePoint[] }  — full timeline sampled every ~10 s
+  lowResTimelines: {},
 };
 
 const particleSlice = createSlice({
@@ -49,6 +54,26 @@ const particleSlice = createSlice({
     deleteParticle: (state, action) => {
       const idToDelete = action.payload;
       state.particles = state.particles.filter(particle => particle.id !== idToDelete);
+      // Also clean up TSDB caches for this particle
+      delete state.visibleTracePoints[idToDelete];
+      delete state.lowResTimelines[idToDelete];
+    },
+
+    // ── TSDB-mode reducers ──────────────────────────────────
+    /**
+     * Replace the visible (high-res) trace points window.
+     * payload: { [satId]: tracePoint[] }
+     */
+    setVisibleTracePoints: (state, action) => {
+      state.visibleTracePoints = action.payload || {};
+    },
+
+    /**
+     * Replace the low-resolution timeline data.
+     * payload: { [satId]: tracePoint[] }
+     */
+    setLowResTimelines: (state, action) => {
+      state.lowResTimelines = action.payload || {};
     },
   },
   extraReducers: (builder) => {
@@ -58,5 +83,5 @@ const particleSlice = createSlice({
   },
 });
 
-export const { initializeParticles, addTracePoint, bulkLoadTracePoints, resetTracePoints, deleteParticle } = particleSlice.actions;
+export const { initializeParticles, addTracePoint, bulkLoadTracePoints, resetTracePoints, deleteParticle, setVisibleTracePoints, setLowResTimelines } = particleSlice.actions;
 export default particleSlice.reducer;

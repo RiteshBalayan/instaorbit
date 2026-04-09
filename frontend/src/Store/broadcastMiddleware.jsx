@@ -45,15 +45,38 @@ export function createBroadcastMiddleware() {
 
     const full = store.getState();
 
-    // Only send slices that daughter tabs actually need for rendering
+    // Only send slices that daughter tabs actually need for rendering.
+    // Strip heavy time-series data — daughter tabs will get their own
+    // TSDB windows via timeSeriesClient or the lightweight Redux fields.
+    const particles = full.particles;
+    const lightParticles = {
+      ...particles,
+      // Send only the windowed TSDB data (small), not the full legacy arrays
+      particles: (particles.particles || []).map((p) => ({
+        ...p,
+        tracePoints: [],  // stripped — daughter uses visibleTracePoints / lowResTimelines
+      })),
+      // Keep TSDB windowed data (already small — ±60 s high-res + 10 s low-res)
+      visibleTracePoints: particles.visibleTracePoints,
+      lowResTimelines: particles.lowResTimelines,
+    };
+
+    const comm = full.communication;
+    const lightComm = {
+      ...comm,
+      // Strip heavy bulk lookup table; keep TSDB-backed visible window
+      activeLinksAtTime: null,
+      visibleLinkStates: comm.visibleLinkStates,
+    };
+
     const payload = {
-      particles:     full.particles,
+      particles:     lightParticles,
       timer:         full.timer,
       CurrentState:  full.CurrentState,
       satellites:    full.satellites,
       view:          full.view,
       groundStations: full.groundStations,
-      communication: full.communication,
+      communication: lightComm,
       groups:        full.groups,
     };
 

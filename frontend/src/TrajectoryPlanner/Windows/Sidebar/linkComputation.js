@@ -45,15 +45,17 @@ export const formatNumber = (v, digits = 2) => {
 
 /* ── Position helpers ─────────────────────────────────────────── */
 
-export const getEndpointPos = (id, currentStates, groundStations, particles, renderTime, starttime) => {
+export const getEndpointPos = (id, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints = {}) => {
   if (id.startsWith('sat-')) {
     const numId = parseFloat(id.replace('sat-', ''));
-    // Prefer trace-point lookup (works during playback)
+    // Prefer TSDB visibleTracePoints (high-res ±60s) → legacy → CurrentState
+    const tsPts = visibleTracePoints[numId];
     const particle = particles.find((p) => p.id === numId);
-    if (particle?.tracePoints?.length) {
-      for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
-        if (particle.tracePoints[i].time <= renderTime) {
-          const tp = particle.tracePoints[i];
+    const pts = tsPts?.length ? tsPts : particle?.tracePoints;
+    if (pts?.length) {
+      for (let i = pts.length - 1; i >= 0; i--) {
+        if (pts[i].time <= renderTime) {
+          const tp = pts[i];
           return { x: tp.x * SCALE_FACTOR, y: tp.y * SCALE_FACTOR, z: tp.z * SCALE_FACTOR };
         }
       }
@@ -77,7 +79,7 @@ export const getEndpointPos = (id, currentStates, groundStations, particles, ren
 
 /* ── Full link computation ────────────────────────────────────── */
 
-export const computeLink = (cfg, { currentStates, groundStations, particles, renderTime, starttime, globalThresholds }) => {
+export const computeLink = (cfg, { currentStates, groundStations, particles, renderTime, starttime, globalThresholds, visibleTracePoints }) => {
   const globals = globalThresholds || {};
   const p = { ...defaultParams, ...cfg };
   // Apply global thresholds as fallback: per-link values override globals.
@@ -87,8 +89,8 @@ export const computeLink = (cfg, { currentStates, groundStations, particles, ren
     : globals.minElevationDeg != null ? globals.minElevationDeg : 10;
   const effectiveMaxDistKm = cfg.maxDistanceKm != null ? cfg.maxDistanceKm
     : globals.maxDistanceKm != null ? globals.maxDistanceKm : null;
-  const txPos = getEndpointPos(p.txId, currentStates, groundStations, particles, renderTime, starttime);
-  const rxPos = getEndpointPos(p.rxId, currentStates, groundStations, particles, renderTime, starttime);
+  const txPos = getEndpointPos(p.txId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
+  const rxPos = getEndpointPos(p.rxId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
   if (!txPos || !rxPos) return { ready: false, id: cfg.id, txId: p.txId, rxId: p.rxId };
 
   const dx = rxPos.x - txPos.x;

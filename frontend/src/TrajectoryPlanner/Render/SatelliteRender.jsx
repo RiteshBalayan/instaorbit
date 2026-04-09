@@ -8,6 +8,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { computeGMST, computeGMSTFromSim } from '../../transforms';
 import SatelliteBodyModel from './SatelliteBodyModel';
+import useTracePoints from '../../hooks/useTracePoints';
 
 /**
  * Wrapper that reads component angles from a ref (updated every useFrame)
@@ -128,6 +129,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const tubeRef = useRef();
   const dispatch = useDispatch();
   const particle = useSelector(state => state.particles?.particles?.find?.(p => p.id === particleId));
+  const { combined: tracePointsCombined } = useTracePoints(particleId);
   const RenderTime = useSelector((state) => state.timer.RenderTime);
   const satellitecurrentcoordinate = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId));
 
@@ -172,8 +174,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       const isFixed = referenceSystem === 'EarthFixed';
 
       // Update satellite position from tracePoints if available
-      if (satelliteRef.current && particle?.tracePoints?.length > 0) {
-        const pts = particle.tracePoints;
+      if (satelliteRef.current && tracePointsCombined?.length > 0) {
+        const pts = tracePointsCombined;
         const idxEnd = findLastIndexLE(pts, RenderTime);
         const hasAny = idxEnd >= 0;
         const tMin = RenderTime - TRACK_HORIZON_SEC;
@@ -287,7 +289,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       // Update previous RenderTime
       prevRenderTime.current = RenderTime;
     }
-  }, [RenderTime, particleId, particle, satellitecurrentcoordinate, satelliteconfig, referenceSystem, starttime, trackWindow, showOrbit]);
+  }, [RenderTime, particleId, particle, tracePointsCombined, satellitecurrentcoordinate, satelliteconfig, referenceSystem, starttime, trackWindow, showOrbit]);
 
   const ellipseRef = useRef();
   const satellitepreviewRef = useRef();
@@ -486,8 +488,8 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       let gmstUsed = 0;     // GMST used for ECI→ECEF position conversion
 
       // 1) Primary: derive position from the trace point at RenderTime
-      if (particle?.tracePoints?.length) {
-        const pts = particle.tracePoints;
+      if (tracePointsCombined?.length) {
+        const pts = tracePointsCombined;
         const idx = findLastIndexLE(pts, RenderTime);
         const best = idx >= 0 ? pts[idx] : null;
         if (best && [best.x, best.y, best.z].every(Number.isFinite)) {
@@ -640,7 +642,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       </mesh>
 
       {/* Orbit trail line - only render if tracePoints exist */}
-      {particle?.tracePoints?.length ? (
+      {tracePointsCombined?.length ? (
         <line ref={lineRef} renderOrder={100}>
           <bufferGeometry />
           <lineBasicMaterial 
