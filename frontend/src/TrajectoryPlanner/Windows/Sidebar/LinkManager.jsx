@@ -10,7 +10,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setLinks, deleteLink as deleteLinkAction } from '../../../Store/communicationSlice';
+import { setLinks, deleteLink as deleteLinkAction, setGlobalThresholds } from '../../../Store/communicationSlice';
 import {
   defaultParams,
   computeLink,
@@ -627,6 +627,7 @@ const LinkManager = () => {
   const particles = useSelector((s) => s.particles?.particles || []);
   const savedLinks = useSelector((s) => s.communication.links);
   const contactWindows = useSelector((s) => s.communication.contactWindows);
+  const globalThresholds = useSelector((s) => s.communication.globalThresholds || { minElevationDeg: 10, maxDistanceKm: null });
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
 
@@ -655,8 +656,8 @@ const LinkManager = () => {
 
   // Compute link results
   const ctx = useMemo(
-    () => ({ currentStates, groundStations, particles, renderTime, starttime }),
-    [currentStates, groundStations, particles, renderTime, starttime],
+    () => ({ currentStates, groundStations, particles, renderTime, starttime, globalThresholds }),
+    [currentStates, groundStations, particles, renderTime, starttime, globalThresholds],
   );
 
   const satPosKey = useMemo(
@@ -738,6 +739,25 @@ const LinkManager = () => {
           onClose={() => setShowAdd(false)}
         />
       )}
+
+      {/* ── Global Thresholds ──────────────────────────── */}
+      <div className="lm-global-thresholds" style={{ padding:'6px 10px',background:'rgba(59,130,246,0.08)',borderRadius:'6px',margin:'6px 0',border:'1px solid rgba(59,130,246,0.2)' }}>
+        <div style={{ fontSize:'10px',fontWeight:700,color:'#60a5fa',textTransform:'uppercase',letterSpacing:1,marginBottom:'4px' }}>Global Thresholds</div>
+        <div style={{ display:'flex',gap:'10px',flexWrap:'wrap',alignItems:'center' }}>
+          <label style={{ fontSize:'11px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'4px' }}>
+            Min Elevation (°)
+            <input type="number" className="lm-input-sm" value={globalThresholds.minElevationDeg ?? 10} min={0} max={90} step={1}
+              style={{ width:'50px' }}
+              onChange={(e) => dispatch(setGlobalThresholds({ minElevationDeg: Number(e.target.value) || 0 }))} />
+          </label>
+          <label style={{ fontSize:'11px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'4px' }}>
+            Max Distance (km)
+            <input type="number" className="lm-input-sm" value={globalThresholds.maxDistanceKm ?? ''} placeholder="∞" min={0} step={100}
+              style={{ width:'70px' }}
+              onChange={(e) => dispatch(setGlobalThresholds({ maxDistanceKm: e.target.value ? Number(e.target.value) : null }))} />
+          </label>
+        </div>
+      </div>
 
       {/* ── Node graph (interactive topology) ──────────── */}
       {endpoints.length > 0 && (

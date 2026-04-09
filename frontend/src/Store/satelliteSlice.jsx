@@ -248,7 +248,7 @@ const satelliteSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('SET_SATELLITES', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });

@@ -408,7 +408,7 @@ export const downloadAutoSave = async (trajectoryId) => {
 
       if (docSnap.exists()) {
         console.log(`Autosave downloaded successfully for trajectory '${trajectoryId}'`);
-        return docSnap.data().reduxState;
+        return docSnap.data().State;
       } else {
         console.log("No autosave found");
         return null;
@@ -433,7 +433,7 @@ export const downloadIteration = async (trajectoryId, iterationId) => {
 
       if (docSnap.exists()) {
         console.log(`Iteration '${iterationId}' downloaded successfully for trajectory '${trajectoryId}'`);
-        return docSnap.data().reduxState;
+        return docSnap.data().State;
       } else {
         console.log(`No iteration found with id '${iterationId}'`);
         return null;

@@ -29,6 +29,7 @@ const BulkSimControls = ({ compact = false } = {}) => {
   const satellites = useSelector((s) => s.satellites.satellitesConfig) || [];
   const particles = useSelector((s) => s.particles.particles) || [];
   const links = useSelector((s) => s.communication.links) || [];
+  const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
   const groundStations = useSelector((s) => s.groundStations?.groundStations) || [];
   const starttime = useSelector((s) => s.timer.starttime);
 
@@ -73,6 +74,7 @@ const BulkSimControls = ({ compact = false } = {}) => {
       const payload = {
         satellites: satPayloads,
         links,
+        globalThresholds,
         groundStations,
         starttime,
         duration: Number(duration),

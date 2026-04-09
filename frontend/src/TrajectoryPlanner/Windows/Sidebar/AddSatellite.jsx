@@ -575,7 +575,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
                   <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => {
                     const targets = bodyFrame.pointingTargets || [];
                     const newId = targets.length > 0 ? Math.max(...targets.map(t => t.id ?? 0)) + 1 : 0;
-                    setBodyFrame(prev => ({ ...prev, pointingTargets: [...prev.pointingTargets, { id: newId, targetType: 'satellite', targetId: null, conditions: { minElevationDeg: 5 }, priority: targets.length + 1 }] }));
+                    setBodyFrame(prev => ({ ...prev, pointingTargets: [...prev.pointingTargets, { id: newId, targetType: 'satellite', targetId: null, conditions: { maxDistance: 50000 }, priority: targets.length + 1 }] }));
                   }}>Add Target</Button>
                 </div>
                 {bodyFrame.pointingTargets.length === 0 && <Typography variant="caption" sx={{ color:'#9ca3af',display:'block',mb:1 }}>No targets. Falls back to nadir.</Typography>}
@@ -591,25 +591,48 @@ const AddSatellite = ({ editId = null, onClose }) => {
                     </div>
                     <div className='detail-row' style={{ marginBottom:'4px' }}>
                       <label className='detail-label' style={{ fontSize:'12px' }}>Type</label>
-                      <select className='name-input' value={target.targetType} onChange={(e) => { const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,targetType:e.target.value,targetId:null}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
+                      <select className='name-input' value={target.targetType} onChange={(e) => {
+                        const newType=e.target.value;
+                        const newCond=newType==='groundStation'?{minElevationDeg:5}:{maxDistance:50000};
+                        const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,targetType:newType,targetId:null,conditions:newCond}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr}));
+                      }}
                         style={{ padding:'4px 8px',borderRadius:'4px',border:'1px solid #374151',background:'#0f172a',color:'#fff',fontSize:'12px' }}>
                         <option value="satellite">Satellite</option><option value="groundStation">Ground Station</option>
                       </select>
                     </div>
                     <div className='detail-row' style={{ marginBottom:'4px' }}>
                       <label className='detail-label' style={{ fontSize:'12px' }}>Target</label>
-                      <select className='name-input' value={target.targetId??''} onChange={(e) => { const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,targetId:e.target.value?Number(e.target.value):null}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
+                      <select className='name-input' value={target.targetId??''} onChange={(e) => { const raw=e.target.value; const val=raw?(target.targetType==='satellite'?Number(raw):raw):null; const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,targetId:val}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
                         style={{ padding:'4px 8px',borderRadius:'4px',border:'1px solid #374151',background:'#0f172a',color:'#fff',fontSize:'12px' }}>
                         <option value="">— Select —</option>
                         {target.targetType==='satellite' ? satellitesConfig.filter(s=>s.id!==(editing?editId:ID)).map(s=>(<option key={s.id} value={s.id}>{s.name||`Sat ${s.id}`}</option>)) : groundStations.map(gs=>(<option key={gs.id} value={gs.id}>{gs.name||`GS ${gs.id}`}</option>))}
                       </select>
                     </div>
-                    <div className='detail-row' style={{ marginBottom:'0' }}>
-                      <label className='detail-label' style={{ fontSize:'12px' }}>Min Elev (°)</label>
-                      <input type="number" className='name-input' value={target.conditions?.minElevationDeg??5} min={0} max={90} step={1}
-                        onChange={(e) => { const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,conditions:{...t.conditions,minElevationDeg:Number(e.target.value)||0}}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
-                        style={{ width:'70px',padding:'4px 8px',borderRadius:'4px',border:'1px solid #374151',background:'#0f172a',color:'#fff',fontSize:'12px' }} />
-                    </div>
+                    {/* ── Event Conditions ── */}
+                    {target.targetType==='groundStation' && (
+                      <div style={{ display:'flex',gap:'8px',flexWrap:'wrap' }}>
+                        <div className='detail-row' style={{ marginBottom:'0',flex:'1 1 auto' }}>
+                          <label className='detail-label' style={{ fontSize:'12px' }}>Min Elev (°)</label>
+                          <input type="number" className='name-input' value={target.conditions?.minElevationDeg??5} min={0} max={90} step={1}
+                            onChange={(e) => { const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,conditions:{...t.conditions,minElevationDeg:Number(e.target.value)||0}}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
+                            style={{ width:'70px',padding:'4px 8px',borderRadius:'4px',border:'1px solid #374151',background:'#0f172a',color:'#fff',fontSize:'12px' }} />
+                        </div>
+                        <div className='detail-row' style={{ marginBottom:'0',flex:'1 1 auto' }}>
+                          <label className='detail-label' style={{ fontSize:'12px' }}>Max Dist (km)</label>
+                          <input type="number" className='name-input' value={target.conditions?.maxDistance??''} placeholder="∞" min={0} step={100}
+                            onChange={(e) => { const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,conditions:{...t.conditions,maxDistance:e.target.value?Number(e.target.value):null}}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
+                            style={{ width:'90px',padding:'4px 8px',borderRadius:'4px',border:'1px solid #374151',background:'#0f172a',color:'#fff',fontSize:'12px' }} />
+                        </div>
+                      </div>
+                    )}
+                    {target.targetType==='satellite' && (
+                      <div className='detail-row' style={{ marginBottom:'0' }}>
+                        <label className='detail-label' style={{ fontSize:'12px' }}>Max Distance (km)</label>
+                        <input type="number" className='name-input' value={target.conditions?.maxDistance??''} placeholder="∞" min={0} step={100}
+                          onChange={(e) => { const arr=bodyFrame.pointingTargets.map(t=>t.id===target.id?{...t,conditions:{...t.conditions,maxDistance:e.target.value?Number(e.target.value):null}}:t);setBodyFrame(prev=>({...prev,pointingTargets:arr})); }}
+                          style={{ width:'90px',padding:'4px 8px',borderRadius:'4px',border:'1px solid #374151',background:'#0f172a',color:'#fff',fontSize:'12px' }} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -656,26 +679,69 @@ const AddSatellite = ({ editId = null, onClose }) => {
                           <Button size="small" variant="text" onClick={() => {
                             const targets=comp.pointingTargets||[];
                             const newId=targets.length>0?Math.max(...targets.map(t=>t.id??0))+1:0;
-                            const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:[...(c.pointingTargets||[]),{id:newId,targetType:comp.type==='solarPanel'?'sun':'groundStation',targetId:null,conditions:{minElevationDeg:5},priority:targets.length+1}]});
+                            const defType=comp.type==='solarPanel'?'sun':'groundStation';
+                            const defCond=defType==='sun'?{checkSunOcclusion:true}:defType==='groundStation'?{minElevationDeg:5}:{maxDistance:50000};
+                            const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:[...(c.pointingTargets||[]),{id:newId,targetType:defType,targetId:null,conditions:defCond,priority:targets.length+1}]});
                             setBodyFrame(prev=>({...prev,components:arr}));
                           }} sx={{ fontSize:'11px',minWidth:'auto',p:'2px 6px' }}>+ Target</Button>
                         </div>
-                        {(comp.pointingTargets||[]).map(tgt=>(
-                          <div key={tgt.id} style={{ background:'#0f172a',borderRadius:'6px',padding:'6px',marginBottom:'4px',display:'flex',gap:'6px',alignItems:'center',flexWrap:'wrap' }}>
-                            <select value={tgt.targetType} onChange={(e) => { const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:(c.pointingTargets||[]).map(t=>t.id===tgt.id?{...t,targetType:e.target.value,targetId:null}:t)});setBodyFrame(prev=>({...prev,components:arr})); }}
-                              style={{ padding:'2px 4px',borderRadius:'4px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'11px' }}>
-                              <option value="sun">Sun</option><option value="satellite">Satellite</option><option value="groundStation">Ground Station</option>
-                            </select>
-                            {tgt.targetType!=='sun' && (
-                              <select value={tgt.targetId??''} onChange={(e) => { const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:(c.pointingTargets||[]).map(t=>t.id===tgt.id?{...t,targetId:e.target.value?Number(e.target.value):null}:t)});setBodyFrame(prev=>({...prev,components:arr})); }}
-                                style={{ padding:'2px 4px',borderRadius:'4px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'11px',flex:1 }}>
-                                <option value="">— Select —</option>
-                                {tgt.targetType==='satellite' ? satellitesConfig.filter(s=>s.id!==(editing?editId:ID)).map(s=>(<option key={s.id} value={s.id}>{s.name||`Sat ${s.id}`}</option>)) : groundStations.map(gs=>(<option key={gs.id} value={gs.id}>{gs.name||`GS ${gs.id}`}</option>))}
+                        {(comp.pointingTargets||[]).map(tgt=>{
+                          const updateCompTgt=(field,val)=>{ const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:(c.pointingTargets||[]).map(t=>t.id===tgt.id?{...t,...(typeof field==='string'?{[field]:val}:field)}:t)});setBodyFrame(prev=>({...prev,components:arr})); };
+                          const updateCond=(k,v)=>updateCompTgt({conditions:{...(tgt.conditions||{}), [k]:v}});
+                          return (
+                          <div key={tgt.id} style={{ background:'#0f172a',borderRadius:'6px',padding:'6px',marginBottom:'4px' }}>
+                            <div style={{ display:'flex',gap:'6px',alignItems:'center',flexWrap:'wrap' }}>
+                              <select value={tgt.targetType} onChange={(e) => {
+                                const newType=e.target.value;
+                                const newCond=newType==='sun'?{checkSunOcclusion:true}:newType==='groundStation'?{minElevationDeg:5}:{maxDistance:50000};
+                                updateCompTgt({targetType:newType,targetId:null,conditions:newCond});
+                              }}
+                                style={{ padding:'2px 4px',borderRadius:'4px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'11px' }}>
+                                <option value="sun">Sun</option><option value="satellite">Satellite</option><option value="groundStation">Ground Station</option>
                               </select>
-                            )}
-                            <Button size="small" color="error" onClick={() => { const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:(c.pointingTargets||[]).filter(t=>t.id!==tgt.id)});setBodyFrame(prev=>({...prev,components:arr})); }} sx={{ minWidth:'24px',p:'1px' }}>✕</Button>
+                              {tgt.targetType!=='sun' && (
+                                <select value={tgt.targetId??''} onChange={(e) => { const raw=e.target.value; const val=raw?(tgt.targetType==='satellite'?Number(raw):raw):null; updateCompTgt('targetId',val); }}
+                                  style={{ padding:'2px 4px',borderRadius:'4px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'11px',flex:1 }}>
+                                  <option value="">— Select —</option>
+                                  {tgt.targetType==='satellite' ? satellitesConfig.filter(s=>s.id!==(editing?editId:ID)).map(s=>(<option key={s.id} value={s.id}>{s.name||`Sat ${s.id}`}</option>)) : groundStations.map(gs=>(<option key={gs.id} value={gs.id}>{gs.name||`GS ${gs.id}`}</option>))}
+                                </select>
+                              )}
+                              <Button size="small" color="error" onClick={() => { const arr=(bodyFrame.components||[]).map(c=>c.id!==comp.id?c:{...c,pointingTargets:(c.pointingTargets||[]).filter(t=>t.id!==tgt.id)});setBodyFrame(prev=>({...prev,components:arr})); }} sx={{ minWidth:'24px',p:'1px' }}>✕</Button>
+                            </div>
+                            {/* ── Event Conditions ── */}
+                            <div style={{ display:'flex',gap:'6px',alignItems:'center',flexWrap:'wrap',marginTop:'4px' }}>
+                              {tgt.targetType==='sun' && (
+                                <label style={{ fontSize:'10px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'3px',cursor:'pointer' }}>
+                                  <input type="checkbox" checked={tgt.conditions?.checkSunOcclusion!==false} onChange={(e)=>updateCond('checkSunOcclusion',e.target.checked)} style={{ accentColor:'#3b82f6' }} />
+                                  Shadow detect
+                                </label>
+                              )}
+                              {tgt.targetType==='satellite' && (
+                                <label style={{ fontSize:'10px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'3px' }}>
+                                  Max dist (km)
+                                  <input type="number" value={tgt.conditions?.maxDistance??''} placeholder="∞" min={0} step={100}
+                                    onChange={(e)=>updateCond('maxDistance',e.target.value?Number(e.target.value):null)}
+                                    style={{ width:'65px',padding:'1px 4px',borderRadius:'3px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'10px' }} />
+                                </label>
+                              )}
+                              {tgt.targetType==='groundStation' && (<>
+                                <label style={{ fontSize:'10px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'3px' }}>
+                                  Min elev (°)
+                                  <input type="number" value={tgt.conditions?.minElevationDeg??5} min={0} max={90} step={1}
+                                    onChange={(e)=>updateCond('minElevationDeg',Number(e.target.value)||0)}
+                                    style={{ width:'45px',padding:'1px 4px',borderRadius:'3px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'10px' }} />
+                                </label>
+                                <label style={{ fontSize:'10px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'3px' }}>
+                                  Max dist (km)
+                                  <input type="number" value={tgt.conditions?.maxDistance??''} placeholder="∞" min={0} step={100}
+                                    onChange={(e)=>updateCond('maxDistance',e.target.value?Number(e.target.value):null)}
+                                    style={{ width:'65px',padding:'1px 4px',borderRadius:'3px',border:'1px solid #374151',background:'#1a1a2e',color:'#fff',fontSize:'10px' }} />
+                                </label>
+                              </>)}
+                            </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

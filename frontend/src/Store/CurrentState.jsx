@@ -234,7 +234,7 @@ const CurrentState = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('SET_CURRENTSTATE', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });

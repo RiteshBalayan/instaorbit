@@ -267,6 +267,7 @@ router.post('/simulate-bulk', (req, res) => {
     const {
       satellites = [],
       links: linkConfigs = [],
+      globalThresholds = {},
       groundStations = [],
       starttime,
       duration,
@@ -421,7 +422,7 @@ router.post('/simulate-bulk', (req, res) => {
         const stepActivePairIds = [];
 
         for (const cfg of linkConfigs) {
-          const lr = linkLib.computeLinkServer(cfg, satPositionsKm, groundStations, utcMs);
+          const lr = linkLib.computeLinkServer(cfg, satPositionsKm, groundStations, utcMs, globalThresholds);
           if (lr.ready && lr.inLink) {
             const txPos = linkLib.getEndpointPosKm(cfg.txId, satPositionsKm, groundStations, utcMs);
             const rxPos = linkLib.getEndpointPosKm(cfg.rxId, satPositionsKm, groundStations, utcMs);

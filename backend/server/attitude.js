@@ -246,6 +246,26 @@ function checkConditions(target, satPos, targetPos, groundStations, utcMs) {
     if (closest <= EARTH_R) return false;
   }
 
+  // Sun occlusion (Earth shadow) check for sun targets
+  // Uses cylindrical shadow model: if the satellite is behind Earth relative
+  // to the sun direction, the sun is occluded.
+  if (target.targetType === 'sun' && cond.checkSunOcclusion !== false) {
+    const EARTH_R = 6378.137;
+    // Sun direction unit vector (from Earth to sun)
+    const sunDir = transforms.sunDirectionECI(utcMs);
+    // Project satellite position onto sun direction
+    const dot = satPos[0] * sunDir[0] + satPos[1] * sunDir[1] + satPos[2] * sunDir[2];
+    // If satellite is on the anti-sun side of Earth
+    if (dot < 0) {
+      // Perpendicular distance from satellite to sun-Earth line
+      const projX = satPos[0] - dot * sunDir[0];
+      const projY = satPos[1] - dot * sunDir[1];
+      const projZ = satPos[2] - dot * sunDir[2];
+      const perpDist = Math.sqrt(projX * projX + projY * projY + projZ * projZ);
+      if (perpDist < EARTH_R) return false;  // In Earth's shadow
+    }
+  }
+
   return true;
 }
 

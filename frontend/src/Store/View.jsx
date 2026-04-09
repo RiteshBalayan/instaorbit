@@ -117,7 +117,7 @@ const viewSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });

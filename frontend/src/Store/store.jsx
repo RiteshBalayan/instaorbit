@@ -32,7 +32,7 @@ function withSync(sliceKey, reducer) {
 /* Slices that daughter tabs receive from master via broadcast */
 const SYNCED_SLICES = [
   'particles', 'timer', 'CurrentState', 'satellites',
-  'view', 'groundStations', 'communication',
+  'view', 'groundStations', 'communication', 'groups',
 ];
 
 /* Build the reducer map — synced slices get the wrapper on daughter tabs */

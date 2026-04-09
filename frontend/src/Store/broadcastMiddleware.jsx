@@ -54,6 +54,7 @@ export function createBroadcastMiddleware() {
       view:          full.view,
       groundStations: full.groundStations,
       communication: full.communication,
+      groups:        full.groups,
     };
 
     schedulePost(channel, payload);

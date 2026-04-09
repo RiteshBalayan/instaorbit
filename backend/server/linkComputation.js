@@ -75,10 +75,18 @@ function getEndpointPosKm(id, satPositions, groundStations, utcMs) {
  * @param {Object} satPositions  – { [satNumId]: { x, y, z } } ECI km
  * @param {Array}  groundStations
  * @param {number} utcMs         – absolute UTC for this timestep
+ * @param {Object} [globalThresholds] – { minElevationDeg, maxDistanceKm }
  * @returns {Object} – { ready, inLink, rangeKm, snrDb, ... }
  */
-function computeLinkServer(cfg, satPositions, groundStations, utcMs) {
+function computeLinkServer(cfg, satPositions, groundStations, utcMs, globalThresholds) {
+  const globals = globalThresholds || {};
   const p = { ...defaultParams, ...cfg };
+  // Must check cfg (raw) instead of p (merged), because p always has
+  // minElevationDeg=10 from defaultParams and ?? won't skip it.
+  const effectiveMinElev = cfg.minElevationDeg != null ? cfg.minElevationDeg
+    : globals.minElevationDeg != null ? globals.minElevationDeg : 10;
+  const effectiveMaxDistKm = cfg.maxDistanceKm != null ? cfg.maxDistanceKm
+    : globals.maxDistanceKm != null ? globals.maxDistanceKm : null;
   const txPos = getEndpointPosKm(p.txId, satPositions, groundStations, utcMs);
   const rxPos = getEndpointPosKm(p.rxId, satPositions, groundStations, utcMs);
   if (!txPos || !rxPos) return { ready: false, id: cfg.id, txId: p.txId, rxId: p.rxId };
@@ -136,11 +144,16 @@ function computeLinkServer(cfg, satPositions, groundStations, utcMs) {
     const up = cosLat * cosLon * dxg + cosLat * sinLon * dyg + sinLat * dzg;
     const horiz = Math.sqrt(east * east + north * north);
     elevationDeg = Math.atan2(up, horiz) * (180 / Math.PI);
-    inLink = elevationDeg >= (p.minElevationDeg ?? 10);
+    inLink = elevationDeg >= effectiveMinElev;
+  }
+
+  // Max distance check (global + per-link)
+  if (inLink && effectiveMaxDistKm != null && rangeKm > effectiveMaxDistKm) {
+    inLink = false;
   }
 
   // Sat ↔ Sat → Earth occlusion check
-  if (!txIsGround && !rxIsGround) {
+  if (inLink && !txIsGround && !rxIsGround) {
     const vx = rxPos.x - txPos.x;
     const vy = rxPos.y - txPos.y;
     const vz = rxPos.z - txPos.z;

@@ -16,6 +16,7 @@ import { setActiveLinks, updateContactWindows } from '../../../Store/communicati
 import { computeLink, getEndpointPos } from './linkComputation';
 import { SCALE_FACTOR } from '../../../transforms';
 
+
 const LinkEngine = () => {
   const dispatch = useDispatch();
   const links = useSelector((s) => s.communication.links) || [];
@@ -24,6 +25,7 @@ const LinkEngine = () => {
   const particles = useSelector((s) => s.particles?.particles || []);
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
+  const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
   const lastWindowUpdateRef = useRef(0);
 
   // ── Bulk pre-computed data (null when in live mode) ────────
@@ -42,8 +44,8 @@ const LinkEngine = () => {
   // ── LIVE PATH: compute on-the-fly (original behavior) ─────
   // Build the context object that computeLink expects
   const ctx = useMemo(
-    () => ({ currentStates, groundStations, particles, renderTime, starttime }),
-    [currentStates, groundStations, particles, renderTime, starttime],
+    () => ({ currentStates, groundStations, particles, renderTime, starttime, globalThresholds }),
+    [currentStates, groundStations, particles, renderTime, starttime, globalThresholds],
   );
 
   // A key that changes when satellite positions meaningfully change

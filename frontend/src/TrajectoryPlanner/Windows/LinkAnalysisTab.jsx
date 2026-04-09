@@ -300,6 +300,7 @@ const LinkAnalysisTab = () => {
   const contactWindows = useSelector((s) => s.communication.contactWindows) || [];
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
+  const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
 
   // Filter state: '' = all, or an endpoint id
   const [filterEndpoint, setFilterEndpoint] = useState('');
@@ -314,8 +315,8 @@ const LinkAnalysisTab = () => {
 
   // Shared computation context
   const ctx = useMemo(
-    () => ({ currentStates, groundStations, particles, renderTime, starttime }),
-    [currentStates, groundStations, particles, renderTime, starttime],
+    () => ({ currentStates, groundStations, particles, renderTime, starttime, globalThresholds }),
+    [currentStates, groundStations, particles, renderTime, starttime, globalThresholds],
   );
 
   // Position key for memo cache-busting

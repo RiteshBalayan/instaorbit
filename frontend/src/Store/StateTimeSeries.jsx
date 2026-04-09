@@ -53,7 +53,7 @@ const particleSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('SET_PARTICLES', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });

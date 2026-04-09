@@ -170,12 +170,12 @@ const ActionButtons = ({
         <RippleButton 
           onMouseDown={isProjectDisabled ? undefined : handleRipple}
           onClick={isProjectDisabled ? undefined : operations.handleSaveClick}
-          disabled={isProjectDisabled || downloading}
+          disabled={isProjectDisabled || uploading}
           title={!user ? "Login required" : !hasTrajectory ? "No project loaded" : "Save progress to current iteration"}
           aria-label="Save progress to current iteration"
         >
           Save
-          {downloading && <LoadingIndicator />}
+          {uploading && <LoadingIndicator />}
         </RippleButton>
       </Item>
     </>

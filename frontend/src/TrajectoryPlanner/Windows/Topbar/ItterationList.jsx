@@ -44,7 +44,7 @@ const ItterationsList = ({ iterations: propIterations, onLoaded, onClose }) => {
     }
     state.setLoading(true);
     state.setIsRestoring(true);
-    const fields = ['timer', 'particles', 'CurrentState', 'satellites', 'workingProject', 'groundStations', 'communication'];
+    const fields = ['timer', 'particles', 'CurrentState', 'satellites', 'workingProject', 'groundStations', 'communication', 'view', 'groups'];
     
     // Store downloaded workingProject data to extract trajectory name
     let downloadedWorkingProject = null;
@@ -75,6 +75,12 @@ const ItterationsList = ({ iterations: propIterations, onLoaded, onClose }) => {
               break;
             case 'communication':
               dispatch({ type: 'SET_COMMUNICATION', payload: data });
+              break;
+            case 'view':
+              dispatch({ type: 'SET_VIEW', payload: data });
+              break;
+            case 'groups':
+              dispatch({ type: 'SET_GROUPS', payload: data });
               break;
             default:
               break;

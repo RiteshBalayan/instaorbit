@@ -101,7 +101,7 @@ const groundStationSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('SET_GROUNDSTATIONS', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });

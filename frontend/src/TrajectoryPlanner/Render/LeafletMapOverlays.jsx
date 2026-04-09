@@ -298,6 +298,7 @@ const LinkLines = () => {
   const groundStations = useSelector((s) => s.groundStations.groundStations) || [];
   const RenderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
+  const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
 
   // ── Bulk pre-computed data ─────────────────────────────────
   const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
@@ -328,6 +329,7 @@ const LinkLines = () => {
       particles,
       renderTime: RenderTime,
       starttime,
+      globalThresholds,
     };
 
     return savedLinks.map((link) => {
@@ -341,7 +343,7 @@ const LinkLines = () => {
 
       return { id: link.id, positions: [txPos, rxPos], status };
     });
-  }, [savedLinks, RenderTime, starttime, activeLinksAtTime, satById, particleById, gsById, satStates, groundStations, particles]);
+  }, [savedLinks, RenderTime, starttime, activeLinksAtTime, satById, particleById, gsById, satStates, groundStations, particles, globalThresholds]);
 
   return (
     <>

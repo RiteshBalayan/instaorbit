@@ -23,6 +23,12 @@ const initialState = {
   
   // Link configurations (saved link definitions)
   links: [],
+
+  // Global link thresholds (applied to all links unless overridden per-link)
+  globalThresholds: {
+    minElevationDeg: 10,     // Minimum elevation angle for GS links (°)
+    maxDistanceKm: null,     // Maximum link distance (km) — null = no limit
+  },
   
   // ── Coalesced contact windows ──────────────────────────────────
   // Each window: { id, txId, rxId, simStart, simEnd, metrics }
@@ -92,6 +98,11 @@ const communicationSlice = createSlice({
     deleteLink: (state, action) => {
       const id = action.payload;
       state.links = state.links.filter(l => l.id !== id);
+    },
+
+    // Global link thresholds
+    setGlobalThresholds: (state, action) => {
+      state.globalThresholds = { ...(state.globalThresholds || {}), ...action.payload };
     },
     
     // Link history (legacy — no longer appended during live sim)
@@ -290,6 +301,7 @@ export const {
   startHandover,
   completeHandover,
   resetCommunication,
+  setGlobalThresholds,
 } = communicationSlice.actions;
 
 export { defaultLinkParams };
