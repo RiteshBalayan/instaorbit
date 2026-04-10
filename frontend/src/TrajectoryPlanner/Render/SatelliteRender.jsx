@@ -1,15 +1,35 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useDispatch, useSelector } from 'react-redux';
-import { addTracePoint, initializeParticles } from '../../Store/StateTimeSeries';
-import { updateCoordinate } from '../../Store/CurrentState';
-import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, eccentricToTrueAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian, getTLE } from '../Simulation/Functions';
+import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian } from '../Simulation/Functions';
 import { Shape, TubeGeometry } from 'three'; 
 
-import { Sgp4, Satellite as sat } from 'ootk';
-import { PositionPoint, useGLTF } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { computeGMST, computeGMSTFromSim } from '../../transforms';
+import SatelliteBodyModel from './SatelliteBodyModel';
+import useTracePoints from '../../hooks/useTracePoints';
+
+/**
+ * Wrapper that reads component angles from a ref (updated every useFrame)
+ * and only triggers a React re-render when the angles actually change.
+ * This avoids calling setState inside useFrame which causes infinite loops.
+ */
+const SatelliteBodyModelLive = ({ componentAnglesRef, ...props }) => {
+  const [angles, setAngles] = useState({});
+  const prevJsonRef = useRef('{}');
+
+  useFrame(() => {
+    const next = componentAnglesRef.current;
+    const json = JSON.stringify(next);
+    if (json !== prevJsonRef.current) {
+      prevJsonRef.current = json;
+      setAngles(next);
+    }
+  });
+
+  return <SatelliteBodyModel {...props} componentAngles={angles} />;
+};
 
 /**
  * Rotate an ECI scene-unit position [x,y,z] to ECEF by applying Rz(-gmst).
@@ -75,6 +95,33 @@ const OrbitEllipse = ({ elements, color }) => {
   );
 };
 
+function findLastIndexLE(sortedByTimePoints, tSec) {
+  let lo = 0;
+  let hi = sortedByTimePoints.length - 1;
+  let ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedByTimePoints[mid].time <= tSec) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return ans;
+}
+
+function lowerBoundTime(sortedByTimePoints, tSec) {
+  let lo = 0;
+  let hi = sortedByTimePoints.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedByTimePoints[mid].time < tSec) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argumentOfPeriapsis, assendingnode, trueanomly, propagator, time, burns = [], color }) => {
   const satelliteRef = useRef();
   const satelliteGlowRef = useRef();
@@ -82,6 +129,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const tubeRef = useRef();
   const dispatch = useDispatch();
   const particle = useSelector(state => state.particles?.particles?.find?.(p => p.id === particleId));
+  const { combined: tracePointsCombined } = useTracePoints(particleId);
   const RenderTime = useSelector((state) => state.timer.RenderTime);
   const satellitecurrentcoordinate = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId));
 
@@ -90,6 +138,24 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const starttime = useSelector((state) => state.timer.starttime);
   const trackWindow = useSelector((state) => state.view.trackWindow);
   const showOrbit = useSelector((state) => state.view.showOrbit);
+  const showBodyFrameAxes = useSelector((state) => state.view.Axis);
+
+  // Component articulation angles (from trace points) — stored as ref
+  // to avoid setState inside useFrame which causes infinite re-renders.
+  const componentAnglesRef = useRef({});
+
+  const gmstCacheRef = useRef(new Map());
+  const getGmstCached = (utcMs) => {
+    const key = Math.floor(utcMs / 1000);
+    const cache = gmstCacheRef.current;
+    const existing = cache.get(key);
+    if (existing != null) return existing;
+    const gmst = computeGMST(utcMs);
+    cache.set(key, gmst);
+    // Bound cache growth (e.g., long sessions / lots of scrubbing)
+    if (cache.size > 5000) cache.clear();
+    return gmst;
+  };
 
   // Track Horizon: ±1 hour window in seconds
   const TRACK_HORIZON_SEC = 3600;
@@ -108,24 +174,20 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       const isFixed = referenceSystem === 'EarthFixed';
 
       // Update satellite position from tracePoints if available
-      if (satelliteRef.current && particle?.tracePoints?.length > 0) {
-        // Points up to the current playhead — used for satellite position
-        // and as the default track display (full history up to now).
-        let pointsUpToNow = particle.tracePoints.filter(p => p.time <= RenderTime);
-
-        // Track display points: may be narrowed by Track Horizon
-        let filteredPoints = pointsUpToNow;
-        if (trackWindow && pointsUpToNow.length > 0) {
-          const tMin = RenderTime - TRACK_HORIZON_SEC;
-          filteredPoints = pointsUpToNow.filter((p) => p.time >= tMin);
-        }
+      if (satelliteRef.current && tracePointsCombined?.length > 0) {
+        const pts = tracePointsCombined;
+        const idxEnd = findLastIndexLE(pts, RenderTime);
+        const hasAny = idxEnd >= 0;
+        const tMin = RenderTime - TRACK_HORIZON_SEC;
+        const idxStart = trackWindow && hasAny ? lowerBoundTime(pts, tMin) : 0;
+        const filteredPoints = hasAny ? pts.slice(idxStart, idxEnd + 1) : [];
 
         // Satellite position: always the last trace point at or before RenderTime
-        if (pointsUpToNow.length > 0) {
-          const lastPoint = pointsUpToNow[pointsUpToNow.length - 1];
+        if (hasAny) {
+          const lastPoint = pts[idxEnd];
           if (lastPoint && [lastPoint.x, lastPoint.y, lastPoint.z].every(Number.isFinite)) {
             if (isFixed) {
-              const gmst = computeGMST(starttime + lastPoint.time * 1000);
+              const gmst = getGmstCached(starttime + lastPoint.time * 1000);
               const [ex, ey, ez] = eciSceneToEcef(lastPoint.x, lastPoint.y, lastPoint.z, gmst);
               satelliteRef.current.position.set(ex, ey, ez);
             } else {
@@ -143,14 +205,20 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
             traceArray = new Float32Array(filteredPoints.length * 3);
             for (let k = 0; k < filteredPoints.length; k++) {
               const p = filteredPoints[k];
-              const gmst = computeGMST(starttime + p.time * 1000);
+              const gmst = getGmstCached(starttime + p.time * 1000);
               const [ex, ey, ez] = eciSceneToEcef(p.x, p.y, p.z, gmst);
               traceArray[k * 3]     = ex;
               traceArray[k * 3 + 1] = ey;
               traceArray[k * 3 + 2] = ez;
             }
           } else {
-            traceArray = new Float32Array(filteredPoints.flatMap(p => [p.x, p.y, p.z]));
+            traceArray = new Float32Array(filteredPoints.length * 3);
+            for (let k = 0; k < filteredPoints.length; k++) {
+              const p = filteredPoints[k];
+              traceArray[k * 3] = p.x;
+              traceArray[k * 3 + 1] = p.y;
+              traceArray[k * 3 + 2] = p.z;
+            }
           }
           const positionAttribute = lineRef.current.geometry.getAttribute('position');
           
@@ -175,7 +243,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
           const tubePoints = filteredPoints
             .map(p => {
               if (isFixed) {
-                const gmst = computeGMST(starttime + p.time * 1000);
+                const gmst = getGmstCached(starttime + p.time * 1000);
                 const [ex, ey, ez] = eciSceneToEcef(p.x, p.y, p.z, gmst);
                 return new THREE.Vector3(ex, ey, ez);
               }
@@ -221,62 +289,63 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       // Update previous RenderTime
       prevRenderTime.current = RenderTime;
     }
-  }, [RenderTime, particleId, particle, satellitecurrentcoordinate, satelliteconfig, referenceSystem, starttime, trackWindow, showOrbit]);
+  }, [RenderTime, particleId, particle, tracePointsCombined, satellitecurrentcoordinate, satelliteconfig, referenceSystem, starttime, trackWindow, showOrbit]);
 
   const ellipseRef = useRef();
   const satellitepreviewRef = useRef();
 
-  //Preview of Orbit (visible when satelite parameters are being added)
-  // To be added - (A button to show preview at any instance)
+  //Preview of Orbit and Satellite position (visible when satellite parameters are being added)
   useEffect(() => {
-    if (ellipseRef.current && satellitepreviewRef.current && satelliteconfig) {
-      // Quick Preview of ellipse for current parameter
-      const shape = new Shape();
-      const SM = semimajoraxis/3185.5;
-      const semiminoraxis = SM * Math.sqrt(1 - eccentricity ** 2);
-      const c = Math.sqrt(SM ** 2 - semiminoraxis ** 2);
-      shape.absellipse(-c, 0, SM, semiminoraxis, 0, Math.PI * 2, false, 0);
+    if (!satelliteconfig?.preview) return;
 
-      const points = shape.getPoints(100);
-      const rotatedPoints = points.map(point => {
-        return applyZ_X_Z_Rotation([point.x, point.y, 0], assendingnode, inclination, argumentOfPeriapsis);
-      });
+    // Compute satellite position from current orbital elements
+    let eccentricanomly = trueToEccentricAnomaly(trueanomly, eccentricity);
+    let meananomly = eccentricToMeanAnomaly(eccentricanomly, eccentricity);
 
-      const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
-      ellipseRef.current.geometry = geometry;
+    const elements = {
+      a: semimajoraxis,
+      e: eccentricity,
+      M: meananomly,
+      Ω: assendingnode,
+      ω: argumentOfPeriapsis,
+      i: inclination,
+    };
+    const [position] = keplerianToCartesian(elements);
+    const preX = position[0] / 3185.5;
+    const preY = position[1] / 3185.5;
+    const preZ = position[2] / 3185.5;
 
-      //Preview of Satellite
-      //Orbit Parameters
-        //Conversion of units 
-      //closestapproch /= 3185.5;//As render earth radius is 2 Unit in render so convert km to unit
-      //const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
-      //const t = RenderTime
-      //const timeperiod = 2*Math.PI*Math.sqrt((semimajoraxis**3)/mu);
-      //const perigeetoanomlytime = (trueanomly / ( 2*(Math.PI) ) )*timeperiod
-      //const firstperigeetime = perigeetoanomlytime - timeperiod
-      //const timesinceperigee = (0 + firstperigeetime) % timeperiod
-      //const meananomly = (2*Math.PI*timesinceperigee )/timeperiod
-      let eccentricanomly = trueToEccentricAnomaly(trueanomly, eccentricity);
-      let meananomly = eccentricToMeanAnomaly(eccentricanomly, eccentricity);
+    // Update preview satellite position (may need a frame for ref to mount)
+    const updateRefs = () => {
+      if (satellitepreviewRef.current) {
+        satellitepreviewRef.current.position.set(preX, preY, preZ);
+      }
 
-      const elements = {
-        a: semimajoraxis, // Semi-major axis in km
-        e: eccentricity, // Eccentricity
-        M: meananomly, // Mean anomaly in radians
-        Ω: assendingnode, // Longitude of ascending node in degrees
-        ω: argumentOfPeriapsis, // Argument of periapsis in degrees
-        i: inclination // Inclination in degrees
-        };
-      const [position, velocity] = keplerianToCartesian(elements);
-      let preX, preY, preZ;
-      [preX, preY, preZ] = position;
-      preX /= 3185.5;
-      preY /= 3185.5;
-      preZ /= 3185.5;
+      // Update preview ellipse geometry
+      if (ellipseRef.current) {
+        const shape = new Shape();
+        const SM = semimajoraxis / 3185.5;
+        const semiminoraxis = SM * Math.sqrt(1 - eccentricity ** 2);
+        const c = Math.sqrt(SM ** 2 - semiminoraxis ** 2);
+        shape.absellipse(-c, 0, SM, semiminoraxis, 0, Math.PI * 2, false, 0);
 
-      satellitepreviewRef.current.position.set(preX, preY, preZ);
+        const pts = shape.getPoints(100);
+        const rotatedPoints = pts.map(point =>
+          applyZ_X_Z_Rotation([point.x, point.y, 0], assendingnode, inclination, argumentOfPeriapsis)
+        );
 
-    }
+        const geometry = new THREE.BufferGeometry().setFromPoints(
+          rotatedPoints.map(p => new THREE.Vector3(p[0], p[1], p[2]))
+        );
+        if (ellipseRef.current.geometry) ellipseRef.current.geometry.dispose();
+        ellipseRef.current.geometry = geometry;
+      }
+    };
+
+    // Run immediately, and also after a frame to catch newly-mounted refs
+    updateRefs();
+    const rafId = requestAnimationFrame(updateRefs);
+    return () => cancelAnimationFrame(rafId);
   }, [semimajoraxis, eccentricity, assendingnode, inclination, argumentOfPeriapsis, trueanomly, satelliteconfig]);
 
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
@@ -369,9 +438,13 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   const satelliteModel = gltfResult?.scene || null;
   const modelRef = useRef();
 
+  // Get body shape from satellite config (default to 'rectangle')
+  const bodyShape = satelliteconfig?.bodyFrame?.bodyShape || 'rectangle';
+
   // Clone the model to avoid sharing geometry and make it brighter
+  // (GLTF model is used as fallback when bodyShape is not set)
   useEffect(() => {
-    if (satelliteModel && modelRef.current) {
+    if (satelliteModel && modelRef.current && !satelliteconfig?.bodyFrame) {
       const clonedModel = satelliteModel.clone();
       clonedModel.scale.set(0.05, 0.05, 0.05); // Scale down the model
       clonedModel.traverse((child) => {
@@ -411,22 +484,30 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
     if (satelliteRef.current) {
       let px, py, pz;
       let found = false;
+      let attitudeQ = null; // [qx, qy, qz, qw] from trace or live state
+      let gmstUsed = 0;     // GMST used for ECI→ECEF position conversion
 
       // 1) Primary: derive position from the trace point at RenderTime
-      if (particle?.tracePoints?.length) {
-        const pts = particle.tracePoints;
-        // Find last trace point with time <= RenderTime (reverse scan)
-        let best = null;
-        for (let i = pts.length - 1; i >= 0; i--) {
-          if (pts[i].time <= RenderTime) { best = pts[i]; break; }
-        }
+      if (tracePointsCombined?.length) {
+        const pts = tracePointsCombined;
+        const idx = findLastIndexLE(pts, RenderTime);
+        const best = idx >= 0 ? pts[idx] : null;
         if (best && [best.x, best.y, best.z].every(Number.isFinite)) {
           px = best.x; py = best.y; pz = best.z;
           if (isFixed) {
-            const gmst = computeGMST(starttime + best.time * 1000);
+            const gmst = getGmstCached(starttime + best.time * 1000);
+            gmstUsed = gmst;
             [px, py, pz] = eciSceneToEcef(best.x, best.y, best.z, gmst);
           }
           found = true;
+          // Read attitude from trace point if available
+          if (best.qx != null && best.qw != null) {
+            attitudeQ = [best.qx, best.qy, best.qz, best.qw];
+          }
+          // Read component angles from trace point if available
+          if (best.componentAngles) {
+            componentAnglesRef.current = best.componentAngles;
+          }
         }
       }
 
@@ -437,10 +518,16 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
           px = coords.x; py = coords.y; pz = coords.z;
           if (isFixed) {
             const gmst = computeGMSTFromSim(starttime, RenderTime);
+            gmstUsed = gmst;
             [px, py, pz] = eciSceneToEcef(coords.x, coords.y, coords.z, gmst);
           }
           found = true;
         }
+      }
+
+      // Read live attitude from CurrentState if not from trace
+      if (!attitudeQ && satellitecurrentcoordinate?.attitude?.quaternion) {
+        attitudeQ = satellitecurrentcoordinate.attitude.quaternion;
       }
 
       if (found) {
@@ -450,7 +537,26 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         }
         if (modelRef.current) {
           modelRef.current.position.set(px, py, pz);
-          modelRef.current.rotation.y += 0.01;
+
+          // Apply attitude quaternion in the scene frame
+          if (attitudeQ) {
+            const targetQ = new THREE.Quaternion(attitudeQ[0], attitudeQ[1], attitudeQ[2], attitudeQ[3]);
+
+            // In EarthFixed mode, convert q_Body→ECI to q_Body→ECEF
+            // using the same GMST that was used for position conversion
+            if (isFixed) {
+              const qECI2ECEF = new THREE.Quaternion().setFromAxisAngle(
+                new THREE.Vector3(0, 0, 1), -gmstUsed,
+              );
+              targetQ.premultiply(qECI2ECEF);
+            }
+
+            // Set quaternion directly — no SLERP smoothing.
+            // SLERP caused visible drift at higher sim speeds because the
+            // per-frame 15% convergence rate could never keep up with
+            // rapidly changing trace-point targets.
+            modelRef.current.quaternion.copy(targetQ);
+          }
         }
       } else {
         satelliteRef.current.position.set(0, 0, 0);
@@ -491,9 +597,24 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   
   return (
     <>
-      {/* Satellite GLTF model */}
-      {satelliteModel && (
-        <group ref={modelRef} renderOrder={1000} />
+      {/* Satellite body model (configurable shape) — used when bodyFrame is configured */}
+      {satelliteconfig?.bodyFrame ? (
+        <group ref={modelRef} renderOrder={1000}>
+          <SatelliteBodyModelLive
+            shape={bodyShape}
+            color={satColor}
+            showAxes={showBodyFrameAxes}
+            components={satelliteconfig?.bodyFrame?.components || []}
+            componentAnglesRef={componentAnglesRef}
+          />
+        </group>
+      ) : (
+        <>
+          {/* Satellite GLTF model (legacy) */}
+          {satelliteModel && (
+            <group ref={modelRef} renderOrder={1000} />
+          )}
+        </>
       )}
       
       {/* Fallback satellite mesh - properly occludes behind Earth */}
@@ -521,7 +642,7 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       </mesh>
 
       {/* Orbit trail line - only render if tracePoints exist */}
-      {particle?.tracePoints?.length ? (
+      {tracePointsCombined?.length ? (
         <line ref={lineRef} renderOrder={100}>
           <bufferGeometry />
           <lineBasicMaterial 
@@ -541,31 +662,46 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
       </mesh>
       )}
 
-      {satelliteconfig?.preview && ellipseRef.current && (
+      {satelliteconfig?.preview && (
         <line ref={ellipseRef} >
           <lineBasicMaterial color="#ff6b6b" linewidth={2} transparent opacity={0.8} />
         </line>
       )}
       
-      {/* Orbit ellipse: shown only in EarthInertial AND when showOrbit is on */}
-      {showOrbit && referenceSystem === 'EarthInertial' && (orbitalelements?.elements?.a || semimajoraxis) && (
+      {/* Orbit ellipse: shown only in EarthInertial AND when showOrbit is on.
+          Hidden when satellite is in preview mode (preview has its own ellipse). */}
+      {!satelliteconfig?.preview && showOrbit && referenceSystem === 'EarthInertial' && (orbitalelements?.elements?.a || semimajoraxis) && (
         <OrbitEllipse 
           elements={orbitalelements?.elements || {
             a: semimajoraxis,
             e: eccentricity,
-            i: inclination, // Already in radians from conversion above
-            Ω: assendingnode, // Already in radians from conversion above
-            ω: argumentOfPeriapsis // Already in radians from conversion above
+            i: inclination,
+            Ω: assendingnode,
+            ω: argumentOfPeriapsis
           }}
           color={color}
         />
       )}
 
       {satelliteconfig?.preview &&      
-      <mesh ref={satellitepreviewRef}>
-        <sphereGeometry args={[0.05, 4, 4]} />
-        <meshStandardMaterial color="red" />
-      </mesh>}
+      <group ref={satellitepreviewRef}>
+        {/* Live preview body model — shows configured shape, components, etc. */}
+        {satelliteconfig?.bodyFrame ? (
+          <SatelliteBodyModel
+            shape={satelliteconfig.bodyFrame.bodyShape || 'rectangle'}
+            color="#ff6b6b"
+            showAxes={true}
+            components={satelliteconfig.bodyFrame.components || []}
+            componentAngles={{}}
+            emissive
+          />
+        ) : (
+          <mesh>
+            <sphereGeometry args={[0.05, 4, 4]} />
+            <meshStandardMaterial color="red" />
+          </mesh>
+        )}
+      </group>}
 
       {/* Burn preview orbit only in EarthInertial */}
       {referenceSystem === 'EarthInertial' && previewBurn && burnlineRef.current?.geometry?.attributes?.position ? (

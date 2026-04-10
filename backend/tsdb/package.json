@@ -1,0 +1,18 @@
+{
+  "name": "instaorbit-tsdb",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Time-series database microservice for InstaOrbit simulation data",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "uuid": "^10.0.0",
+    "ws": "^8.18.0"
+  }
+}

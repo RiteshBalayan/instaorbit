@@ -1,0 +1,612 @@
+/* ═══════════════════════════════════════════════════════════════ */
+/*  LinkManager — clean dark-theme sidebar panel                 */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.lm-root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #374151;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.lm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.lm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lm-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.lm-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.lm-badge-active {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.lm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.lm-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lm-btn-primary {
+  background: #3b82f6;
+  color: #fff;
+}
+.lm-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.lm-btn-ghost {
+  background: transparent;
+  color: #6b7280;
+  padding: 3px 6px;
+}
+.lm-btn-ghost:hover {
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+.lm-btn-sm {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.lm-btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+  color: #9ca3af;
+}
+.lm-btn-icon:hover {
+  background: #f3f4f6;
+}
+.lm-btn-danger {
+  color: #f87171;
+}
+.lm-btn-danger:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+/* ── Quick-add ─────────────────────────────────────────────── */
+.lm-quick-add {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lm-qa-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: #1f2937;
+}
+
+.lm-qa-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lm-qa-arrow {
+  color: #9ca3af;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.lm-select {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #374151;
+  padding: 5px 6px;
+  font-size: 11px;
+  outline: none;
+}
+.lm-select:focus {
+  border-color: #3b82f6;
+}
+.lm-select option {
+  background: #fff;
+  color: #374151;
+}
+
+.lm-qa-warn {
+  color: #fbbf24;
+  font-size: 11px;
+}
+
+.lm-qa-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+.lm-empty {
+  text-align: center;
+  padding: 16px 8px;
+  color: #9ca3af;
+  font-size: 11px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+}
+
+/* ── Status dot ────────────────────────────────────────────── */
+.lm-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.lm-status-active {
+  background: #4ade80;
+  box-shadow: 0 0 4px rgba(74, 222, 128, 0.5);
+}
+.lm-status-inactive {
+  background: #f87171;
+}
+.lm-status-waiting {
+  background: #6b7280;
+}
+
+/* ── Link list ─────────────────────────────────────────────── */
+.lm-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Link row ──────────────────────────────────────────────── */
+.lm-link-row {
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #f9fafb;
+  transition: border-color 0.15s;
+}
+.lm-link-row:hover {
+  border-color: #d1d5db;
+}
+.lm-link-expanded {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.lm-link-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  cursor: pointer;
+  user-select: none;
+  gap: 6px;
+}
+
+.lm-link-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lm-link-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lm-link-arrow {
+  color: #9ca3af;
+  margin: 0 3px;
+}
+
+.lm-link-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.lm-link-quick-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.lm-qs-val {
+  white-space: nowrap;
+}
+
+/* ── Expanded detail ───────────────────────────────────────── */
+.lm-link-detail {
+  padding: 4px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.lm-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.lm-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 6px;
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.lm-metric-label {
+  font-size: 9.5px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.lm-metric-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.lm-good { color: #4ade80 !important; }
+.lm-bad  { color: #f87171 !important; }
+
+.lm-waiting {
+  color: #9ca3af;
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* ── Advanced params ───────────────────────────────────────── */
+.lm-advanced {
+  padding: 6px 0 0;
+}
+
+.lm-adv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+
+.lm-adv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.lm-input-sm {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  color: #374151;
+  padding: 3px 5px;
+  font-size: 11px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+.lm-input-sm:focus {
+  border-color: #3b82f6;
+}
+/* Remove spinner arrows */
+.lm-input-sm::-webkit-inner-spin-button,
+.lm-input-sm::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.lm-input-sm[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Contact history table ─────────────────────────────────── */
+.lm-history {
+  padding-top: 4px;
+}
+
+.lm-history-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 4px;
+}
+
+.lm-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.lm-history-table th {
+  color: #9ca3af;
+  text-align: left;
+  padding: 3px 4px;
+  font-weight: 500;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.lm-history-table td {
+  padding: 3px 4px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════ */
+/*  Node Graph — Radial Star Layout                              */
+/* ══════════════════════════════════════════════════════════════ */
+
+.lm-nodegraph-wrap {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lm-nodegraph-svg {
+  display: block;
+}
+
+/* ── SVG node pills (shared: center + outer) ─────────────── */
+.lm-node-rect {
+  transition: fill 0.2s, stroke 0.2s, filter 0.2s;
+}
+.lm-node-sat {
+  fill: rgba(56, 189, 248, 0.1);
+  stroke: #38bdf8;
+  stroke-width: 1.2;
+}
+.lm-node-gs {
+  fill: rgba(245, 158, 11, 0.1);
+  stroke: #f59e0b;
+  stroke-width: 1.2;
+}
+.lm-node-sat:hover { fill: rgba(56, 189, 248, 0.25); }
+.lm-node-gs:hover  { fill: rgba(245, 158, 11, 0.25); }
+
+/* Center node glow */
+.lm-node-center {
+  stroke-width: 2;
+}
+.lm-node-sat.lm-node-center {
+  fill: rgba(56, 189, 248, 0.15);
+  stroke: #38bdf8;
+}
+.lm-node-gs.lm-node-center {
+  fill: rgba(245, 158, 11, 0.15);
+  stroke: #f59e0b;
+}
+
+/* Outer node with active link */
+.lm-node-linked {
+  stroke-width: 1.6;
+}
+
+/* Node text */
+.lm-node-label {
+  fill: #374151;
+  font-size: 7.5px;
+  font-weight: 500;
+  pointer-events: none;
+  user-select: none;
+}
+.lm-center-label {
+  font-size: 8px;
+  font-weight: 700;
+  fill: #1f2937;
+}
+.lm-node-icon {
+  font-size: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Curves ──────────────────────────────────────────────── */
+.lm-curve {
+  transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
+}
+.lm-curve:hover {
+  stroke-width: 3.5 !important;
+  opacity: 1;
+}
+.lm-curve-glow {
+  pointer-events: none;
+  animation: lm-glow-pulse 2.5s ease-in-out infinite;
+}
+@keyframes lm-glow-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.55; }
+}
+.lm-curve-label {
+  font-size: 7px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* "+" dot on unconnected curves */
+.lm-add-dot {
+  cursor: pointer;
+  transition: fill 0.15s, r 0.15s;
+}
+.lm-add-dot:hover {
+  fill: rgba(59, 130, 246, 0.8);
+}
+
+/* ── Action bar ──────────────────────────────────────────── */
+.lm-ng-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-top: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+.lm-ng-sel-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lm-ng-count {
+  margin-left: 6px;
+  font-size: 9.5px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.lm-btn-danger-solid {
+  background: rgba(239, 68, 68, 0.8);
+  color: #fff;
+}
+.lm-btn-danger-solid:hover:not(:disabled) {
+  background: #ef4444;
+}
+
+/* ── Default view: pill grid ─────────────────────────────── */
+.lm-ng-default-hint {
+  text-align: center;
+  font-size: 9.5px;
+  color: #9ca3af;
+  padding: 6px 0 2px;
+  font-style: italic;
+}
+.lm-ng-grid {
+  display: flex;
+  gap: 10px;
+  padding: 6px 10px 10px;
+}
+.lm-ng-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lm-ng-col-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+/* Endpoint pills (default grid) */
+.lm-ng-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  text-align: left;
+  color: #374151;
+  font-family: inherit;
+  font-size: 11px;
+}
+.lm-ng-pill:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+.lm-ng-pill:active {
+  transform: translateY(0);
+}
+
+.lm-ng-pill-sat { border-color: #bae6fd; }
+.lm-ng-pill-sat:hover { border-color: #38bdf8; background: #f0f9ff; }
+.lm-ng-pill-gs  { border-color: #fde68a; }
+.lm-ng-pill-gs:hover  { border-color: #f59e0b; background: #fffbeb; }
+
+.lm-ng-pill-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.lm-ng-pill-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.lm-ng-pill-count {
+  font-size: 9px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.lm-ng-pill-count .lm-good {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+/* ── Emoji icon sizing ─────────────────────────────────────── */
+.lm-icon-emoji {
+  font-size: 13px;
+  line-height: 1;
+}

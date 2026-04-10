@@ -16,6 +16,7 @@ const UtilityControl = () => {
     setTrackWindow,
     setShowOrbit,
     setShowLinkLines,
+    setShowBodyFrameAxes,
   } = useSidebarActions();
 
   const handleReferenceToggle = useCallback(() => {
@@ -34,6 +35,7 @@ const UtilityControl = () => {
   const overlayItems = [
     { key: 'Grid', label: 'Grid', checked: view.Grid, onChange: setGrid },
     { key: 'Axis', label: 'Axis', checked: view.Axis, onChange: setAxis },
+    { key: 'BodyFrameAxes', label: 'Body Frame Axes', checked: view.showBodyFrameAxes !== false, onChange: setShowBodyFrameAxes },
   ];
 
   return (

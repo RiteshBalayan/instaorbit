@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import '../../Styles/simulator/GlobeAndTimer.css';
 import Globe from './Globe';
-import Timer from './Timer';
+import AnalysisBar from './AnalysisBar';
 
 const GlobeAndTimer = () => {
   const [topHeight, setTopHeight] = useState(75);
@@ -29,7 +29,7 @@ const GlobeAndTimer = () => {
         }}
       />
       <div className="Timer-panel" style={{ height: `${100 - topHeight}%` }}>
-        <Timer />
+        <AnalysisBar />
       </div>
     </div>
   );

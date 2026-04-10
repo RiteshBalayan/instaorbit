@@ -106,7 +106,8 @@ const CurrentState = createSlice({
         velocity, 
         kineticEnergy, 
         potentialEnergy, 
-        totalEnergy 
+        totalEnergy,
+        attitude,
       } = action.payload;
       
       const existingIndex = state.satelite.findIndex(p => p.id === id);
@@ -125,6 +126,7 @@ const CurrentState = createSlice({
           kineticEnergy: kineticEnergy !== undefined ? kineticEnergy : state.satelite[existingIndex].kineticEnergy,
           potentialEnergy: potentialEnergy !== undefined ? potentialEnergy : state.satelite[existingIndex].potentialEnergy,
           totalEnergy: totalEnergy !== undefined ? totalEnergy : state.satelite[existingIndex].totalEnergy,
+          attitude: attitude !== undefined ? attitude : state.satelite[existingIndex].attitude,
           // Derived values
           ...derived,
           lastUpdate: Date.now(),
@@ -140,6 +142,7 @@ const CurrentState = createSlice({
           kineticEnergy,
           potentialEnergy,
           totalEnergy,
+          attitude: attitude || { quaternion: [0, 0, 0, 1], pointingTarget: null, isSlewing: false, slewProgress: 0 },
           // Derived values
           ...derived,
           lastUpdate: Date.now(),
@@ -168,12 +171,22 @@ const CurrentState = createSlice({
         sat.lastUpdate = Date.now();
       }
     },
+
+    // Update attitude (quaternion + pointing target) for a satellite
+    updateAttitude: (state, action) => {
+      const { id, attitude } = action.payload;
+      const sat = state.satelite.find(s => s.id === id);
+      if (sat) {
+        sat.attitude = { ...(sat.attitude || {}), ...attitude };
+        sat.lastUpdate = Date.now();
+      }
+    },
     
     // Batch update multiple satellites
     updateMultipleCoordinates: (state, action) => {
       const updates = action.payload; // Array of { id, coordinates, elements, ... }
       updates.forEach(update => {
-        const { id, coordinates, elements, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy } = update;
+        const { id, coordinates, elements, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, attitude } = update;
         const existingIndex = state.satelite.findIndex(p => p.id === id);
         const derived = calculateDerivedValues(coordinates, velocity, elements);
         
@@ -187,6 +200,7 @@ const CurrentState = createSlice({
             kineticEnergy: kineticEnergy !== undefined ? kineticEnergy : state.satelite[existingIndex].kineticEnergy,
             potentialEnergy: potentialEnergy !== undefined ? potentialEnergy : state.satelite[existingIndex].potentialEnergy,
             totalEnergy: totalEnergy !== undefined ? totalEnergy : state.satelite[existingIndex].totalEnergy,
+            attitude: attitude !== undefined ? attitude : state.satelite[existingIndex].attitude,
             ...derived,
             lastUpdate: Date.now(),
           };
@@ -200,6 +214,7 @@ const CurrentState = createSlice({
             kineticEnergy,
             potentialEnergy,
             totalEnergy,
+            attitude: attitude || { quaternion: [0, 0, 0, 1], pointingTarget: null, isSlewing: false, slewProgress: 0 },
             ...derived,
             lastUpdate: Date.now(),
           });
@@ -219,7 +234,7 @@ const CurrentState = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('SET_CURRENTSTATE', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });
@@ -229,6 +244,7 @@ export const {
   deleteState,
   updateEclipseState,
   updateSubSatellitePoint,
+  updateAttitude,
   updateMultipleCoordinates,
   clearAllStates,
 } = CurrentState.actions;

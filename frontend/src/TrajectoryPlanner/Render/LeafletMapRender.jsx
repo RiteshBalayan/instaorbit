@@ -5,15 +5,35 @@
  * Satellite overlays are rendered via <LeafletMapOverlays />.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MapContainer, TileLayer, AttributionControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../Styles/simulator/LeafletMap.css';
 import LeafletMapOverlays from './LeafletMapOverlays';
 
 const LeafletMapRender = () => {
+  const [showLegend, setShowLegend] = useState(true);
   return (
-    <div className="leaflet-map-wrapper">
+    <div className="leaflet-map-wrapper" style={{ position: 'relative' }}>
+      <button
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          left: 10,
+          zIndex: 1100,
+          background: 'rgba(30, 41, 59, 0.92)',
+          color: '#fff',
+          border: '1px solid #334155',
+          borderRadius: 6,
+          padding: '4px 10px',
+          fontSize: 12,
+          cursor: 'pointer',
+          outline: 'none',
+        }}
+        onClick={() => setShowLegend((v) => !v)}
+      >
+        {showLegend ? 'Hide Legend' : 'Show Legend'}
+      </button>
       <MapContainer
         center={[20, 0]}
         zoom={2}
@@ -35,7 +55,7 @@ const LeafletMapRender = () => {
         <AttributionControl position="bottomright" prefix={false} />
 
         {/* Satellite markers, ground tracks, sub-solar point */}
-        <LeafletMapOverlays />
+        <LeafletMapOverlays showLegend={showLegend} />
       </MapContainer>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import {  useSelector } from 'react-redux';
 import * as THREE from 'three';
+import useTracePoints from '../../hooks/useTracePoints';
 
 const Map = ({  particleId }) => {
 
@@ -8,6 +9,7 @@ const Map = ({  particleId }) => {
   const Satelite = useSelector(state => state.CurrentState.satelite.find(p => p.id === particleId));
   //For Trajectory
   const particle = useSelector(state => state.particles.particles.find(p => p.id === particleId));
+  const { combined: tracePoints } = useTracePoints(particleId);
   const elapsedTime = useSelector((state) => state.timer.elapsedTime);
   const starttime = useSelector((state) => state.timer.starttime)
 
@@ -46,7 +48,7 @@ const Map = ({  particleId }) => {
   }
   
   if (pointsRef.current) {
-    const newTracePoints = particle.tracePoints.flatMap(p => {
+    const newTracePoints = tracePoints.flatMap(p => {
       const x = p.mapX;
       const y = p.mapY;
       const z = (y > 1 || y < -1) ? - 1 : 1;
@@ -74,8 +76,8 @@ const Map = ({  particleId }) => {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            array={new Float32Array(particle ? particle.tracePoints.flatMap(p => [p.x, p.y, p.z]) : [])}
-            count={particle ? particle.tracePoints.length : 0}
+            array={new Float32Array(tracePoints.length ? tracePoints.flatMap(p => [p.x, p.y, p.z]) : [])}
+            count={tracePoints.length}
             itemSize={3}
           />
         </bufferGeometry>

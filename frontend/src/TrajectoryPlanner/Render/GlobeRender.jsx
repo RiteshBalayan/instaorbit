@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { PerspectiveCamera } from '@react-three/drei';
@@ -7,11 +7,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import StackSatellites from './StackSatellites';
 import VonAllenBelt from './VonAllenBelt';
 import { useLoader } from '@react-three/fiber';
-import SimuStackSatellites from '../Simulation/StackSimulator';
+// SimuStackSatellites moved to Globe.jsx (outside Canvas) so it runs in all view modes
 import { toggleCentralObject } from '../../Store/View';
 import { Line } from '@react-three/drei';
 import GroundStationRender from './GroundStationRender';
 import { computeGMSTFromSim, sunDirectionECIFromSim } from '../../transforms';
+import EarthMaterial from './EarthMaterial';
 
 // Vertex Shader for Glow
 const vertexShader = `
@@ -60,6 +61,7 @@ const GlobeRender = () => {
     const lightRef = useRef();
     const sunRef = useRef();
     const haloRef = useRef();
+    const sunDirRef = useRef([1, 0, 0]);  // sun direction for Earth shader
     const texture = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
     const nightTexture = useLoader(THREE.TextureLoader, '/8081_earthlights10k.jpg');
     const cloudsTexture = useLoader(THREE.TextureLoader, '/earthcloudmap.jpg');
@@ -72,8 +74,18 @@ const GlobeRender = () => {
     const activeLinks = useSelector((state) => state.communication.activeLinks);
     const showLinkLines = useSelector((state) => state.view.showLinkLines !== false);
 
-    // Get sun direction initial condition
-    // (no longer needed for phase; sun position is computed astronomically)
+    // Enhance textures
+    const { gl } = useThree();
+    useMemo(() => {
+      const maxAniso = gl.capabilities.getMaxAnisotropy();
+      [texture, nightTexture, cloudsTexture].forEach(tex => {
+        tex.anisotropy = maxAniso;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = true;
+        tex.needsUpdate = true;
+      });
+    }, [texture, nightTexture, cloudsTexture, gl]);
 
     const { clock } = useThree();
 
@@ -82,12 +94,8 @@ const GlobeRender = () => {
             // Use GMST for astronomically correct Earth rotation
             const gmst = computeGMSTFromSim(starttime, elapsedTime);
             if (referenceSystem === 'EarthInertial') {
-                // EarthInertial: Non-rotating reference frame
-                // Earth mesh rotates by GMST to show day/night cycle
                 earthRef.current.rotation.y = gmst;
             } else {
-                // EarthFixed: Rotating reference frame (rotates with Earth)
-                // Earth mesh appears stationary because frame rotates with it
                 earthRef.current.rotation.y = 0;
             }
         }
@@ -97,7 +105,6 @@ const GlobeRender = () => {
             const sunRadius = 5;
             
             if (referenceSystem === 'EarthInertial') {
-                // In ECI: sun direction is used directly (sun barely moves ~1°/day)
                 lightRef.current.position.set(
                     sunDir[0] * sunRadius,
                     sunDir[1] * sunRadius,
@@ -113,8 +120,9 @@ const GlobeRender = () => {
                     sunDir[1] * sunRadius * 100,
                     sunDir[2] * sunRadius * 100
                 );
+                // Sun direction in world space (ECI → world, same thing)
+                sunDirRef.current = [sunDir[0], sunDir[1], sunDir[2]];
             } else {
-                // In EarthFixed: rotate sun ECI direction by −GMST to get apparent position
                 const gmst = computeGMSTFromSim(starttime, elapsedTime);
                 const c = Math.cos(-gmst);
                 const s = Math.sin(-gmst);
@@ -124,6 +132,8 @@ const GlobeRender = () => {
                 lightRef.current.position.set(sx * sunRadius, sy * sunRadius, sz * sunRadius);
                 sunRef.current.position.set(sx * sunRadius * 100, sy * sunRadius * 100, sz * sunRadius * 100);
                 haloRef.current.position.set(sx * sunRadius * 100, sy * sunRadius * 100, sz * sunRadius * 100);
+                // Sun direction in world space (ECEF frame)
+                sunDirRef.current = [sx, sy, sz];
             }
         }
     });
@@ -196,17 +206,26 @@ const GlobeRender = () => {
 
             { !view.HDEarth &&
                 <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
-                    <sphereGeometry args={[2, 32, 32]} />
-                    <meshStandardMaterial map={texture} />
+                    <sphereGeometry args={[2, 64, 64]} />
+                    <EarthMaterial
+                      dayMap={texture}
+                      nightMap={nightTexture}
+                      cloudsMap={cloudsTexture}
+                      sunDirection={sunDirRef.current}
+                      cloudsOpacity={0.0}
+                    />
                 </mesh>
             }
             { view.HDEarth &&     
             <mesh ref={earthRef} rotation={[Math.PI / 2, 0, 0]}>
-                <sphereGeometry args={[2, 64, 64]} />
-                <meshStandardMaterial>
-                    <primitive attach="map" object={texture} />
-                    <primitive attach="lightMap" object={nightTexture} />
-                </meshStandardMaterial>
+                <sphereGeometry args={[2, 128, 128]} />
+                <EarthMaterial
+                  dayMap={texture}
+                  nightMap={nightTexture}
+                  cloudsMap={cloudsTexture}
+                  sunDirection={sunDirRef.current}
+                  cloudsOpacity={0.35}
+                />
             </mesh>
             }
             
@@ -221,13 +240,6 @@ const GlobeRender = () => {
                     side={THREE.BackSide}
                     transparent={true}
                 />
-            </mesh>
-            }
-
-            { view.HDEarth &&  
-            <mesh>
-                <sphereGeometry args={[2.02, 64, 64]} />
-                <meshStandardMaterial map={cloudsTexture} transparent={true} opacity={0.3} />
             </mesh>
             }
             
@@ -245,7 +257,6 @@ const GlobeRender = () => {
             }
 
             <StackSatellites />
-            <SimuStackSatellites />
             
             {/* Render ground stations */}
             {useSelector((state) => state.groundStations.groundStations).map((gs) => (

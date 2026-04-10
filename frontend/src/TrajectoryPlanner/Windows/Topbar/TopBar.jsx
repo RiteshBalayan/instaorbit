@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useDispatch } from 'react-redux';
 import { auth } from '../../../firebase/firebase';
@@ -15,17 +15,39 @@ import NotificationToast from './components/NotificationToast';
 import ProjectDisplay from './components/ProjectDisplay';
 import ActionButtons from './components/ActionButtons';
 import AuthenticationSection from './components/AuthenticationSection';
-import { setViewMode, toggleControlPanel, toggleLinkBudget } from '../../../Store/View';
+import { setViewMode, toggleControlPanel } from '../../../Store/View';
 
 
 const TopBar = () => {
-  // Redux state
-  const state = useSelector((state) => state);
+  const barRef = useRef(null);
+
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+
+    const setVar = () => {
+      const h = el.offsetHeight || 0;
+      document.documentElement.style.setProperty('--topbar-height', `${h}px`);
+    };
+
+    setVar();
+    const ro = new ResizeObserver(setVar);
+    ro.observe(el);
+    window.addEventListener('resize', setVar);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', setVar);
+    };
+  }, []);
+
+  // Redux state (avoid selecting the entire store; it causes rerenders on every state change)
   const ProjectName = useSelector((state) => state.workingProject.trajectoryName);
   const trajectoryID = useSelector((state) => state.workingProject.trajectoryID);
   const currentViewMode = useSelector((state) => state.view.viewMode);
   const showControlPanel = useSelector((state) => state.view.showControlPanel);
-  const showLinkBudget = useSelector((state) => state.view.showLinkBudget);
+  const trajectoryList = useSelector((state) => state.trajectoryList);
+  const iterationList = useSelector((state) => state.iterationList);
+  const itterationName = useSelector((state) => state.workingProject.itterationName);
   const dispatch = useDispatch();
   const user = auth.currentUser;
   
@@ -56,13 +78,12 @@ const TopBar = () => {
     setNewTrajMessage,
     saveAsInputRef,
     newTrajInputRef,
-    screenshotRef,
     loadNotification,
     popupType
   } = stateManager;
 
   return (
-    <Bar>
+    <Bar ref={barRef}>
       <Items>
         <ProjectDisplay projectName={ProjectName} />
 
@@ -84,9 +105,7 @@ const TopBar = () => {
           currentViewMode={currentViewMode}
           onChangeView={(mode) => dispatch(setViewMode(mode))}
           showControlPanel={showControlPanel}
-          showLinkBudget={showLinkBudget}
           onToggleControlPanel={() => dispatch(toggleControlPanel())}
-          onToggleLinkBudget={() => dispatch(toggleLinkBudget())}
         />
 
         <AuthenticationSection user={user} />
@@ -97,8 +116,8 @@ const TopBar = () => {
         isOpen={showPopup}
         onClose={operations.handleClosePopup}
         onLoaded={operations.handleLoaded}
-        trajectories={state.trajectoryList}
-        iterations={state.iterationList}
+        trajectories={trajectoryList}
+        iterations={iterationList}
         type={popupType}
       />
 
@@ -124,7 +143,7 @@ const TopBar = () => {
         onRipple={handleRipple}
         captureScreenshot={stateManager.captureScreenshot}
         onScreenshotChange={stateManager.setCaptureScreenshot}
-        iterationName={state.workingProject.itterationName}
+        iterationName={itterationName}
       />
 
       <SaveAsModal

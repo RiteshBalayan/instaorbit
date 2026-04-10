@@ -1,0 +1,127 @@
+/* ── Bulk Simulation Controls ─────────────────────────────── */
+.bulk-sim-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.bulk-sim-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.bulk-sim-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bulk-sim-section--compact .bulk-sim-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.bulk-sim-section--compact .bulk-sim-field {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.bulk-sim-section--compact .bulk-sim-field label {
+  width: auto;
+}
+
+.bulk-sim-section--compact .bulk-sim-field input,
+.bulk-sim-section--compact .bulk-sim-field select {
+  width: 48px;
+  text-align: right;
+}
+
+.bulk-sim-section--compact .bulk-sim-btn {
+  width: 100%;
+  padding: 6px 8px;
+}
+
+.bulk-sim-section--compact .bulk-sim-status {
+  max-height: 34px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bulk-sim-field {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.bulk-sim-field label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.bulk-sim-field input,
+.bulk-sim-field select {
+  width: 60px;
+  padding: 2px 4px;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: #e2e8f0;
+  outline: none;
+}
+
+.bulk-sim-field input:focus,
+.bulk-sim-field select:focus {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.bulk-sim-btn {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.bulk-sim-btn-run {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.bulk-sim-btn-run:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+.bulk-sim-btn-run:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bulk-sim-status {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 4px;
+}
+
+.bulk-sim-status.success {
+  color: rgba(74, 222, 128, 0.8);
+}
+
+.bulk-sim-status.error {
+  color: rgba(248, 113, 113, 0.8);
+}
+
+.bulk-sim-status.running {
+  color: rgba(251, 191, 36, 0.8);
+}

@@ -23,6 +23,12 @@ const initialState = {
   
   // Link configurations (saved link definitions)
   links: [],
+
+  // Global link thresholds (applied to all links unless overridden per-link)
+  globalThresholds: {
+    minElevationDeg: 10,     // Minimum elevation angle for GS links (°)
+    maxDistanceKm: null,     // Maximum link distance (km) — null = no limit
+  },
   
   // ── Coalesced contact windows ──────────────────────────────────
   // Each window: { id, txId, rxId, simStart, simEnd, metrics }
@@ -51,6 +57,18 @@ const initialState = {
   // Handover management
   handoverQueue: [],
   activeHandovers: [],
+
+  // ── Bulk-sim pre-computed link data ────────────────────────
+  // activeLinksAtTime: { [elapsedSeconds]: activeLinks[] }
+  // Populated by bulk sim response. When non-null, LinkEngine
+  // and LeafletMapOverlays look up by RenderTime instead of
+  // computing links on-the-fly.
+  activeLinksAtTime: null,
+
+  // ── TSDB-backed windowed link states ──────────────────────
+  // Array of { time_s, active_links: [...] } for the visible time window.
+  // Set by TimeSeriesClient.syncToTime().
+  visibleLinkStates: [],
 };
 
 const communicationSlice = createSlice({
@@ -85,6 +103,11 @@ const communicationSlice = createSlice({
     deleteLink: (state, action) => {
       const id = action.payload;
       state.links = state.links.filter(l => l.id !== id);
+    },
+
+    // Global link thresholds
+    setGlobalThresholds: (state, action) => {
+      state.globalThresholds = { ...(state.globalThresholds || {}), ...action.payload };
     },
     
     // Link history (legacy — no longer appended during live sim)
@@ -230,6 +253,26 @@ const communicationSlice = createSlice({
       state.activeHandovers = state.activeHandovers.filter(h => h.id !== id);
     },
     
+    // ── Bulk-sim data loaders ─────────────────────────────────
+    // Replace contact windows with pre-computed ones from backend
+    bulkLoadContactWindows: (state, action) => {
+      state.contactWindows = action.payload || [];
+    },
+    // Store the full pre-computed activeLinks map { time: activeLinks[] }
+    bulkLoadActiveLinksAtTime: (state, action) => {
+      state.activeLinksAtTime = action.payload || null;
+    },
+    // Clear bulk link data (when switching back to live mode)
+    clearBulkLinkData: (state) => {
+      state.activeLinksAtTime = null;
+    },
+
+    // ── TSDB windowed link states ─────────────────────────────
+    // payload: [ { time_s, active_links: [...] } ]
+    setVisibleLinkStates: (state, action) => {
+      state.visibleLinkStates = action.payload || [];
+    },
+
     // Reset all communication state
     resetCommunication: () => {
       return initialState;
@@ -252,6 +295,10 @@ export const {
   clearLinkHistory,
   updateContactWindows,
   clearContactWindows,
+  bulkLoadContactWindows,
+  bulkLoadActiveLinksAtTime,
+  clearBulkLinkData,
+  setVisibleLinkStates,
   addContactEvent,
   clearContactEvents,
   setPredictedContacts,
@@ -266,6 +313,7 @@ export const {
   startHandover,
   completeHandover,
   resetCommunication,
+  setGlobalThresholds,
 } = communicationSlice.actions;
 
 export { defaultLinkParams };

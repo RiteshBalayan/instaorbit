@@ -63,6 +63,7 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
   const contactWindows = useSelector((state) => state.communication.contactWindows);
   const savedLinks = useSelector((state) => state.communication.links);
   const particles = useSelector((state) => state.particles?.particles || []);
+  const visibleTracePoints = useSelector((state) => state.particles?.visibleTracePoints || {});
   const renderTime = useSelector((state) => state.timer.RenderTime);
   const starttime = useSelector((state) => state.timer.starttime);
   const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
@@ -132,13 +133,15 @@ const LinkBudgetPanel = ({ presetLink = null }) => {
     if (!id) return null;
     if (id.startsWith('sat-')) {
       const numericId = parseFloat(id.replace('sat-', ''));
-      // Prefer trace point at RenderTime (works during playback)
+      // Prefer TSDB visibleTracePoints (high-res ±60s) → legacy → CurrentState
+      const tsPts = visibleTracePoints[numericId];
       const particle = particles.find((p) => p.id === numericId);
-      if (particle?.tracePoints?.length) {
+      const pts = tsPts?.length ? tsPts : particle?.tracePoints;
+      if (pts?.length) {
         let best = null;
-        for (let i = particle.tracePoints.length - 1; i >= 0; i--) {
-          if (particle.tracePoints[i].time <= renderTime) {
-            best = particle.tracePoints[i]; break;
+        for (let i = pts.length - 1; i >= 0; i--) {
+          if (pts[i].time <= renderTime) {
+            best = pts[i]; break;
           }
         }
         if (best) {

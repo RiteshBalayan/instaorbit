@@ -17,6 +17,8 @@ export const useIterationRestore = () => {
       'workingProject',
       'groundStations',
       'communication',
+      'view',
+      'groups',
     ];
 
     for (const field of loadFields) {
@@ -43,6 +45,12 @@ export const useIterationRestore = () => {
           break;
         case 'communication':
           dispatch({ type: 'SET_COMMUNICATION', payload: data });
+          break;
+        case 'view':
+          dispatch({ type: 'SET_VIEW', payload: data });
+          break;
+        case 'groups':
+          dispatch({ type: 'SET_GROUPS', payload: data });
           break;
         default:
           break;

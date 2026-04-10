@@ -1,6 +1,6 @@
 /**
  * TimelinePanel component
- * Timeline visualization with Premiere Pro-style zoom controls
+ * Timeline visualization with render-only playback controls
  */
 
 import React from 'react';
@@ -13,14 +13,15 @@ export const TimelinePanel = ({
   onZoomToFit,
   onZoomIn,
   onZoomOut,
-  onStepBackward,
-  onStepForward,
-  onFastBackward,
-  onFastForward,
-  onPlayPause,
-  isPlaying,
   onRenderTimeUpdate,
   starttime,
+  showSatBars,
+  onToggleSatBars,
+  analysisTab,
+  onSwitchTab,
+  filterEndpoint,
+  onFilterChange,
+  endpoints,
 }) => {
   return (
     <div ref={panelRef} className="timeline-panel" style={{ position: 'relative' }}>
@@ -28,12 +29,13 @@ export const TimelinePanel = ({
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
         onZoomToFit={onZoomToFit}
-        onStepBackward={onStepBackward}
-        onStepForward={onStepForward}
-        onFastBackward={onFastBackward}
-        onFastForward={onFastForward}
-        onPlayPause={onPlayPause}
-        isPlaying={isPlaying}
+        analysisTab={analysisTab}
+        onSwitchTab={onSwitchTab}
+        showSatBars={showSatBars}
+        onToggleSatBars={onToggleSatBars}
+        filterEndpoint={filterEndpoint}
+        onFilterChange={onFilterChange}
+        endpoints={endpoints}
       />
       <div ref={timelineRef} className="timeline-container"></div>
       {/* Transparent drag-handle overlay — always sits above vis-timeline DOM */}

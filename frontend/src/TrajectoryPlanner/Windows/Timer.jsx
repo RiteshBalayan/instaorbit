@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import moment from 'moment';
-import { toggleCoupled, setstarttime } from '../../Store/timeSlice';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import '../../Styles/simulator/Timer.css';
 
@@ -11,133 +9,46 @@ import {
   useRenderTimer,
   useTimeline,
   useTimeFormatting,
-  useTimelineKeyboard,
 } from './Timer/hooks';
 
 // Import components
 import {
-  TimeDisplay,
-  TimeControls,
-  RenderControls,
-  CouplingControl,
-  TimeStepControls,
-  StartTimeControl,
-  DatePickerModal,
   TimelinePanel,
 } from './Timer/components';
-import { CircularClock } from './Timer/components/CircularClock';
 
-// Import constants
-import {
-  DEFAULT_TIME_STEP,
-  DEFAULT_SIM_STEP,
-  TIME_UNIT_CONFIG,
-} from './Timer/constants';
+const Timer = ({ analysisTab, onSwitchTab } = {}) => {
+  // Redux state for endpoints
+  const satellites = useSelector((s) => s.satellites?.satellitesConfig || []);
+  const groundStations = useSelector((s) => s.groundStations?.groundStations || []);
 
-const Timer = () => {
-  const dispatch = useDispatch();
-  const showControlPanel = useSelector((state) => state.view.showControlPanel);
-  const [backendAvailable, setBackendAvailable] = useState(true);
-  
-  // Local state
-  const [timeStep, setTimeStep] = useState(DEFAULT_TIME_STEP);
-  const [simStep, setSimStep] = useState(DEFAULT_SIM_STEP);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Build endpoints list for filter dropdown
+  const endpoints = useMemo(() => {
+    const eps = [];
+    satellites.forEach((sat) => {
+      eps.push({
+        id: `sat-${sat.id}`,
+        type: 'sat',
+        label: sat.name || `Satellite ${sat.id}`,
+      });
+    });
+    groundStations.forEach((gs) => {
+      eps.push({
+        id: gs.id,
+        type: 'gs',
+        label: gs.name || gs.id,
+      });
+    });
+    return eps;
+  }, [satellites, groundStations]);
 
-  // Custom hooks for timer logic
-  const simulation = useSimulationTimer(timeStep);
-  const render = useRenderTimer(simStep);
-  const formatting = useTimeFormatting(simulation.elapsedTime, simulation.starttime);
+  // Custom hooks for timer logic (needed for timeline visualization)
+  const simulation = useSimulationTimer(1);
+  const render = useRenderTimer(1);
   const timeline = useTimeline();
 
-  // Event handlers
-  const handleStartPause = () => {
-    simulation.togglePlayPause();
-  };
-
-  const handleRenderStartPause = () => {
-    render.togglePlayPause();
-  };
-
-  const handleReset = () => {
-    simulation.reset();
-  };
-
-  const handleTimeStepChange = (e) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      setTimeStep(value);
-    }
-  };
-
-  const handleRenderStepChange = (e) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      setSimStep(value);
-    }
-  };
-
-  const handleTimeUnitChange = (unit) => {
-    formatting.setTimeUnit(unit);
-  };
-
-  const handleCoupleToggle = () => {
-    dispatch(toggleCoupled());
-  };
-
-  const handleSetStartTime = () => {
-    dispatch(setstarttime(selectedDate.valueOf()));
-    setShowDatePicker(false);
-  };
-
-  const handleSetCurrentTime = () => {
-    setSelectedDate(moment());
-  };
-
-  const handleZoomToFit = () => {
-    timeline.zoomToFit();
-  };
-
-  const handleZoomIn = () => {
-    timeline.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    timeline.zoomOut();
-  };
-
-  const handleStepForward = () => {
-    const newRenderTime = render.renderTime + 1; // Step forward 1 second
-    render.setRenderTime(newRenderTime);
-  };
-
-  const handleStepBackward = () => {
-    const newRenderTime = Math.max(0, render.renderTime - 1); // Step backward 1 second
-    render.setRenderTime(newRenderTime);
-  };
-
-  const handleFastForward = () => {
-    const newRenderTime = render.renderTime + 10; // Fast forward 10 seconds
-    render.setRenderTime(newRenderTime);
-  };
-
-  const handleFastBackward = () => {
-    const newRenderTime = Math.max(0, render.renderTime - 10); // Fast backward 10 seconds
-    render.setRenderTime(newRenderTime);
-  };
-
-  // Keyboard shortcuts - Premiere Pro style (with Shift for fast transport)
-  useTimelineKeyboard({
-    onPlayPause: handleStartPause,
-    onStepForward: handleStepForward,
-    onStepBackward: handleStepBackward,
-    onFastForward: handleFastForward,
-    onFastBackward: handleFastBackward,
-    onZoomIn: handleZoomIn,
-    onZoomOut: handleZoomOut,
-    onZoomToFit: handleZoomToFit,
-  });
+  const handleZoomToFit = () => timeline.zoomToFit();
+  const handleZoomIn = () => timeline.zoomIn();
+  const handleZoomOut = () => timeline.zoomOut();
 
   // Track timeline panel height and update CSS variable
   const timelinePanelRef = useRef(null);
@@ -150,10 +61,8 @@ const Timer = () => {
       }
     };
 
-    // Initial update
     updateTimelineHeight();
 
-    // Create ResizeObserver to watch for timeline height changes
     const resizeObserver = new ResizeObserver(updateTimelineHeight);
     if (timelinePanelRef.current) {
       resizeObserver.observe(timelinePanelRef.current);
@@ -164,101 +73,23 @@ const Timer = () => {
     };
   }, []);
 
-  // Backend health polling
-  useEffect(() => {
-    let intervalId;
-    const checkBackend = async () => {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const resp = await fetch('http://localhost:3001/health', { signal: controller.signal });
-        clearTimeout(timeout);
-        // Consider any successful response (even 404/500) as server reachable
-        setBackendAvailable(true);
-      } catch (e) {
-        setBackendAvailable(false);
-      }
-    };
-    // Initial check and periodic polling
-    checkBackend();
-    intervalId = setInterval(checkBackend, 15000);
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-
   return (
     <div className="exptimer-container">
-      {showControlPanel && (
-        <div className="time-controller">
-          <div className="control-panel-title">Control Panel</div>
-          {!backendAvailable && (
-            <div className="backend-warning">
-              Backend simulator not connected — simulation will not work. Contact admin.
-            </div>
-          )}
-          <div className="controller-content">
-            {/* Time Display Section */}
-            <TimeDisplay
-              currentTime={formatting.currentTime}
-              elapsedTime={formatting.formattedElapsedTime}
-              timeUnit={formatting.timeUnit}
-              onUnitChange={handleTimeUnitChange}
-              timeUnitConfig={TIME_UNIT_CONFIG}
-            />
-            
-            {/* All Transport Controls in one horizontal line */}
-            <TimeControls
-              isRunning={simulation.isRunning}
-              onPlayPause={handleStartPause}
-              onReset={handleReset}
-              renderRunning={render.renderRunning}
-              coupled={simulation.coupled}
-              onRenderPlayPause={handleRenderStartPause}
-              onCouplingToggle={handleCoupleToggle}
-            />
-            
-            {/* Start Time Control */}
-            <StartTimeControl
-              startTime={formatting.standardStartTime}
-              onOpenPicker={() => setShowDatePicker(true)}
-            />
-            
-            {/* Playback Speed Controls */}
-            <TimeStepControls
-              simStep={timeStep}
-              renderStep={simStep}
-              coupled={simulation.coupled}
-              onSimStepChange={handleTimeStepChange}
-              onRenderStepChange={handleRenderStepChange}
-            />
-          </div>
-        </div>
-      )}
-
       <TimelinePanel
         panelRef={timelinePanelRef}
         timelineRef={timeline.timelineRef}
         onZoomToFit={handleZoomToFit}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        onStepBackward={handleStepBackward}
-        onStepForward={handleStepForward}
-        onFastBackward={handleFastBackward}
-        onFastForward={handleFastForward}
-        onPlayPause={handleStartPause}
-        isPlaying={simulation.isRunning}
         onRenderTimeUpdate={(newRenderTime) => render.setRenderTime(newRenderTime)}
         starttime={simulation.starttime}
-      />
-
-      <DatePickerModal
-        isOpen={showDatePicker}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        onConfirm={handleSetStartTime}
-        onSetNow={handleSetCurrentTime}
-        onCancel={() => setShowDatePicker(false)}
+        analysisTab={analysisTab}
+        onSwitchTab={onSwitchTab}
+        showSatBars={timeline.showSatBars}
+        onToggleSatBars={timeline.toggleSatBars}
+        filterEndpoint={timeline.filterEndpoint}
+        onFilterChange={timeline.setFilterEndpoint}
+        endpoints={endpoints}
       />
     </div>
   );

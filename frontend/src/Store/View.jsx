@@ -15,6 +15,7 @@ const initialState = {
   CentralObject: InitialCentralObject,
   viewMode: 'globe',
   showControlPanel: true,
+  showConfigPanel: false,
   showLinkBudget: false,
   // Track Horizon: show only ±1 hr ground track window (default off = show all)
   trackWindow: false,
@@ -22,6 +23,17 @@ const initialState = {
   showOrbit: true,
   // Communication link lines in 3D view (default on)
   showLinkLines: true,
+  // Body-frame axis arrows (default on)
+  showBodyFrameAxes: true,
+
+  /* ─── Flexible layout system ──────────────────────────────── */
+  // layout.mode: 'single' | 'split'
+  // layout.left / right: { type: '3d' | '2d' | 'bodyFrame', satelliteId?: number }
+  layout: {
+    mode: 'single',
+    left: { type: '3d' },
+    right: null,
+  },
 };
 
 const viewSlice = createSlice({
@@ -58,6 +70,9 @@ const viewSlice = createSlice({
     toggleControlPanel: (state) => {
       state.showControlPanel = !state.showControlPanel;
     },
+    toggleConfigPanel: (state) => {
+      state.showConfigPanel = !state.showConfigPanel;
+    },
     toggleLinkBudget: (state) => {
       state.showLinkBudget = !state.showLinkBudget;
     },
@@ -70,14 +85,43 @@ const viewSlice = createSlice({
     setShowLinkLines: (state, action) => {
       state.showLinkLines = action.payload;
     },
+    setShowBodyFrameAxes: (state, action) => {
+      state.showBodyFrameAxes = action.payload;
+    },
+
+    /* ─── Layout actions ─────────────────────────────────────── */
+
+    /** Set the full layout object */
+    setLayout: (state, action) => {
+      state.layout = action.payload;
+    },
+
+    /** Set one panel (left or right) */
+    setViewPanel: (state, action) => {
+      const { side, config } = action.payload; // side: 'left'|'right', config: { type, satelliteId? }
+      state.layout[side] = config;
+    },
+
+    /** Toggle between single and split mode */
+    toggleSplit: (state) => {
+      if (state.layout.mode === 'single') {
+        state.layout.mode = 'split';
+        if (!state.layout.right) {
+          state.layout.right = { type: '2d' }; // default right pane
+        }
+      } else {
+        state.layout.mode = 'single';
+        state.layout.right = null;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder.addCase('SET_VIEW', (state, action) => {
-      return action.payload;
+      return { ...initialState, ...action.payload };
     });
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleLinkBudget, setTrackWindow, setShowOrbit, setShowLinkLines } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleConfigPanel, toggleLinkBudget, setTrackWindow, setShowOrbit, setShowLinkLines, setShowBodyFrameAxes, setLayout, setViewPanel, toggleSplit } = viewSlice.actions;
 
 export default viewSlice.reducer;

@@ -2,14 +2,18 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addTracePoint } from '../../Store/StateTimeSeries';
 import { updateCoordinate } from '../../Store/CurrentState';
+import { keplerianToCartesian, keplerianToCartesianTrueAnomly } from '../Simulation/Functions';
+import tsClient from '../../services/timeSeriesClient';
 
 /**
- * RealSimulator – calls the backend /simulate endpoint every time RenderTime
- * changes, then stores the result (ECI position + geodetic lat/lon) in Redux.
+ * RealSimulator – calls the backend /simulate endpoint for every 1-second
+ * step between the previous frontier and the current RenderTime.
  *
- * IMPORTANT: All propagation is now always in ECI.  No Ω adjustment is
- * applied before sending to the backend.  Frame conversion (ECI→ECEF) is
- * done by the backend using GMST, and returned as { lat, lon, alt }.
+ * HARD RULE: simulation is always computed at 1-second resolution,
+ * regardless of render speed.  When the speed multiplier is N, the
+ * timer jumps RenderTime by N seconds per tick, and this component
+ * fires N sequential backend calls (one for each second) to fill in
+ * all intermediate trace points.
  */
 const RealSimulator = ({ particleId, propagator, burns }) => {
 
@@ -20,149 +24,234 @@ const RealSimulator = ({ particleId, propagator, burns }) => {
   const renderTime = useSelector((state) => state.timer.RenderTime);
   const satelliteConfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
 
-  const prevRenderTime = useRef(undefined);
+  // Track the last simulated time so we can fill gaps
+  const lastSimTimeRef = useRef(undefined);
   const starttime = useSelector((state) => state.timer.starttime);
+  const groundStations = useSelector((state) => state.groundStations.groundStations) || [];
+  const allSatellites = useSelector((state) => state.CurrentState.satelite) || [];
 
-  // Early return if satellite config is missing (but allow if orbitalelements not yet initialized)
+  // Guard against concurrent fill-in runs
+  const fillingRef = useRef(false);
+
+  // Early return if satellite config is missing
   if (!satelliteConfig) {
     return null;
   }
 
-  const mu = 398600.4418; // Standard gravitational parameter for Earth in km^3/s^2
-
-
-
+  const mu = 398600.4418;
 
   useEffect(() => {
     // Only run simulation if renderTime actually changed
-    if (renderTime === prevRenderTime.current) {
+    if (renderTime === lastSimTimeRef.current) {
       return;
     }
-    
-    // Update prevRenderTime immediately to prevent duplicate runs
-    prevRenderTime.current = renderTime;
 
-    // ── Playback guard ──────────────────────────────────────────────
-    // When the user scrubs the timeline backward (or to any time that
-    // is at-or-below the simulation frontier `elapsedTime`), we are in
-    // pure playback mode.  The trace data for that time already exists
-    // in Redux, so we must NOT call the backend or add new trace
-    // points — that would create duplicates and waste network calls.
-    // Simulation should only run when renderTime is advancing the
-    // frontier (renderTime >= elapsedTime).
+    // Playback guard — don't re-simulate already-computed data
     if (renderTime < elapsedTime) {
       return;
     }
-    
-    if (true) {
-      // If orbitalelements not initialized yet, initialize with initial conditions
-      if (!orbitalelements || !orbitalelements.elements || !orbitalelements.elements.a) {
-        const initialElements = {
-          a: satelliteConfig.InitialCondition.semimajoraxis,
-          e: satelliteConfig.InitialCondition.eccentricity,
-          i: satelliteConfig.InitialCondition.inclination * (Math.PI / 180),
-          Ω: satelliteConfig.InitialCondition.assendingnode * (Math.PI / 180),
-          ω: satelliteConfig.InitialCondition.argumentOfPeriapsis * (Math.PI / 180),
-          ν: satelliteConfig.InitialCondition.trueanomly * (Math.PI / 180),
-        };
-        
-        // Initialize orbitalelements in CurrentState
-        dispatch(updateCoordinate({
-          id: particleId,
-          timefix: null,
-          coordinates: { x: 0, y: 0, z: 0 },
-          elements: initialElements,
-        }));
-        
-        (async () => {
-          try {
-            const resp = await fetch('http://localhost:3001/simulate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                propagator,
-                orbitalelements: {
-                  timefix: null,
-                  elements: initialElements,  // always true inertial Ω
-                },
-                burn: undefined,
-                elapsedTime: renderTime,
-                starttime,                    // epoch for GMST computation
-              }),
-            });
 
-            if (!resp.ok) throw new Error(`Simulate error ${resp.status}`);
-            const json = await resp.json();
-            const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements } = json;
+    // ── Initialization (first call — no elements yet) ────────
+    if (!orbitalelements || !orbitalelements.elements || !orbitalelements.elements.a) {
+      const initialElements = {
+        a: satelliteConfig.InitialCondition.semimajoraxis,
+        e: satelliteConfig.InitialCondition.eccentricity,
+        i: satelliteConfig.InitialCondition.inclination * (Math.PI / 180),
+        Ω: satelliteConfig.InitialCondition.assendingnode * (Math.PI / 180),
+        ω: satelliteConfig.InitialCondition.argumentOfPeriapsis * (Math.PI / 180),
+        ν: satelliteConfig.InitialCondition.trueanomly * (Math.PI / 180),
+      };
 
-            if (tracePoint && elements) {
-              dispatch(addTracePoint({ id: particleId, tracePoint }));
-              dispatch(updateCoordinate({
-                id: particleId,
-                timefix: timefix,
-                coordinates: tracePoint,
-                velocity: velocity,
-                kineticEnergy,
-                potentialEnergy,
-                totalEnergy,
-                elements: elements,
-              }));
-            }
-          } catch (err) {
-            console.error('Initial simulation fetch failed', err);
-          }
-        })();
-        return;
-      }
-      
-      // Normal simulation update
-      if (orbitalelements?.elements) {
-      const burnToUse = Array.isArray(burns)
-        ? burns.find((b) => renderTime >= (b.time ?? 0))
-        : undefined;
+      const [initPos] = keplerianToCartesianTrueAnomly(initialElements);
+      dispatch(updateCoordinate({
+        id: particleId,
+        timefix: null,
+        coordinates: { x: initPos[0] / 3185.5, y: initPos[1] / 3185.5, z: initPos[2] / 3185.5 },
+        elements: initialElements,
+      }));
 
-      // No Ω adjustment — always send true inertial elements.
-      // The backend computes GMST and returns proper lat/lon.
-
-      // Send request to backend simulation server
       (async () => {
         try {
+          const allSatPositions = {};
+          allSatellites.forEach(s => {
+            if (s.coordinates && s.coordinates.x != null) {
+              allSatPositions[s.id] = {
+                x: s.coordinates.x * 3185.5,
+                y: s.coordinates.y * 3185.5,
+                z: s.coordinates.z * 3185.5,
+              };
+            }
+          });
+
           const resp = await fetch('http://localhost:3001/simulate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               propagator,
-              orbitalelements,              // true inertial elements, unmodified
-              burn: burnToUse,
+              orbitalelements: { timefix: null, elements: initialElements },
+              burn: undefined,
               elapsedTime: renderTime,
-              starttime,                    // epoch for GMST computation
+              starttime,
+              bodyFrame: satelliteConfig.bodyFrame || null,
+              prevAttitude: null,
+              dt: 1,
+              allSatPositions,
+              groundStations,
             }),
           });
 
           if (!resp.ok) throw new Error(`Simulate error ${resp.status}`);
           const json = await resp.json();
-
-          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements } = json;
+          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements, attitude, componentAngles } = json;
 
           if (tracePoint && elements) {
-            dispatch(addTracePoint({ id: particleId, tracePoint }));
-            dispatch(updateCoordinate({ 
-              id: particleId, 
-              timefix: timefix, 
+            let enrichedTrace = { ...tracePoint };
+            if (velocity) {
+              enrichedTrace.vx = velocity[0];
+              enrichedTrace.vy = velocity[1];
+              enrichedTrace.vz = velocity[2];
+            }
+            if (attitude) {
+              enrichedTrace.qx = attitude.quaternion[0];
+              enrichedTrace.qy = attitude.quaternion[1];
+              enrichedTrace.qz = attitude.quaternion[2];
+              enrichedTrace.qw = attitude.quaternion[3];
+            }
+            if (componentAngles) {
+              enrichedTrace.componentAngles = componentAngles;
+            }
+            dispatch(addTracePoint({ id: particleId, tracePoint: enrichedTrace }));
+            // Ingest into TSDB for persistent time-series storage
+            if (tsClient.sessionId) {
+              tsClient.ingestTracePoint(particleId, enrichedTrace);
+            }
+            dispatch(updateCoordinate({
+              id: particleId,
+              timefix,
               coordinates: tracePoint,
-              velocity: velocity,
+              velocity,
               kineticEnergy,
               potentialEnergy,
               totalEnergy,
-              elements: elements,
-            }))
+              elements,
+              attitude: attitude || undefined,
+            }));
+            lastSimTimeRef.current = renderTime;
           }
         } catch (err) {
-          console.error('Simulation fetch failed', err);
+          console.error('Initial simulation fetch failed', err);
         }
       })();
-      }
+      return;
     }
+
+    // ── Normal update: fill every 1-second step ──────────────
+    if (!orbitalelements?.elements) return;
+
+    // Determine which seconds need computing
+    const prevTime = lastSimTimeRef.current ?? renderTime - 1;
+    const startSec = Math.floor(prevTime) + 1;
+    const endSec = Math.floor(renderTime);
+    const stepsNeeded = [];
+    for (let t = startSec; t <= endSec; t++) {
+      stepsNeeded.push(t);
+    }
+    // If renderTime has a fractional part and we haven't included it
+    if (renderTime > endSec) {
+      stepsNeeded.push(renderTime);
+    }
+    if (stepsNeeded.length === 0) {
+      stepsNeeded.push(renderTime);
+    }
+
+    // Prevent overlapping fill-in runs
+    if (fillingRef.current) return;
+    fillingRef.current = true;
+
+    (async () => {
+      try {
+        for (const t of stepsNeeded) {
+          // Re-read latest orbital elements from Redux for each step
+          // (they update after each dispatch). For the first iteration
+          // we use the current snapshot; subsequent reads come from the
+          // closure-captured `orbitalelements` which gets the last dispatch.
+          const burnToUse = Array.isArray(burns)
+            ? burns.find((b) => t >= (b.time ?? 0))
+            : undefined;
+
+          const allSatPositionsMap = {};
+          allSatellites.forEach(s => {
+            if (s.coordinates && s.coordinates.x != null) {
+              allSatPositionsMap[s.id] = {
+                x: s.coordinates.x * 3185.5,
+                y: s.coordinates.y * 3185.5,
+                z: s.coordinates.z * 3185.5,
+              };
+            }
+          });
+
+          const resp = await fetch('http://localhost:3001/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              propagator,
+              orbitalelements,
+              burn: burnToUse,
+              elapsedTime: t,
+              starttime,
+              bodyFrame: satelliteConfig.bodyFrame || null,
+              prevAttitude: orbitalelements.attitude?.quaternion || null,
+              dt: 1,
+              allSatPositions: allSatPositionsMap,
+              groundStations,
+            }),
+          });
+
+          if (!resp.ok) throw new Error(`Simulate error ${resp.status}`);
+          const json = await resp.json();
+          const { tracePoint, timefix, velocity, kineticEnergy, potentialEnergy, totalEnergy, elements, attitude, componentAngles } = json;
+
+          if (tracePoint && elements) {
+            let enrichedTrace = { ...tracePoint };
+            if (velocity) {
+              enrichedTrace.vx = velocity[0];
+              enrichedTrace.vy = velocity[1];
+              enrichedTrace.vz = velocity[2];
+            }
+            if (attitude) {
+              enrichedTrace.qx = attitude.quaternion[0];
+              enrichedTrace.qy = attitude.quaternion[1];
+              enrichedTrace.qz = attitude.quaternion[2];
+              enrichedTrace.qw = attitude.quaternion[3];
+            }
+            if (componentAngles) {
+              enrichedTrace.componentAngles = componentAngles;
+            }
+            dispatch(addTracePoint({ id: particleId, tracePoint: enrichedTrace }));
+            // Ingest into TSDB for persistent time-series storage
+            if (tsClient.sessionId) {
+              tsClient.ingestTracePoint(particleId, enrichedTrace);
+            }
+            dispatch(updateCoordinate({
+              id: particleId,
+              timefix,
+              coordinates: tracePoint,
+              velocity,
+              kineticEnergy,
+              potentialEnergy,
+              totalEnergy,
+              elements,
+              attitude: attitude || undefined,
+            }));
+          }
+        }
+        lastSimTimeRef.current = renderTime;
+      } catch (err) {
+        console.error('Simulation fetch failed', err);
+      } finally {
+        fillingRef.current = false;
+      }
+    })();
   }, [dispatch, renderTime, elapsedTime, particleId, orbitalelements, burns, propagator, satelliteConfig, starttime]);
 
   return null;

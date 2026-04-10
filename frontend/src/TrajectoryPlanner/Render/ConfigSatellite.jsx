@@ -8,6 +8,7 @@ import { updateSatellites } from '../../Store/satelliteSlice';
 import { initializeParticles, resetTracePoints, deleteParticle } from '../../Store/StateTimeSeries';
 import { updateCoordinate, deleteState } from '../../Store/CurrentState';
 import { keplerianToCartesian } from '../Simulation/Functions';
+import { computeGMST, eci2ecef, ecef2geodetic } from '../../transforms';
 import './SatelliteConfig.css';
 
 const SatelliteConfig = () => {
@@ -70,10 +71,19 @@ const SatelliteConfig = () => {
       };
 
     const [position, velocity] = keplerianToCartesian(elements);
-    let newX, newY, newZ;
-    [newX, newY, newZ] = position;
+    const [posKmX, posKmY, posKmZ] = position;
+    const newX = posKmX / 3185.5;
+    const newY = posKmY / 3185.5;
+    const newZ = posKmZ / 3185.5;
 
-    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: 10, z: newZ, mapX: 0, mapY: 0 }] }));
+    // Compute geodetic for initial trace point
+    const gmst0 = computeGMST(Date.now());
+    const ecef0 = eci2ecef([posKmX, posKmY, posKmZ], gmst0);
+    const geo0  = ecef2geodetic(ecef0);
+    const mapX0 = (geo0.lon / 180) * 7.5;
+    const mapY0 = (geo0.lat / 90) * 3.75;
+
+    dispatch(initializeParticles({ id: newId, name: newSatelliteName, tracePoints: [{ time: 0, x: newX, y: newY, z: newZ, mapX: mapX0, mapY: mapY0, lat: geo0.lat, lon: geo0.lon, alt: geo0.alt }] }));
     dispatch(updateCoordinate({ id: newId, coordinates: [] }));
     setNewSatelliteName('');
     setSelectedOption('');

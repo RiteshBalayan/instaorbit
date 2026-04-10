@@ -59,20 +59,23 @@ export const createTimelineGroups = (
   contactWindows = [],
   satellites = [],
   groundStations = [],
+  showSatBars = true,
 ) => {
   const groups = [];
 
-  // ── One row per satellite ────────────────────────────────────
-  particles.forEach((p, index) => {
-    const sat = satellites.find(s => s.id === p.id);
-    const label = sat?.name || p.name || `Satellite ${index + 1}`;
-    groups.push({
-      id: `sat-${p.id ?? index}`,
-      content: `🛰 ${label}`,
-      className: 'satellites-group',
-      order: index,
+  // ── One row per satellite (hidden by default) ────────────────
+  if (showSatBars) {
+    particles.forEach((p, index) => {
+      const sat = satellites.find(s => s.id === p.id);
+      const label = sat?.name || p.name || `Satellite ${index + 1}`;
+      groups.push({
+        id: `sat-${p.id ?? index}`,
+        content: `🛰 ${label}`,
+        className: 'satellites-group',
+        order: index,
+      });
     });
-  });
+  }
 
   // ── Playhead row (always present) ────────────────────────────
   groups.push({
@@ -159,15 +162,20 @@ export const createTimelineOptions = (minTime, onRenderTimeUpdate) => {
  * Creates particle/satellite items for timeline
  * @param {Array} particles - Satellite particles data
  * @param {number} minTime - Timeline start time (timestamp)
+ * @param {Object} [lowResTimelines] - TSDB low-res timelines keyed by sat ID
+ * @param {Object} [visibleTracePoints] - TSDB visible trace points keyed by sat ID
  * @returns {Array} Timeline items for satellites
  */
-export const createParticleItems = (particles, minTime) => {
+export const createParticleItems = (particles, minTime, lowResTimelines = {}, visibleTracePoints = {}) => {
   return particles
     .map((particle, index) => {
-      const tracePoints = particle.tracePoints;
+      // Prefer TSDB low-res (full duration) → visible → legacy
+      const tsLow = lowResTimelines[particle.id];
+      const tsHigh = visibleTracePoints[particle.id];
+      const tracePoints = tsLow?.length ? tsLow : tsHigh?.length ? tsHigh : particle.tracePoints;
       
       if (tracePoints && tracePoints.length >= 2) {
-        const start = new Date(minTime + tracePoints[1].time * 1000);
+        const start = new Date(minTime + tracePoints[0].time * 1000);
         const end = new Date(minTime + tracePoints[tracePoints.length - 1].time * 1000);
         return {
           id: `satellite-${particle.id || index}`,
@@ -361,16 +369,28 @@ export const createTimelineItems = (
   linkHistory = [],
   satellites = [],
   groundStations = [],
-  contactWindows = []
+  contactWindows = [],
+  showSatBars = true,
+  lowResTimelines = {},
+  visibleTracePoints = {},
 ) => {
   const minTime = starttime || Date.now();
   const currentRenderTime = new Date(minTime + renderTime * 1000);
 
-  const particleItems = createParticleItems(particles, minTime);
+  const particleItems = showSatBars ? createParticleItems(particles, minTime, lowResTimelines, visibleTracePoints) : [];
   const linkItems = createLinkItems(linkHistory, satellites, groundStations, contactWindows);
   const renderTimePoint = createRenderTimePoint(currentRenderTime);
 
-  return new DataSet([...particleItems, ...linkItems, renderTimePoint]);
+  // Deduplicate by id — vis-timeline's DataSet throws if any id appears twice
+  const allItems = [...particleItems, ...linkItems, renderTimePoint];
+  const seen = new Set();
+  const uniqueItems = allItems.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+
+  return new DataSet(uniqueItems);
 };
 
 /**

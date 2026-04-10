@@ -13,6 +13,8 @@ import {
   updateIteration, 
   newTrajectory 
 } from '../../../firebase/firebaseUtils';
+import { buildSavePayload } from '../../../firebase/buildSavePayload';
+import { tsClient } from '../../../services/timeSeriesClient';
 
 export const useProjectOperations = (stateManager) => {
   const dispatch = useDispatch();
@@ -93,17 +95,19 @@ export const useProjectOperations = (stateManager) => {
           if (stateManager.captureScreenshot) {
             imgData = await captureScreenshot();
           }
-          const stateWithNewImage = {
-            ...state,
-            workingProject: {
-              ...state.workingProject,
-              itterationImage: imgData
-            }
-          };
           if (imgData) {
             dispatch(updateIterationImage(imgData));
           }
-          const newIterationId = await uploadIteration(newTrajectoryId, stateWithNewImage, InitialCommitMessage);
+          const savePayload = buildSavePayload({
+            ...state,
+            workingProject: {
+              ...state.workingProject,
+              trajectoryID: newTrajectoryId,
+              trajectoryName: newTrajMessage,
+              itterationImage: imgData,
+            },
+          }, { tsdbSessionId: tsClient.sessionId });
+          const newIterationId = await uploadIteration(newTrajectoryId, savePayload, InitialCommitMessage);
           if (newIterationId) {
             dispatch(updateitterationID(newIterationId));
             dispatch(updateitterationName(InitialCommitMessage));
@@ -134,20 +138,22 @@ export const useProjectOperations = (stateManager) => {
       if (stateManager.captureScreenshot) {
         imgData = await captureScreenshot();
       }
-      const stateWithNewImage = {
+      if (imgData) dispatch(updateIterationImage(imgData));
+      const savePayload = buildSavePayload({
         ...state,
         workingProject: {
           ...state.workingProject,
-          itterationImage: imgData
-        }
-      };
-      if (imgData) dispatch(updateIterationImage(imgData));
-      const newIterationId = await updateIteration(trajectoryID, itterationID, stateWithNewImage);
+          itterationImage: imgData,
+        },
+      }, { tsdbSessionId: tsClient.sessionId });
+      const newIterationId = await updateIteration(trajectoryID, itterationID, savePayload);
       if (newIterationId) {
         dispatch(updateitterationID(newIterationId));
       }
       setSaveAsMessage('');
       setShowSaveAsInput(false);
+      setLoadNotification('Saved successfully');
+      setTimeout(() => setLoadNotification(null), 2800);
     } catch (error) {
       console.error('Upload failed:', error);
     } finally {
@@ -169,15 +175,15 @@ export const useProjectOperations = (stateManager) => {
       if (stateManager.captureScreenshot) {
         imgData = await captureScreenshot();
       }
-      const stateWithNewImage = {
+      if (imgData) dispatch(updateIterationImage(imgData));
+      const savePayload = buildSavePayload({
         ...state,
         workingProject: {
           ...state.workingProject,
-          itterationImage: imgData
-        }
-      };
-      if (imgData) dispatch(updateIterationImage(imgData));
-      const newIterationId = await uploadIteration(trajectoryID, stateWithNewImage, saveAsMessage);
+          itterationImage: imgData,
+        },
+      }, { tsdbSessionId: tsClient.sessionId });
+      const newIterationId = await uploadIteration(trajectoryID, savePayload, saveAsMessage);
       if (newIterationId) {
         dispatch(updateitterationID(newIterationId));
         dispatch(updateitterationName(saveAsMessage));

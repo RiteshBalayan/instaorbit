@@ -10,6 +10,9 @@ export const rippleKeyframes = keyframes`
 
 // Main container for the top bar
 export const Bar = styled.div`
+  position: sticky;
+  top: 0;
+  left: 0;
   width: 100%;
   background: linear-gradient(90deg, #232526 0%, #4e54c8 100%);
   color: #f5f6fa;
