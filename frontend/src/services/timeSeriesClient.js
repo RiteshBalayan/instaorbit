@@ -40,8 +40,17 @@ let _destroyed = false;
 const _lowResCache  = {};    // { satId: [ point, ... ] }
 const _highResCache = {};    // { satId: [ point, ... ] }
 const _linkStateCache = [];  // [ { time_s, active_links } ]
+const _connectivityCache = []; // [ { time, connections } ] — windowed connectivity states
+let _connectivityFullIngested = false; // tracks if full data was ingested
 let _lastSyncTime = -Infinity;
 let _lastSyncTs = 0;
+
+// Tracks what was last dispatched to avoid redundant Redux updates
+// that create new references and trigger cascading re-renders.
+let _lastDispatchedVTPKeys = '';   // e.g. "0:150,1:150"
+let _lastDispatchedLRKeys  = '';   // e.g. "0:3000,1:3000"
+let _lastDispatchedLSKey   = '';   // link-states fingerprint
+let _lastDispatchedCSKey   = '';   // connectivity-states fingerprint
 
 // Ingestion buffer (batch writes)
 let _tracePointBuffer = [];
@@ -351,6 +360,29 @@ const tsClient = {
   },
 
   /**
+   * Ingest connectivity states (connectedPairsTimeSeries) into TSDB.
+   * Each entry: { time, connections: [...] }
+   */
+  async ingestConnectivityStates(states) {
+    if (!_sessionId) throw new Error('TSDB not initialized');
+    const rows = states.map(s => ({
+      time_s: s.time ?? s.time_s,
+      connections: s.connections,
+    }));
+    _connectivityFullIngested = true;
+    return _post(`/sessions/${_sessionId}/connectivity-states`, { states: rows });
+  },
+
+  /**
+   * Ingest connection windows into TSDB.
+   * Each entry: { id, pairId, txNodeId, rxNodeId, simStart, simEnd, closed }
+   */
+  async ingestConnectionWindows(windows) {
+    if (!_sessionId) throw new Error('TSDB not initialized');
+    return _post(`/sessions/${_sessionId}/connection-windows`, { windows });
+  },
+
+  /**
    * Core sync function — call this every render frame (debounced internally).
    *
    * Fetches:
@@ -410,6 +442,15 @@ const tsClient = {
           .catch(() => ({ type: 'linkStates', states: [] }))
       );
 
+      // Connectivity states for visible window (if data was ingested)
+      if (_connectivityFullIngested) {
+        promises.push(
+          _get(`/sessions/${_sessionId}/connectivity-states?from=${from}&to=${to}`)
+            .then(data => ({ type: 'connectivityStates', states: data.states }))
+            .catch(() => ({ type: 'connectivityStates', states: [] }))
+        );
+      }
+
       const results = await Promise.all(promises);
 
       // Process results and build dispatch payloads
@@ -428,6 +469,13 @@ const tsClient = {
         } else if (r.type === 'linkStates') {
           _linkStateCache.length = 0;
           _linkStateCache.push(...(r.states || []));
+        } else if (r.type === 'connectivityStates') {
+          _connectivityCache.length = 0;
+          const mapped = (r.states || []).map(s => ({
+            time: s.time_s,
+            connections: s.connections,
+          }));
+          _connectivityCache.push(...mapped);
         }
       }
 
@@ -438,10 +486,42 @@ const tsClient = {
         }
       }
 
-      // Dispatch to Redux
-      _dispatch({ type: 'particles/setVisibleTracePoints', payload: visibleTracePoints });
-      _dispatch({ type: 'particles/setLowResTimelines', payload: lowResTimelines });
-      _dispatch({ type: 'communication/setVisibleLinkStates', payload: _linkStateCache });
+      // Only dispatch to Redux if data actually changed.
+      // Build a lightweight fingerprint: "satId:pointCount,..." for each payload.
+      // This prevents creating new Redux references every 200ms when the
+      // underlying data is identical (e.g. sim paused, or same time window).
+      const vtpKey = Object.entries(visibleTracePoints)
+        .map(([id, pts]) => `${id}:${pts.length}:${pts.length ? pts[0].time : ''}:${pts.length ? pts[pts.length - 1].time : ''}`)
+        .sort()
+        .join(',');
+      if (vtpKey !== _lastDispatchedVTPKeys) {
+        _lastDispatchedVTPKeys = vtpKey;
+        _dispatch({ type: 'particles/setVisibleTracePoints', payload: visibleTracePoints });
+      }
+
+      const lrKey = Object.entries(lowResTimelines)
+        .map(([id, pts]) => `${id}:${pts.length}`)
+        .sort()
+        .join(',');
+      if (lrKey !== _lastDispatchedLRKeys) {
+        _lastDispatchedLRKeys = lrKey;
+        _dispatch({ type: 'particles/setLowResTimelines', payload: lowResTimelines });
+      }
+
+      // Fingerprint link-states before dispatching
+      const lsKey = `${_linkStateCache.length}:${_linkStateCache.length ? _linkStateCache[0]?.time_s : ''}:${_linkStateCache.length ? _linkStateCache[_linkStateCache.length - 1]?.time_s : ''}`;
+      if (lsKey !== _lastDispatchedLSKey) {
+        _lastDispatchedLSKey = lsKey;
+        _dispatch({ type: 'communication/setVisibleLinkStates', payload: [..._linkStateCache] });
+      }
+
+      if (_connectivityFullIngested) {
+        const csKey = `${_connectivityCache.length}:${_connectivityCache.length ? _connectivityCache[0]?.time : ''}:${_connectivityCache.length ? _connectivityCache[_connectivityCache.length - 1]?.time : ''}`;
+        if (csKey !== _lastDispatchedCSKey) {
+          _lastDispatchedCSKey = csKey;
+          _dispatch({ type: 'communication/setVisibleConnectivityStates', payload: [..._connectivityCache] });
+        }
+      }
 
     } catch (err) {
       console.error('[TSDB] syncToTime error:', err);
@@ -516,7 +596,46 @@ const tsClient = {
     Object.keys(_lowResCache).forEach(k => delete _lowResCache[k]);
     Object.keys(_highResCache).forEach(k => delete _highResCache[k]);
     _linkStateCache.length = 0;
+    _connectivityCache.length = 0;
+    _connectivityFullIngested = false;
     _lastSyncTime = -Infinity;
+    // Reset fingerprint caches so next sync dispatches fresh data
+    _lastDispatchedVTPKeys = '';
+    _lastDispatchedLRKeys  = '';
+    _lastDispatchedLSKey   = '';
+    _lastDispatchedCSKey   = '';
+  },
+
+  /**
+   * Reset session: delete old session, create a fresh one.
+   * Use this before starting a new simulation to ensure no stale data.
+   */
+  async resetForNewSimulation() {
+    if (!_sessionId) return;
+    console.log('[TSDB] Resetting session for new simulation');
+    try {
+      await _post(`/sessions/${_sessionId}/clear`, {});
+    } catch (err) {
+      console.warn('[TSDB] clearSessionData failed during reset:', err.message);
+    }
+    // Clear local caches
+    Object.keys(_lowResCache).forEach(k => delete _lowResCache[k]);
+    Object.keys(_highResCache).forEach(k => delete _highResCache[k]);
+    _linkStateCache.length = 0;
+    _connectivityCache.length = 0;
+    _connectivityFullIngested = false;
+    _lastSyncTime = -Infinity;
+    _lastDispatchedVTPKeys = '';
+    _lastDispatchedLRKeys  = '';
+    _lastDispatchedLSKey   = '';
+    _lastDispatchedCSKey   = '';
+    // Dispatch empty data to Redux so stale data is cleared
+    if (_dispatch) {
+      _dispatch({ type: 'particles/setVisibleTracePoints', payload: {} });
+      _dispatch({ type: 'particles/setLowResTimelines', payload: {} });
+      _dispatch({ type: 'communication/setVisibleLinkStates', payload: [] });
+      _dispatch({ type: 'communication/setVisibleConnectivityStates', payload: [] });
+    }
   },
 
   /**
@@ -558,6 +677,8 @@ const tsClient = {
     Object.keys(_lowResCache).forEach(k => delete _lowResCache[k]);
     Object.keys(_highResCache).forEach(k => delete _highResCache[k]);
     _linkStateCache.length = 0;
+    _connectivityCache.length = 0;
+    _connectivityFullIngested = false;
     _tracePointBuffer.length = 0;
     _linkStateBuffer.length = 0;
     _sessionId = null;

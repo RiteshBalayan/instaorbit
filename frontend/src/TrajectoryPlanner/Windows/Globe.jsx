@@ -6,6 +6,7 @@ import MenuBar from './Topbar/MenuBar';
 import GroundTrack from './GroundTrack';
 import { Canvas } from '@react-three/fiber';
 import LinkEngine from './Sidebar/LinkEngine';
+import LinkAvailabilityEngine from './Sidebar/LinkAvailabilityEngine';
 import LeafletMapRender from '../Render/LeafletMapRender';
 import BodyFrameView from '../Render/BodyFrameView';
 import SimuStackSatellites from '../Simulation/StackSimulator';
@@ -60,6 +61,7 @@ function Globe() {
 
       {/* Headless engines — run regardless of which view panel is active */}
       <LinkEngine />
+      <LinkAvailabilityEngine />
       <SimuStackSatellites />
 
       {useNewLayout ? (

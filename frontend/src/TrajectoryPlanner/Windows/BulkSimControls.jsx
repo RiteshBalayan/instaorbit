@@ -19,7 +19,14 @@ import {
   bulkLoadContactWindows,
   bulkLoadActiveLinksAtTime,
   clearBulkLinkData,
+  setAvailablePairsTimeSeries,
+  clearAvailablePairsTimeSeries,
+  setConnectedPairsTimeSeries,
+  clearConnectedPairsTimeSeries,
+  setConnectionWindows,
+  clearConnectionWindows,
 } from '../../Store/communicationSlice';
+import { buildNodesFromConfig } from './Sidebar/linkComputation';
 import tsClient from '../../services/timeSeriesClient';
 import './BulkSimControls.css';
 
@@ -31,6 +38,7 @@ const BulkSimControls = ({ compact = false } = {}) => {
   const particles = useSelector((s) => s.particles.particles) || [];
   const links = useSelector((s) => s.communication.links) || [];
   const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
+  const maxConnectionsPerNode = useSelector((s) => s.communication.maxConnectionsPerNode ?? 1);
   const groundStations = useSelector((s) => s.groundStations?.groundStations) || [];
   const starttime = useSelector((s) => s.timer.starttime);
 
@@ -99,8 +107,14 @@ const BulkSimControls = ({ compact = false } = {}) => {
 
       // ── Load results into Redux ────────────────────────────
 
+      // 0. Clear stale TSDB data before ingesting new simulation results
+      if (tsClient.sessionId) {
+        await tsClient.resetForNewSimulation();
+      }
+
       // 1. Clear bulk link data first
       dispatch(clearBulkLinkData());
+      dispatch(clearAvailablePairsTimeSeries());
 
       // 2. Load tracePoints per satellite
       const tsdbPromises = [];
@@ -148,6 +162,53 @@ const BulkSimControls = ({ compact = false } = {}) => {
               );
             }
           }
+        }
+      }
+
+      // 3b. Load link availability time series (Feature 1 — isolated data)
+      if (data.linkAvailability?.timeSeries?.length) {
+        dispatch(setAvailablePairsTimeSeries(data.linkAvailability.timeSeries));
+
+        // 3c. Auto-run connectivity solver using availability data
+        //     This replaces the need to manually open the Connections dialog.
+        dispatch(clearConnectedPairsTimeSeries());
+        dispatch(clearConnectionWindows());
+        setStatusMsg('Computing connectivity…');
+
+        try {
+          const nodes = buildNodesFromConfig(satellites, groundStations);
+          const connResp = await fetch('http://localhost:3001/link-connectivity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              availablePairsTimeSeries: data.linkAvailability.timeSeries,
+              nodes,
+              priorities: [],   // auto-connect all — user can edit later via Connections panel
+              maxConnectionsPerNode,
+            }),
+          });
+
+          if (connResp.ok) {
+            const connData = await connResp.json();
+            if (connData.connectedPairsTimeSeries?.length) {
+              dispatch(setConnectedPairsTimeSeries(connData.connectedPairsTimeSeries));
+              // Ingest into TSDB for windowed playback
+              tsClient.ingestConnectivityStates(connData.connectedPairsTimeSeries)
+                .catch(err => console.warn('[TSDB] Ingest connectivity states:', err));
+            }
+            if (connData.connectionWindows?.length) {
+              dispatch(setConnectionWindows(connData.connectionWindows));
+              // Ingest into TSDB
+              tsClient.ingestConnectionWindows(connData.connectionWindows)
+                .catch(err => console.warn('[TSDB] Ingest connection windows:', err));
+            }
+            console.log('[BulkSim] Connectivity auto-run complete:', connData.connectedPairsTimeSeries?.length, 'timesteps');
+          } else {
+            console.warn('[BulkSim] Connectivity auto-run failed:', connResp.status);
+          }
+        } catch (connErr) {
+          console.warn('[BulkSim] Connectivity auto-run error:', connErr);
+          // Non-fatal: availability data is still usable without connectivity
         }
       }
 

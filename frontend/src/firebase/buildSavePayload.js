@@ -90,11 +90,15 @@ export function buildSavePayload(reduxState, opts = {}) {
     globalThresholds: comm.globalThresholds || { minElevationDeg: 10, maxDistanceKm: null },
     // Keep persisted contact windows (small, useful for display)
     contactWindows: comm.contactWindows || [],
+    // Keep connectivity windows (small, node-level contact windows)
+    connectionWindows: comm.connectionWindows || [],
     // Drop transient / huge runtime data
     activeLinks: [],
-    activeLinksAtTime: null,  // huge bulk-sim lookup table
-    visibleLinkStates: {},    // TSDB windowed data — reconstructed from TSDB
-    linkHistory: [],          // legacy, can be huge
+    activeLinksAtTime: null,          // huge bulk-sim lookup table
+    availablePairsTimeSeries: [],     // huge — recomputed from bulk sim
+    connectedPairsTimeSeries: [],     // huge — recomputed from connectivity API
+    visibleLinkStates: {},            // TSDB windowed data — reconstructed from TSDB
+    linkHistory: [],                  // legacy, can be huge
     contactEvents: [],
     predictedContacts: [],
     dopplerData: {},

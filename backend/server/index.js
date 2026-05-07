@@ -81,6 +81,10 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptim
 // Propagation routes (POST /simulate, POST /simulate-bulk)
 app.use('/', propagationRoutes);
 
+// Connectivity routes (POST /link-connectivity)
+const connectivityRoutes = require('./routes/connectivity');
+app.use('/', connectivityRoutes);
+
 /* ── Start Server ─────────────────────────────────────────── */
 const port = process.env.PORT || 3001;
 app.listen(port, () => {

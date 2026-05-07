@@ -18,9 +18,8 @@ import { useSelector } from 'react-redux';
 import L from 'leaflet';
 import { mapXYToLatLon, splitAtAntimeridian } from './mapUtils';
 import { sunGeodetic } from '../../transforms';
-import { computeLink } from '../Windows/Sidebar/linkComputation';
 import useTracePoints from '../../hooks/useTracePoints';
-import useLinkStates from '../../hooks/useLinkStates';
+import { useLinkDisplayData } from '../../hooks/useLinkDisplayData';
 
 /* Longitude offsets to cover the three visible world copies */
 const WORLD_OFFSETS = [-360, 0, 360];
@@ -295,77 +294,52 @@ const resolveEndpointLatLon = (id, satById, particleById, gsById, RenderTime, vi
   return [gs.lat, gs.lon];
 };
 
-const LINK_ACTIVE_COLOR = 'rgba(74, 222, 128, 0.45)';   // green, translucent
+const LINK_CONNECTED_COLOR = 'rgba(255, 235, 59, 0.6)';  // yellow, connected
+const LINK_AVAILABLE_COLOR = 'rgba(56, 189, 248, 0.5)';  // cyan, available
 
 const LinkLines = () => {
-  const savedLinks = useSelector((s) => s.communication.links) || [];
   const satStates = useSelector((s) => s.CurrentState.satelite) || [];
   const particles = useSelector((s) => s.particles.particles) || [];
   const groundStations = useSelector((s) => s.groundStations.groundStations) || [];
   const RenderTime = useSelector((s) => s.timer.RenderTime);
-  const starttime = useSelector((s) => s.timer.starttime);
-  const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
-
-  // ── Bulk pre-computed data ─────────────────────────────────
-  const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
   // TSDB-backed visible trace points for position resolution
   const visibleTracePoints = useSelector((s) => s.particles.visibleTracePoints) || {};
-  // TSDB-backed link states
-  const { getLinksAtTime } = useLinkStates();
+
+  // ══════════════════════════════════════════════════════════
+  // SINGLE SOURCE OF TRUTH: useLinkDisplayData
+  // Same data used by ConnectivityLinks (3D) and BodyFrameView (LVLH).
+  // ══════════════════════════════════════════════════════════
+  const { connections, mode, hasData } = useLinkDisplayData(RenderTime);
 
   const satById = useMemo(() => new Map(satStates.map((s) => [s.id, s])), [satStates]);
   const particleById = useMemo(() => new Map(particles.map((p) => [p.id, p])), [particles]);
   const gsById = useMemo(() => new Map(groundStations.map((g) => [g.id, g])), [groundStations]);
 
+  const linkColor = mode === 'connected' ? LINK_CONNECTED_COLOR : LINK_AVAILABLE_COLOR;
+
   const linkLines = useMemo(() => {
-    // ── BULK MODE: use pre-computed activeLinks, resolve lat/lon from tracePoints ──
-    if (activeLinksAtTime) {
-      const timeKey = Math.floor(RenderTime);
-      const precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
-      return precomputed.map((link) => {
-        const txPos = resolveEndpointLatLon(link.txId, satById, particleById, gsById, RenderTime, visibleTracePoints);
-        const rxPos = resolveEndpointLatLon(link.rxId, satById, particleById, gsById, RenderTime, visibleTracePoints);
-        if (!txPos || !rxPos) return { id: link.id, positions: null, status: 'active' };
-        return { id: link.id, positions: [txPos, rxPos], status: 'active' };
-      });
-    }
+    if (!hasData || !connections.length) return [];
 
-    // ── LIVE MODE: compute on-the-fly (original behavior) ────
-    if (!savedLinks.length) return [];
-
-    const ctx = {
-      currentStates: satStates,
-      groundStations,
-      particles,
-      renderTime: RenderTime,
-      starttime,
-      globalThresholds,
-    };
-
-    return savedLinks.map((link) => {
-      const txPos = resolveEndpointLatLon(link.txId, satById, particleById, gsById, RenderTime, visibleTracePoints);
-      const rxPos = resolveEndpointLatLon(link.rxId, satById, particleById, gsById, RenderTime, visibleTracePoints);
-      if (!txPos || !rxPos) return { id: link.id, positions: null, status: 'waiting' };
-
-      // Use computeLink to get inLink status
-      const result = computeLink(link, ctx);
-      const status = !result.ready ? 'waiting' : result.inLink ? 'active' : 'inactive';
-
-      return { id: link.id, positions: [txPos, rxPos], status };
-    });
-  }, [savedLinks, RenderTime, starttime, activeLinksAtTime, visibleTracePoints, satById, particleById, gsById, satStates, groundStations, particles, globalThresholds]);
+    return connections.map((conn, i) => {
+      const txPos = resolveEndpointLatLon(conn.txParentId, satById, particleById, gsById, RenderTime, visibleTracePoints);
+      const rxPos = resolveEndpointLatLon(conn.rxParentId, satById, particleById, gsById, RenderTime, visibleTracePoints);
+      if (!txPos || !rxPos) return null;
+      return {
+        id: `${conn.txParentId}-${conn.rxParentId}-${i}`,
+        positions: [txPos, rxPos],
+      };
+    }).filter(Boolean);
+  }, [connections, hasData, RenderTime, visibleTracePoints, satById, particleById, gsById]);
 
   return (
     <>
       {linkLines.map((ll) => {
-        if (!ll.positions || ll.status !== 'active') return null;
-
         return WORLD_OFFSETS.map((dLon) => (
           <Polyline
             key={`link-${ll.id}_${dLon}`}
             positions={[shiftPos(ll.positions[0], dLon), shiftPos(ll.positions[1], dLon)]}
             pathOptions={{
-              color: LINK_ACTIVE_COLOR,
+              color: linkColor,
               weight: 2.5,
               opacity: 1,
               dashArray: null, // solid — distinct from dashed ground tracks

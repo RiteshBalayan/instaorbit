@@ -5,6 +5,10 @@
  * In BULK mode (activeLinksAtTime exists in Redux), it simply looks up
  * the pre-computed activeLinks for the current RenderTime — zero computation.
  *
+ * When connectedPairsTimeSeries exists (Feature 2 output), it uses that
+ * to build activeLinks with node-level IDs and (optionally) laser aperture
+ * positions instead of satellite centers.
+ *
  * In LIVE mode (normal sim), it computes links on-the-fly as before.
  *
  * Must stay mounted at all times (see Globe.jsx).
@@ -13,47 +17,147 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setActiveLinks, updateContactWindows } from '../../../Store/communicationSlice';
-import { computeLink, getEndpointPos } from './linkComputation';
+import { computeLink, getEndpointPos, computeAperturePosition } from './linkComputation';
 import { SCALE_FACTOR } from '../../../transforms';
-import useLinkStates from '../../../hooks/useLinkStates';
+import { useLinkDisplayData } from '../../../hooks/useLinkDisplayData';
+
+
+/**
+ * Binary-search helper: find the entry whose `time` is closest to (≤) renderTime.
+ */
+function findAtTime(timeSeries, renderTime) {
+  if (!timeSeries || timeSeries.length === 0) return null;
+  let lo = 0;
+  let hi = timeSeries.length - 1;
+  if (renderTime <= timeSeries[0].time) return timeSeries[0];
+  if (renderTime >= timeSeries[hi].time) return timeSeries[hi];
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (timeSeries[mid].time <= renderTime) lo = mid;
+    else hi = mid - 1;
+  }
+  return timeSeries[lo];
+}
+
+/**
+ * Find trace point at or before renderTime for a given satellite.
+ */
+function findTraceAtTime(particles, visibleTracePoints, satNumId, renderTime) {
+  const tsPts = visibleTracePoints[satNumId];
+  const particle = particles.find(p => p.id === satNumId);
+  const pts = tsPts?.length ? tsPts : particle?.tracePoints;
+  if (!pts?.length) return null;
+  for (let i = pts.length - 1; i >= 0; i--) {
+    if (pts[i].time <= renderTime) return pts[i];
+  }
+  return null;
+}
+
+/**
+ * Resolve the 3D position for a connectivity node.
+ * For satellite laser components, computes the aperture position
+ * (body-frame offset rotated by attitude quaternion) rather than sat center.
+ * Returns { x, y, z } in km (same scale as getEndpointPos output).
+ */
+function resolveNodePosition(nodeId, parentId, allSatConfigs, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints) {
+  // Ground station — always use station center (no aperture offset concept)
+  if (!parentId.startsWith('sat-')) {
+    return getEndpointPos(parentId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
+  }
+
+  // Satellite — try to find the laser component and compute aperture position
+  const satNumId = parseFloat(parentId.replace('sat-', ''));
+
+  // Get satellite trace point for position + attitude
+  const tracePoint = findTraceAtTime(particles, visibleTracePoints, satNumId, renderTime);
+
+  // Get satellite config to find the component
+  const satConfig = allSatConfigs.find(s => s.id === satNumId);
+
+  // Parse component ID from nodeId: "sat-0:comp-1234" → "comp-1234"
+  const colonIdx = nodeId.indexOf(':');
+  const componentId = colonIdx >= 0 ? nodeId.slice(colonIdx + 1) : null;
+
+  // Find the component config
+  const comp = componentId && satConfig?.bodyFrame?.components?.find(c => c.id === componentId);
+
+  if (tracePoint && comp?.positionOffset && tracePoint.qx != null && tracePoint.qw != null) {
+    // We have attitude + component offset — compute aperture position
+    const bodyQ = [tracePoint.qx, tracePoint.qy, tracePoint.qz, tracePoint.qw];
+    const satState = {
+      coordinates: { x: tracePoint.x, y: tracePoint.y, z: tracePoint.z }
+    };
+    const aperturePos = computeAperturePosition(satState, bodyQ, comp, null);
+    if (aperturePos) return aperturePos;
+  }
+
+  // Fallback: satellite center position
+  return getEndpointPos(parentId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
+}
 
 
 const LinkEngine = () => {
   const dispatch = useDispatch();
-  const links = useSelector((s) => s.communication.links) || [];
-  const currentStates = useSelector((s) => s.CurrentState.satelite) || [];
-  const groundStations = useSelector((s) => s.groundStations.groundStations) || [];
-  const particles = useSelector((s) => s.particles?.particles || []);
-  const visibleTracePoints = useSelector((s) => s.particles?.visibleTracePoints || {});
+  const links = useSelector((s) => s.communication.links);
+  const currentStates = useSelector((s) => s.CurrentState.satelite);
+  const groundStations = useSelector((s) => s.groundStations.groundStations);
+  const particles = useSelector((s) => s.particles?.particles);
+  const allSatConfigs = useSelector((s) => s.satellites.satellitesConfig);
+  const visibleTracePoints = useSelector((s) => s.particles?.visibleTracePoints);
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
-  const globalThresholds = useSelector((s) => s.communication.globalThresholds || {});
+  const globalThresholds = useSelector((s) => s.communication.globalThresholds);
   const lastWindowUpdateRef = useRef(0);
 
-  // ── Bulk pre-computed data (null when in live mode) ────────
-  const activeLinksAtTime = useSelector((s) => s.communication.activeLinksAtTime);
-  // ── TSDB-backed link state lookup ──────────────────────────
-  const { getLinksAtTime, hasData: hasTsdbLinkData } = useLinkStates();
+  // ── SINGLE SOURCE OF TRUTH for link display ────────────────
+  const { connections, mode, hasData } = useLinkDisplayData(renderTime);
 
-  // ── BULK PATH: just look up pre-computed activeLinks ───────
+  // ── UNIFIED PATH: dispatch activeLinks from the single source of truth ──
+  // This keeps Redux.activeLinks in sync for any non-3D consumers.
+  // No more throttle — mode changes propagate immediately.
   useEffect(() => {
-    if (!activeLinksAtTime && !hasTsdbLinkData) return; // live mode — handled below
+    if (!hasData) return;
 
-    // Try TSDB first, then legacy map
-    let precomputed;
-    if (hasTsdbLinkData) {
-      precomputed = getLinksAtTime(renderTime);
-    } else {
-      const timeKey = Math.floor(renderTime);
-      precomputed = activeLinksAtTime[timeKey] || activeLinksAtTime[String(timeKey)] || [];
-    }
-    dispatch(setActiveLinks(precomputed));
-  }, [activeLinksAtTime, hasTsdbLinkData, getLinksAtTime, renderTime, dispatch]);
+    const active = connections
+      .map((conn, i) => {
+        // Resolve positions from trace points at current renderTime
+        const from = resolveNodePosition(
+          conn.txNodeId || conn.txParentId,
+          conn.txParentId,
+          allSatConfigs || [], currentStates || [], groundStations || [],
+          particles || [], renderTime, starttime, visibleTracePoints || {},
+        );
+        const to = resolveNodePosition(
+          conn.rxNodeId || conn.rxParentId,
+          conn.rxParentId,
+          allSatConfigs || [], currentStates || [], groundStations || [],
+          particles || [], renderTime, starttime, visibleTracePoints || {},
+        );
+        if (!from || !to) return null;
+
+        const f = { x: from.x / SCALE_FACTOR, y: from.y / SCALE_FACTOR, z: from.z / SCALE_FACTOR };
+        const t = { x: to.x / SCALE_FACTOR, y: to.y / SCALE_FACTOR, z: to.z / SCALE_FACTOR };
+        if (![f.x, f.y, f.z, t.x, t.y, t.z].every(Number.isFinite)) return null;
+
+        return {
+          id: `${conn.txNodeId || conn.txParentId}→${conn.rxNodeId || conn.rxParentId}`,
+          from: f,
+          to: t,
+          txId: conn.txParentId,
+          rxId: conn.rxParentId,
+          txNodeId: conn.txNodeId,
+          rxNodeId: conn.rxNodeId,
+        };
+      })
+      .filter(Boolean);
+
+    dispatch(setActiveLinks(active));
+  }, [connections, hasData, renderTime, particles, visibleTracePoints, currentStates, groundStations, allSatConfigs, starttime, dispatch]);
 
   // ── LIVE PATH: compute on-the-fly (original behavior) ─────
   // Build the context object that computeLink expects
   const ctx = useMemo(
-    () => ({ currentStates, groundStations, particles, renderTime, starttime, globalThresholds, visibleTracePoints }),
+    () => ({ currentStates: currentStates || [], groundStations: groundStations || [], particles: particles || [], renderTime, starttime, globalThresholds: globalThresholds || {}, visibleTracePoints: visibleTracePoints || {} }),
     [currentStates, groundStations, particles, renderTime, starttime, globalThresholds, visibleTracePoints],
   );
 
@@ -61,7 +165,7 @@ const LinkEngine = () => {
   const satPosKey = useMemo(
     () =>
       `rt-${renderTime}-` +
-      currentStates
+      (currentStates || [])
         .map((s) => `${s.id}-${s.coordinates?.x?.toFixed?.(4)}`)
         .join('|'),
     [currentStates, renderTime],
@@ -70,24 +174,24 @@ const LinkEngine = () => {
   // Compute link results (reuses shared linkComputation.js)
   const linkResults = useMemo(
     () => {
-      if (activeLinksAtTime || hasTsdbLinkData) return []; // skip computation in bulk mode
-      return links.map((cfg) => computeLink(cfg, ctx));
+      if (hasData) return []; // unified display data available — skip live computation
+      return (links || []).map((cfg) => computeLink(cfg, ctx));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [links, renderTime, satPosKey, activeLinksAtTime, hasTsdbLinkData],
+    [links, renderTime, satPosKey, hasData],
   );
 
   // Dispatch activeLinks (3D line geometry) + contactWindows — LIVE mode only
   useEffect(() => {
-    if (activeLinksAtTime || hasTsdbLinkData) return; // bulk mode — already handled above
-    if (!linkResults.length && !links.length) return;
+    if (hasData) return; // unified display data available — handled above
+    if (!linkResults.length && !(links || []).length) return;
 
     // ── Active links for 3D / 2D rendering ───────────────────
     const active = linkResults
       .filter((r) => r.ready && r.inLink)
       .map((r) => {
-        const from = getEndpointPos(r.txId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
-        const to = getEndpointPos(r.rxId, currentStates, groundStations, particles, renderTime, starttime, visibleTracePoints);
+        const from = getEndpointPos(r.txId, currentStates || [], groundStations || [], particles || [], renderTime, starttime, visibleTracePoints || {});
+        const to = getEndpointPos(r.rxId, currentStates || [], groundStations || [], particles || [], renderTime, starttime, visibleTracePoints || {});
         if (!from || !to) return null;
         // Convert km → scene units
         const f = { x: from.x / SCALE_FACTOR, y: from.y / SCALE_FACTOR, z: from.z / SCALE_FACTOR };
@@ -109,7 +213,7 @@ const LinkEngine = () => {
       const simTimeMs = starttime + renderTime * 1000;
       dispatch(updateContactWindows({ activeLinkIds, simTimeMs }));
     }
-  }, [linkResults, currentStates, particles, groundStations, dispatch, renderTime, starttime, activeLinksAtTime, links]);
+  }, [linkResults, currentStates, particles, groundStations, dispatch, renderTime, starttime, links, hasData]);
 
   // Headless — renders nothing
   return null;

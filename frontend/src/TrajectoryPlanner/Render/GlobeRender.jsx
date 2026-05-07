@@ -9,10 +9,10 @@ import VonAllenBelt from './VonAllenBelt';
 import { useLoader } from '@react-three/fiber';
 // SimuStackSatellites moved to Globe.jsx (outside Canvas) so it runs in all view modes
 import { toggleCentralObject } from '../../Store/View';
-import { Line } from '@react-three/drei';
 import GroundStationRender from './GroundStationRender';
 import { computeGMSTFromSim, sunDirectionECIFromSim } from '../../transforms';
 import EarthMaterial from './EarthMaterial';
+import ConnectivityLinks from './ConnectivityLinks';
 
 // Vertex Shader for Glow
 const vertexShader = `
@@ -71,8 +71,6 @@ const GlobeRender = () => {
     const referenceSystem = useSelector((state) => state.view.ReferenceSystem);
     const cameraRef = useRef();
     const dispatch = useDispatch();
-    const activeLinks = useSelector((state) => state.communication.activeLinks);
-    const showLinkLines = useSelector((state) => state.view.showLinkLines !== false);
 
     // Enhance textures
     const { gl } = useThree();
@@ -141,12 +139,6 @@ const GlobeRender = () => {
 
     const satellitecurrentcoordinate = useSelector(state => state.CurrentState.satelite.find(p => p.id === 0));
     const centralObject = useSelector((state) => state.view.centralObject);
-    const safeActiveLinks = (activeLinks || []).filter((link) => {
-        if (!link?.from || !link?.to) return false;
-        const { x: fx, y: fy, z: fz } = link.from;
-        const { x: tx, y: ty, z: tz } = link.to;
-        return [fx, fy, fz, tx, ty, tz].every(Number.isFinite);
-    });
 
     {/** 
     useFrame(() => {
@@ -270,41 +262,8 @@ const GlobeRender = () => {
                 />
             ))}
             
-            {/* Communication links - yellow lines between satellites and ground stations */}
-            {showLinkLines && safeActiveLinks.map((link) => {
-                let fromPt = [link.from.x, link.from.y, link.from.z];
-                let toPt = [link.to.x, link.to.y, link.to.z];
-                // In EarthFixed mode, rotate link endpoints from ECI → ECEF
-                if (referenceSystem === 'EarthFixed') {
-                    const gmst = computeGMSTFromSim(starttime, elapsedTime);
-                    const cf = Math.cos(-gmst), sf = Math.sin(-gmst);
-                    fromPt = [cf * fromPt[0] - sf * fromPt[1], sf * fromPt[0] + cf * fromPt[1], fromPt[2]];
-                    toPt = [cf * toPt[0] - sf * toPt[1], sf * toPt[0] + cf * toPt[1], toPt[2]];
-                }
-                return (
-                <group key={link.id}>
-                    {/* Main communication beam */}
-                    <Line
-                        points={[fromPt, toPt]}
-                        color="#ffeb3b"
-                        lineWidth={3}
-                        dashed={false}
-                        transparent={true}
-                        opacity={0.8}
-                    />
-                    {/* Transmitter indicator (from) */}
-                    <mesh position={fromPt}>
-                        <sphereGeometry args={[0.04, 8, 8]} />
-                        <meshBasicMaterial color="#ffeb3b" transparent opacity={0.6} />
-                    </mesh>
-                    {/* Receiver indicator (to) */}
-                    <mesh position={toPt}>
-                        <sphereGeometry args={[0.04, 8, 8]} />
-                        <meshBasicMaterial color="#ffeb3b" transparent opacity={0.6} />
-                    </mesh>
-                </group>
-                );
-            })}
+            {/* Communication links — updated every frame from time series */}
+            <ConnectivityLinks />
 
 
             {view.Grid &&

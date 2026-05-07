@@ -220,3 +220,115 @@ export const nameFor = (id, satellites, groundStations) => {
   const gs = groundStations.find((g) => g.id === id);
   return gs?.name || id;
 };
+
+/* ── Node helpers (Feature 2: Connectivity) ───────────────────── */
+
+/**
+ * Build node definitions from satellite configs + ground stations.
+ * Each laser terminal on a satellite becomes one node.
+ * Each ground station gets one implicit antenna node.
+ *
+ * @param {Array} satellites — from Redux `satellites.satellitesConfig`
+ * @param {Array} groundStations — from Redux `groundStations.groundStations`
+ * @returns {Array<{ nodeId, parentId, parentType, componentId, componentType, label }>}
+ */
+export const buildNodesFromConfig = (satellites, groundStations) => {
+  const nodes = [];
+
+  for (const sat of satellites) {
+    const lasers = (sat.bodyFrame?.components || []).filter(c => c.type === 'laserPointer');
+    for (const laser of lasers) {
+      nodes.push({
+        nodeId: `sat-${sat.id}:${laser.id}`,
+        parentId: `sat-${sat.id}`,
+        parentType: 'satellite',
+        componentId: laser.id,
+        componentType: 'laserPointer',
+        label: `${sat.name || 'Sat ' + sat.id} → ${laser.name || laser.id}`,
+      });
+    }
+    // If a satellite has no laser components, add a virtual node
+    // so it can still participate in links (backward compat)
+    if (lasers.length === 0) {
+      nodes.push({
+        nodeId: `sat-${sat.id}:default`,
+        parentId: `sat-${sat.id}`,
+        parentType: 'satellite',
+        componentId: null,
+        componentType: 'virtual',
+        label: `${sat.name || 'Sat ' + sat.id} → Default`,
+      });
+    }
+  }
+
+  for (const gs of groundStations) {
+    nodes.push({
+      nodeId: `${gs.id}:antenna-0`,
+      parentId: gs.id,
+      parentType: 'groundStation',
+      componentId: null,
+      componentType: 'antenna',
+      label: `${gs.name || gs.id} → Antenna`,
+    });
+  }
+
+  return nodes;
+};
+
+/**
+ * Compute a laser aperture position in scene ECI coordinates.
+ *
+ * For rendering, the link line should originate from the laser aperture
+ * rather than the satellite center. This function computes that position.
+ *
+ * NOTE: The aperture offset in km is TINY compared to satellite positions
+ * (millimeters vs kilometers). At globe scale this is invisible, but in
+ * BodyFrameView (zoomed in) it matters visually.
+ *
+ * @param {Object} satState — satellite state { coordinates: {x,y,z}, ... } (scene units × SCALE_FACTOR)
+ * @param {number[]} bodyQuaternion — [qx, qy, qz, qw]
+ * @param {Object} comp — component config { positionOffset, parentAxis }
+ * @param {{ a1: number, a2: number }} angles — articulation angles in degrees
+ * @returns {{ x, y, z }} position in scene ECI (same scale as satState coordinates)
+ */
+export const computeAperturePosition = (satState, bodyQuaternion, comp, angles) => {
+  if (!satState?.coordinates || !bodyQuaternion) return null;
+
+  // If no component offset, just return satellite center position
+  const offset = comp?.positionOffset;
+  if (!offset || (offset[0] === 0 && offset[1] === 0 && offset[2] === 0)) {
+    return {
+      x: satState.coordinates.x * SCALE_FACTOR,
+      y: satState.coordinates.y * SCALE_FACTOR,
+      z: satState.coordinates.z * SCALE_FACTOR,
+    };
+  }
+
+  // Rotate offset from body frame to ECI using body quaternion
+  const rotated = quatRotateVec(bodyQuaternion, offset);
+
+  // satState.coordinates are in scene units, positionOffset is in scene units.
+  // Add offset to position in scene space, then multiply by SCALE_FACTOR
+  // to return km (same scale as getEndpointPos).
+  // The caller (LinkEngine) divides by SCALE_FACTOR to get scene units.
+  return {
+    x: satState.coordinates.x * SCALE_FACTOR + rotated[0] * SCALE_FACTOR,
+    y: satState.coordinates.y * SCALE_FACTOR + rotated[1] * SCALE_FACTOR,
+    z: satState.coordinates.z * SCALE_FACTOR + rotated[2] * SCALE_FACTOR,
+  };
+};
+
+/**
+ * Simple quaternion rotation: rotate vector v by unit quaternion q = [qx,qy,qz,qw].
+ */
+function quatRotateVec(q, v) {
+  const [qx, qy, qz, qw] = q;
+  const tx = 2 * (qy * v[2] - qz * v[1]);
+  const ty = 2 * (qz * v[0] - qx * v[2]);
+  const tz = 2 * (qx * v[1] - qy * v[0]);
+  return [
+    v[0] + qw * tx + (qy * tz - qz * ty),
+    v[1] + qw * ty + (qz * tx - qx * tz),
+    v[2] + qw * tz + (qx * ty - qy * tx),
+  ];
+}

@@ -10,15 +10,19 @@
  *   X_LVLH = Y × Z          (≈ along-track)
  */
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
-import { useSelector } from 'react-redux';
-import { computeGMSTFromSim, sunDirectionECIFromSim } from '../../transforms';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { useSelector, useStore } from 'react-redux';
+import { computeGMSTFromSim, sunDirectionECIFromSim, geodeticToSceneECI } from '../../transforms';
 import SatelliteBodyModel from './SatelliteBodyModel';
 import EarthMaterial from './EarthMaterial';
 import useTracePoints from '../../hooks/useTracePoints';
+import { getLinksAtTimeFromStore } from '../../hooks/useLinkDisplayData';
 
 /* ─── Vector helpers ────────────────────────────────────────── */
 
@@ -99,6 +103,64 @@ function estimateVelocity(pts, idx) {
 
 const SCALE = 3185.5;
 
+const MAX_LVLH_LINKS = 32;
+
+/* ── Binary search: find entry with time ≤ t ──────────────────── */
+function findStepAtTime(ts, t) {
+  if (!ts || !ts.length) return null;
+  let lo = 0, hi = ts.length - 1;
+  if (t <= ts[0].time) return ts[0];
+  if (t >= ts[hi].time) return ts[hi];
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (ts[mid].time <= t) lo = mid; else hi = mid - 1;
+  }
+  return ts[lo];
+}
+
+/* ── Resolve parent position in scene units (same as ConnectivityLinks) ── */
+function resolveParentPosScene(parentId, t, particles, currentStates, groundStations, starttime, visibleTracePoints) {
+  if (parentId.startsWith('sat-')) {
+    const numId = parseFloat(parentId.replace('sat-', ''));
+    // 1. Prefer TSDB visibleTracePoints (high-res ±60 s window)
+    const visPts = visibleTracePoints?.[numId];
+    if (visPts?.length) {
+      const idx = findLastIndexLE(visPts, t);
+      if (idx >= 0) {
+        const p = visPts[idx];
+        return [p.x, p.y, p.z];
+      }
+    }
+    // 2. Legacy: particles[i].tracePoints (full in-Redux)
+    for (let i = 0; i < particles.length; i++) {
+      if (particles[i].id === numId) {
+        const pts = particles[i].tracePoints;
+        if (pts?.length) {
+          const idx = findLastIndexLE(pts, t);
+          if (idx >= 0) {
+            const p = pts[idx];
+            return [p.x, p.y, p.z]; // scene units
+          }
+        }
+        break;
+      }
+    }
+    // 3. Fallback: CurrentState
+    for (let i = 0; i < currentStates.length; i++) {
+      if (currentStates[i].id === numId && currentStates[i].coordinates) {
+        const c = currentStates[i].coordinates;
+        return [c.x, c.y, c.z];
+      }
+    }
+    return null;
+  }
+  // Ground station
+  const gs = groundStations.find(g => g.id === parentId);
+  if (!gs) return null;
+  const utcMs = starttime + t * 1000;
+  return geodeticToSceneECI({ lat: gs.lat, lon: gs.lon, alt: gs.altKm || 0 }, utcMs);
+}
+
 /* ─── Shaders (identical to GlobeRender) ─────────────────────── */
 const glowVS = `
   varying vec3 vNormal;
@@ -135,37 +197,7 @@ const sunFragmentShader = `
   }
 `;
 
-/* ─── LinkLine helper — imperatively managed THREE.Line ───── */
-const LinkLineLVLH = React.forwardRef(({ linkId }, ref) => {
-  const lineRef = useRef();
-  const geoRef = useRef();
-
-  React.useImperativeHandle(ref, () => ({
-    update(fromLVLH, toLVLH) {
-      if (!geoRef.current) return;
-      const pos = geoRef.current.attributes.position;
-      pos.array[0] = fromLVLH[0]; pos.array[1] = fromLVLH[1]; pos.array[2] = fromLVLH[2];
-      pos.array[3] = toLVLH[0];   pos.array[4] = toLVLH[1];   pos.array[5] = toLVLH[2];
-      pos.needsUpdate = true;
-    },
-  }));
-
-  const positions = React.useMemo(() => new Float32Array(6), []);
-
-  return (
-    <line ref={lineRef}>
-      <bufferGeometry ref={geoRef}>
-        <bufferAttribute
-          attach="attributes-position"
-          count={2}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial color="#ffeb3b" transparent opacity={0.85} />
-    </line>
-  );
-});
+/* ─── LinkLine rendering is now handled imperatively via LineSegments2 ── */
 
 /* ─── Inner scene ────────────────────────────────────────────── */
 const BodyFrameScene = ({ satelliteId, showGlow }) => {
@@ -177,10 +209,27 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
   const sunHaloRef = useRef();
   const sunDirLVLHRef = useRef([1, 0, 0]); // sun direction in LVLH (world space of this scene)
 
-  /* Refs for dynamically-positioned objects (other sats, ground stations, links) */
+  /* Refs for dynamically-positioned objects (other sats, ground stations) */
   const otherSatRefs  = useRef({});
   const gsRefs        = useRef({});
-  const linkLineRefs  = useRef({});
+
+  /* ── Thick link lines via Line2 addon ──────────────────────── */
+  const lvlhLinkSegRef = useRef();
+  const lvlhLinkPositions = useMemo(() => new Float32Array(MAX_LVLH_LINKS * 6), []);
+  const lvlhLinkGeo = useMemo(() => new LineSegmentsGeometry(), []);
+  const lvlhLinkMat = useMemo(() => new LineMaterial({
+    color: 0xffeb3b,
+    linewidth: 4,          // pixels — works with LineMaterial
+    transparent: true,
+    opacity: 0.95,
+    depthTest: true,
+    worldUnits: false,
+  }), []);
+  const lvlhLinkSegObj = useMemo(() => new LineSegments2(lvlhLinkGeo, lvlhLinkMat), [lvlhLinkGeo, lvlhLinkMat]);
+  // Use useStore to read link display data inside useFrame (avoids stale closures)
+  const store = useStore();
+  // Track link display mode for color switching (yellow=connected, cyan=available)
+  const lastLinkModeRef = useRef('connected');
 
   /* Refs for component angle state (updated each frame from trace points).
      Using refs instead of useState to avoid re-renders inside useFrame
@@ -200,19 +249,18 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
   const { combined: mainTracePoints } = useTracePoints(satelliteId);
   // TSDB-backed visible trace points for all satellites (used for other-sat positions)
   const visibleTracePoints = useSelector(s => s.particles.visibleTracePoints) || {};
-  const activeLinks     = useSelector(s => s.communication.activeLinks) || [];
   const showLinkLines   = useSelector(s => s.view.showLinkLines !== false);
   const showBodyFrameAxes = useSelector(s => s.view.showBodyFrameAxes !== false);
   const view            = useSelector(s => s.view);
-  const RenderTime      = useSelector(s => s.timer.RenderTime);
-  const starttime       = useSelector(s => s.timer.starttime);
+  // NOTE: RenderTime and starttime are read from store.getState() inside useFrame
+  // to avoid stale closure issues during manual time scrubbing.
 
   const dayTex    = useLoader(THREE.TextureLoader, '/8081_earthmap10k.jpg');
   const nightTex  = useLoader(THREE.TextureLoader, '/8081_earthlights10k.jpg');
   const cloudsTex = useLoader(THREE.TextureLoader, '/earthcloudmap.jpg');
 
   // Enhance texture quality for the zoomed satellite-frame view
-  const { gl } = useThree();
+  const { gl, size, clock } = useThree();
   useMemo(() => {
     const maxAniso = gl.capabilities.getMaxAnisotropy();
     [dayTex, nightTex, cloudsTex].forEach(tex => {
@@ -224,13 +272,22 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
     });
   }, [dayTex, nightTex, cloudsTex, gl]);
 
+  // Keep LineMaterial resolution in sync with canvas size
+  useEffect(() => {
+    lvlhLinkMat.resolution.set(size.width, size.height);
+  }, [size.width, size.height, lvlhLinkMat]);
+
   const thisConfig   = allConfigs.find(c => c.id === satelliteId);
   const thisParticle = particles.find(p => p.id === satelliteId);
   const thisSat      = satellites.find(s => s.id === satelliteId);
 
-  const { clock } = useThree();
-
   useFrame(() => {
+    // ── Read RenderTime and starttime fresh from store every frame ──
+    // This prevents stale-closure issues when the user scrubs manually.
+    const _timerState = store.getState().timer;
+    const RenderTime  = _timerState?.RenderTime ?? 0;
+    const starttime   = _timerState?.starttime ?? 0;
+
     /* ── 1. Resolve position, velocity, attitude ──────────── */
     let satPos   = null;
     let velKms   = null;
@@ -410,18 +467,54 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
     });
 
     /* ── 8. Communication link lines in LVLH ───────────── */
+    let linkCount = 0;
     if (showLinkLines) {
-      activeLinks.forEach(link => {
-        if (!link?.from || !link?.to) return;
-        const { x: fx, y: fy, z: fz } = link.from;
-        const { x: tx, y: ty, z: tz } = link.to;
-        if (![fx, fy, fz, tx, ty, tz].every(Number.isFinite)) return;
-        const ref = linkLineRefs.current[link.id];
-        if (!ref?.update) return;
-        const fromLVLH = eci2lvlh([fx, fy, fz], satPos, basis);
-        const toLVLH   = eci2lvlh([tx, ty, tz], satPos, basis);
-        ref.update(fromLVLH, toLVLH);
-      });
+      // ══════════════════════════════════════════════════════════
+      // SINGLE SOURCE OF TRUTH: getLinksAtTimeFromStore
+      // Same function used by ConnectivityLinks (3D) and 2D map.
+      // ══════════════════════════════════════════════════════════
+      const { connections, mode: linkMode, hasData } = getLinksAtTimeFromStore(store, RenderTime);
+
+      // Update line color based on mode (yellow=connected, cyan=available)
+      if (linkMode !== lastLinkModeRef.current) {
+        lastLinkModeRef.current = linkMode;
+        lvlhLinkMat.color.set(linkMode === 'connected' ? 0xffeb3b : 0x38bdf8);
+      }
+
+      if (hasData) {
+        // Read fresh position data from store for link endpoint resolution
+        const _linkState = store.getState();
+        const _particles = _linkState.particles?.particles || [];
+        const _satStates = _linkState.CurrentState?.satelite || [];
+        const _gs        = _linkState.groundStations?.groundStations || [];
+        const _visTp     = _linkState.particles?.visibleTracePoints || {};
+
+        for (let i = 0; i < connections.length && linkCount < MAX_LVLH_LINKS; i++) {
+          const conn = connections[i];
+          const fromPos = resolveParentPosScene(conn.txParentId, RenderTime, _particles, _satStates, _gs, starttime, _visTp);
+          const toPos = resolveParentPosScene(conn.rxParentId, RenderTime, _particles, _satStates, _gs, starttime, _visTp);
+          if (!fromPos || !toPos) continue;
+          const fromLVLH = eci2lvlh(fromPos, satPos, basis);
+          const toLVLH = eci2lvlh(toPos, satPos, basis);
+          const base = linkCount * 6;
+          lvlhLinkPositions[base]     = fromLVLH[0];
+          lvlhLinkPositions[base + 1] = fromLVLH[1];
+          lvlhLinkPositions[base + 2] = fromLVLH[2];
+          lvlhLinkPositions[base + 3] = toLVLH[0];
+          lvlhLinkPositions[base + 4] = toLVLH[1];
+          lvlhLinkPositions[base + 5] = toLVLH[2];
+          linkCount++;
+        }
+      }
+    }
+    // Update Line2 geometry
+    if (lvlhLinkSegRef.current) {
+      if (linkCount > 0) {
+        lvlhLinkGeo.setPositions(lvlhLinkPositions.subarray(0, linkCount * 6));
+        lvlhLinkSegRef.current.geometry = lvlhLinkGeo;
+        lvlhLinkSegRef.current.computeLineDistances();
+      }
+      lvlhLinkSegRef.current.visible = linkCount > 0;
     }
   });
 
@@ -528,17 +621,8 @@ const BodyFrameScene = ({ satelliteId, showGlow }) => {
         </group>
       ))}
 
-      {/* ── Communication link lines ───────────────────────── */}
-      {showLinkLines && activeLinks.filter(link =>
-        link?.from && link?.to &&
-        [link.from.x, link.from.y, link.from.z, link.to.x, link.to.y, link.to.z].every(Number.isFinite)
-      ).map(link => (
-        <LinkLineLVLH
-          key={link.id}
-          linkId={link.id}
-          ref={el => { if (el) linkLineRefs.current[link.id] = el; }}
-        />
-      ))}
+      {/* ── Communication link lines (thick Line2) ──────────── */}
+      <primitive ref={lvlhLinkSegRef} object={lvlhLinkSegObj} />
 
       {/* ── Satellite body at LVLH origin ───────────────────── */}
       <group ref={bodyRef} scale={[0.6, 0.6, 0.6]}>

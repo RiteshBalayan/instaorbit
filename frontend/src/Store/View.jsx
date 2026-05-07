@@ -26,6 +26,11 @@ const initialState = {
   // Body-frame axis arrows (default on)
   showBodyFrameAxes: true,
 
+  // Feature flag: use node-level (laser-to-laser) link rendering
+  // When true, LinkEngine uses connectedPairsTimeSeries with node IDs.
+  // When false, falls back to satellite-center links (legacy).
+  useNodeLevelLinks: true,
+
   /* ─── Flexible layout system ──────────────────────────────── */
   // layout.mode: 'single' | 'split'
   // layout.left / right: { type: '3d' | '2d' | 'bodyFrame', satelliteId?: number }
@@ -88,6 +93,9 @@ const viewSlice = createSlice({
     setShowBodyFrameAxes: (state, action) => {
       state.showBodyFrameAxes = action.payload;
     },
+    setUseNodeLevelLinks: (state, action) => {
+      state.useNodeLevelLinks = action.payload;
+    },
 
     /* ─── Layout actions ─────────────────────────────────────── */
 
@@ -122,6 +130,6 @@ const viewSlice = createSlice({
   },
 });
 
-export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleConfigPanel, toggleLinkBudget, setTrackWindow, setShowOrbit, setShowLinkLines, setShowBodyFrameAxes, setLayout, setViewPanel, toggleSplit } = viewSlice.actions;
+export const { toggleGrid, toggleAxis, toggleVonAllenBelt, toggleHDEarth, toggleSun, toggleAmbientLight, toggleRefrenaceSystem, toggleCentralObject, setViewMode, toggleControlPanel, toggleConfigPanel, toggleLinkBudget, setTrackWindow, setShowOrbit, setShowLinkLines, setShowBodyFrameAxes, setUseNodeLevelLinks, setLayout, setViewPanel, toggleSplit } = viewSlice.actions;
 
 export default viewSlice.reducer;

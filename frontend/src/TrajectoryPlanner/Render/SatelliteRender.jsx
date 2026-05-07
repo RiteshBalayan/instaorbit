@@ -1,14 +1,109 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 import {  trueToEccentricAnomaly, eccentricToMeanAnomaly, keplerianToCartesian, applyZ_X_Z_Rotation, cartesianToKeplerian } from '../Simulation/Functions';
 import { Shape, TubeGeometry } from 'three'; 
 
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { computeGMST, computeGMSTFromSim } from '../../transforms';
+import { computeGMST, computeGMSTFromSim, SCALE_FACTOR, geodeticToSceneECI } from '../../transforms';
 import SatelliteBodyModel from './SatelliteBodyModel';
 import useTracePoints from '../../hooks/useTracePoints';
+
+/* ── Connectivity-driven laser pointing helpers ─────────────── */
+
+/**
+ * Binary search for the entry with time ≤ renderTime in a sorted array.
+ */
+function findStepAtTime(timeSeries, renderTime) {
+  if (!timeSeries || timeSeries.length === 0) return null;
+  let lo = 0, hi = timeSeries.length - 1;
+  if (renderTime <= timeSeries[0].time) return timeSeries[0];
+  if (renderTime >= timeSeries[hi].time) return timeSeries[hi];
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (timeSeries[mid].time <= renderTime) lo = mid;
+    else hi = mid - 1;
+  }
+  return timeSeries[lo];
+}
+
+/** Quaternion conjugate (inverse for unit quaternions) */
+function quatConj([qx, qy, qz, qw]) { return [-qx, -qy, -qz, qw]; }
+
+/** Rotate vector v by quaternion q = [qx,qy,qz,qw] */
+function quatRotVec([qx, qy, qz, qw], [vx, vy, vz]) {
+  const tx = 2 * (qy * vz - qz * vy);
+  const ty = 2 * (qz * vx - qx * vz);
+  const tz = 2 * (qx * vy - qy * vx);
+  return [
+    vx + qw * tx + (qy * tz - qz * ty),
+    vy + qw * ty + (qz * tx - qx * tz),
+    vz + qw * tz + (qx * ty - qy * tx),
+  ];
+}
+
+function vec3Sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function vec3Len(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]); }
+function vec3Norm(v) { const l = vec3Len(v); return l > 1e-12 ? [v[0]/l, v[1]/l, v[2]/l] : [0,0,1]; }
+function vec3Dot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+function vec3Cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+
+function parentAxisToVec(axis) {
+  switch (axis) {
+    case '+X': return [1,0,0]; case '-X': return [-1,0,0];
+    case '+Y': return [0,1,0]; case '-Y': return [0,-1,0];
+    case '+Z': return [0,0,1]; case '-Z': return [0,0,-1];
+    default: return [0,0,1];
+  }
+}
+
+/**
+ * Compute gimbal angles (a1=azimuth, a2=elevation) for a laser component
+ * given a target direction in ECI, the satellite body quaternion, and
+ * the component mounting axis.
+ */
+function computeLaserAngles(targetECI_km, satPosECI_km, bodyQ, comp) {
+  const dir = vec3Norm(vec3Sub(targetECI_km, satPosECI_km));
+  const bodyQInv = quatConj(bodyQ);
+  const dirBody = quatRotVec(bodyQInv, dir);
+  const pAxis = parentAxisToVec(comp.parentAxis || '+Z');
+
+  const dot = vec3Dot(dirBody, pAxis);
+  const proj = [
+    dirBody[0] - dot * pAxis[0],
+    dirBody[1] - dot * pAxis[1],
+    dirBody[2] - dot * pAxis[2],
+  ];
+  const projLen = vec3Len(proj);
+
+  let a2 = Math.atan2(dot, projLen) * (180 / Math.PI);
+  let a1 = 0;
+  if (projLen > 1e-10) {
+    let refVec;
+    if (Math.abs(pAxis[1]) > 0.9) refVec = [1, 0, 0];
+    else if (Math.abs(pAxis[0]) > 0.9) refVec = [0, 1, 0];
+    else refVec = [1, 0, 0];
+    const rDot = vec3Dot(refVec, pAxis);
+    refVec = vec3Norm([refVec[0] - rDot*pAxis[0], refVec[1] - rDot*pAxis[1], refVec[2] - rDot*pAxis[2]]);
+    const perpVec = vec3Norm(vec3Cross(pAxis, refVec));
+    const projNorm = vec3Norm(proj);
+    const c = vec3Dot(projNorm, refVec);
+    const s = vec3Dot(projNorm, perpVec);
+    a1 = Math.atan2(s, c) * (180 / Math.PI);
+  }
+
+  // Clamp to constraints
+  const con = comp.constraint || {};
+  const minA1 = con.minA1Deg != null ? con.minA1Deg : -180;
+  const maxA1 = con.maxA1Deg != null ? con.maxA1Deg : 180;
+  const minA2 = con.minA2Deg != null ? con.minA2Deg : -90;
+  const maxA2 = con.maxA2Deg != null ? con.maxA2Deg : 90;
+  a1 = Math.max(minA1, Math.min(maxA1, a1));
+  a2 = Math.max(minA2, Math.min(maxA2, a2));
+
+  return { a1, a2 };
+}
 
 /**
  * Wrapper that reads component angles from a ref (updated every useFrame)
@@ -166,6 +261,17 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
   trueanomly = THREE.MathUtils.degToRad(trueanomly);
   const satelliteconfig = useSelector(state => state.satellites.satellitesConfig.find(p => p.id === particleId));
 
+  // ── Connectivity-driven laser pointing data ──
+  // Read from store directly in useFrame via refs to avoid re-rendering
+  // every Satellite component when connectivity/TSDB data changes.
+  // These values are ONLY consumed inside useFrame (via refs), never in JSX.
+  const store = useStore();
+  const connTsRef = useRef([]);
+  const visibleConnTsRef = useRef([]);
+  const allParticlesRef = useRef([]);
+  const allCurrentStatesRef = useRef([]);
+  const groundStationsRef = useRef([]);
+  const visibleTracePointsRef = useRef({});
 
   //To Render the orbit tracks and Satellite
   useEffect(() => {
@@ -508,6 +614,112 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
           if (best.componentAngles) {
             componentAnglesRef.current = best.componentAngles;
           }
+
+          // ── Override laser angles from connectivity data ──
+          // The bulk sim doesn't know connectivity (it runs before the
+          // connectivity solver), so the stored componentAngles for lasers
+          // default to nadir/sun. Here we recompute laser gimbal angles
+          // from the connectivity assignments at the current time.
+          // Read from Redux store directly (no selector re-renders).
+          // Only execute when connectivity data exists to avoid overhead.
+          {
+            const _state = store.getState();
+            const _connTs = _state.communication?.connectedPairsTimeSeries || [];
+            const _visConnTs = _state.communication?.visibleConnectivityStates || [];
+            const connectedPairsTS = _visConnTs.length ? _visConnTs : _connTs;
+            if (connectedPairsTS.length && attitudeQ && satelliteconfig?.bodyFrame?.components) {
+              allParticlesRef.current = _state.particles?.particles || [];
+              allCurrentStatesRef.current = _state.CurrentState?.satelite || [];
+              groundStationsRef.current = _state.groundStations?.groundStations || [];
+              visibleTracePointsRef.current = _state.particles?.visibleTracePoints || {};
+              const step = findStepAtTime(connectedPairsTS, RenderTime);
+            if (step?.connections?.length) {
+              const myPrefix = `sat-${particleId}`;
+              const laserComps = satelliteconfig.bodyFrame.components.filter(c => c.type === 'laserPointer');
+              const satPosScene = [best.x, best.y, best.z]; // scene units, ECI
+
+              for (const conn of step.connections) {
+                // Check if this satellite is on either side of the connection
+                const isTx = conn.txParentId === myPrefix;
+                const isRx = conn.rxParentId === myPrefix;
+                if (!isTx && !isRx) continue;
+
+                // Identify which laser component on THIS satellite is involved
+                const myNodeId = isTx ? conn.txNodeId : conn.rxNodeId;
+                const targetParentId = isTx ? conn.rxParentId : conn.txParentId;
+                // nodeId format: "sat-0:comp-1234" → extract component id
+                const colonIdx = myNodeId.indexOf(':');
+                const compIdStr = colonIdx >= 0 ? myNodeId.slice(colonIdx + 1) : null;
+                const comp = compIdStr
+                  ? laserComps.find(c => c.id === compIdStr || String(c.id) === compIdStr)
+                  : laserComps[0]; // default node = first laser
+                if (!comp) continue;
+
+                // Get target position (scene units, ECI)
+                // Prefer TSDB visibleTracePoints (windowed) over legacy particles[].tracePoints
+                let targetPos = null;
+                if (targetParentId.startsWith('sat-')) {
+                  const targetId = parseFloat(targetParentId.replace('sat-', ''));
+                  // 1) Try TSDB windowed trace points
+                  const vtpArr = visibleTracePointsRef.current[targetId];
+                  if (vtpArr?.length) {
+                    const tIdx = findLastIndexLE(vtpArr, RenderTime);
+                    if (tIdx >= 0) {
+                      const tp = vtpArr[tIdx];
+                      targetPos = [tp.x, tp.y, tp.z];
+                    }
+                  }
+                  // 2) Fallback: legacy particles[].tracePoints
+                  if (!targetPos) {
+                    const pList = allParticlesRef.current;
+                    for (let pi = 0; pi < pList.length; pi++) {
+                      if (pList[pi].id === targetId) {
+                        const targetPts = pList[pi].tracePoints;
+                        if (targetPts?.length) {
+                          const tIdx = findLastIndexLE(targetPts, RenderTime);
+                          if (tIdx >= 0) {
+                            const tp = targetPts[tIdx];
+                            targetPos = [tp.x, tp.y, tp.z];
+                          }
+                        }
+                        break;
+                      }
+                    }
+                  }
+                  if (!targetPos) {
+                    const sList = allCurrentStatesRef.current;
+                    for (let si = 0; si < sList.length; si++) {
+                      if (sList[si].id === targetId && sList[si].coordinates) {
+                        const c = sList[si].coordinates;
+                        targetPos = [c.x, c.y, c.z];
+                        break;
+                      }
+                    }
+                  }
+                } else {
+                  // Ground station
+                  const gsList = groundStationsRef.current;
+                  const gs = gsList.find(g => g.id === targetParentId);
+                  if (gs) {
+                    const utcMs = starttime + RenderTime * 1000;
+                    const gp = geodeticToSceneECI({ lat: gs.lat, lon: gs.lon, alt: gs.altKm || 0 }, utcMs);
+                    targetPos = gp; // already scene units
+                  }
+                }
+
+                if (targetPos) {
+                  const angles = computeLaserAngles(targetPos, satPosScene, attitudeQ, comp);
+                  if (!componentAnglesRef.current) componentAnglesRef.current = {};
+                  componentAnglesRef.current = {
+                    ...componentAnglesRef.current,
+                    [comp.id]: angles,
+                  };
+                }
+              }
+            }
+          }
+          } // end block scope for connectivity laser override
+          // ── End connectivity laser override ──
         }
       }
 
@@ -617,32 +829,14 @@ const Satellite = ({ particleId, inclination, semimajoraxis, eccentricity, argum
         </>
       )}
       
-      {/* Fallback satellite mesh - properly occludes behind Earth */}
-      <mesh ref={satelliteRef} renderOrder={1000}>
-        <sphereGeometry args={[0.05, 16, 16]} />
-        <meshStandardMaterial 
-          color={satColor}
-          emissive={satColor}
-          emissiveIntensity={1.5}
-          depthTest={true}
-          depthWrite={true}
-        />
-      </mesh>
-      
-      {/* Glow effect for better visibility */}
-      <mesh ref={satelliteGlowRef} renderOrder={999}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshBasicMaterial 
-          color={satColor}
-          transparent 
-          opacity={0.5}
-          depthTest={true}
-          depthWrite={false}
-        />
-      </mesh>
+      {/* Position-tracking anchors (no visible geometry — body model is the
+          only sphere/shape rendered at the satellite's location). */}
+      <group ref={satelliteRef} />
+      <group ref={satelliteGlowRef} />
 
-      {/* Orbit trail line - only render if tracePoints exist */}
-      {tracePointsCombined?.length ? (
+      {/* Orbit trail line - only render if tracePoints exist and the
+          "Orbital Rings" toggle (showOrbit) is enabled. */}
+      {showOrbit && tracePointsCombined?.length ? (
         <line ref={lineRef} renderOrder={100}>
           <bufferGeometry />
           <lineBasicMaterial 

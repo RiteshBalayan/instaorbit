@@ -29,6 +29,12 @@ const initialState = {
     minElevationDeg: 10,     // Minimum elevation angle for GS links (°)
     maxDistanceKm: null,     // Maximum link distance (km) — null = no limit
   },
+
+  // Global max concurrent connections per node — used by the connectivity
+  // solver. 1 = legacy behavior (each laser/antenna gets one target).
+  // Editable from both the Link Manager (Configure Links) and the
+  // Connection Manager so it can be set before the connectivity run.
+  maxConnectionsPerNode: 1,
   
   // ── Coalesced contact windows ──────────────────────────────────
   // Each window: { id, txId, rxId, simStart, simEnd, metrics }
@@ -69,6 +75,31 @@ const initialState = {
   // Array of { time_s, active_links: [...] } for the visible time window.
   // Set by TimeSeriesClient.syncToTime().
   visibleLinkStates: [],
+
+  // ── Feature 1: Link Availability (isolated data output) ────
+  // Time series of all available (in-link) pairs at each timestep.
+  // Each entry: { time, pairs: [{ txId, rxId, rangeKm, elevationDeg, snrDb, linkMargin, inLink }] }
+  availablePairsTimeSeries: [],
+
+  // ── Feature 2: Link Connectivity (node-level connections) ──
+  // Output from /link-connectivity API.  Each entry:
+  //   { time, connections: [{ txNodeId, rxNodeId, txParentId, rxParentId, rangeKm, elevationDeg }] }
+  connectedPairsTimeSeries: [],
+  // Node-level contact windows from connectivity API
+  //   { id, pairId, txNodeId, rxNodeId, simStart, simEnd, closed }
+  connectionWindows: [],
+
+  // ── TSDB-backed windowed connectivity states ──────────────
+  // Sliding ±60 s window of connectivity states from TSDB.
+  // When present, ConnectivityLinks/BodyFrameView read this for the visible
+  // window instead of the full connectedPairsTimeSeries in memory.
+  visibleConnectivityStates: [],
+
+  // ── Link display mode (single source of truth for all views) ──
+  // 'connected' — show only links that passed the connectivity solver
+  // 'available' — show all links that are physically available (line-of-sight)
+  // All render surfaces (3D globe, LVLH, 2D map, timeline) MUST read this.
+  linkDisplayMode: 'connected',
 };
 
 const communicationSlice = createSlice({
@@ -108,6 +139,12 @@ const communicationSlice = createSlice({
     // Global link thresholds
     setGlobalThresholds: (state, action) => {
       state.globalThresholds = { ...(state.globalThresholds || {}), ...action.payload };
+    },
+
+    // Global max concurrent connections per node (connectivity solver)
+    setMaxConnectionsPerNode: (state, action) => {
+      const v = Math.max(1, Math.min(64, Number(action.payload) || 1));
+      state.maxConnectionsPerNode = v;
     },
     
     // Link history (legacy — no longer appended during live sim)
@@ -273,6 +310,42 @@ const communicationSlice = createSlice({
       state.visibleLinkStates = action.payload || [];
     },
 
+    // ── TSDB windowed connectivity states ─────────────────────
+    // payload: [ { time, connections: [...] } ]
+    setVisibleConnectivityStates: (state, action) => {
+      state.visibleConnectivityStates = action.payload || [];
+    },
+
+    // ── Feature 1: Link Availability time series ──────────────
+    setAvailablePairsTimeSeries: (state, action) => {
+      state.availablePairsTimeSeries = action.payload || [];
+    },
+    clearAvailablePairsTimeSeries: (state) => {
+      state.availablePairsTimeSeries = [];
+    },
+
+    // ── Feature 2: Link Connectivity time series ──────────────
+    setConnectedPairsTimeSeries: (state, action) => {
+      state.connectedPairsTimeSeries = action.payload || [];
+    },
+    clearConnectedPairsTimeSeries: (state) => {
+      state.connectedPairsTimeSeries = [];
+    },
+    setConnectionWindows: (state, action) => {
+      state.connectionWindows = action.payload || [];
+    },
+    clearConnectionWindows: (state) => {
+      state.connectionWindows = [];
+    },
+
+    // ── Link display mode toggle ──────────────────────────────
+    setLinkDisplayMode: (state, action) => {
+      const mode = action.payload;
+      if (mode === 'connected' || mode === 'available') {
+        state.linkDisplayMode = mode;
+      }
+    },
+
     // Reset all communication state
     resetCommunication: () => {
       return initialState;
@@ -299,6 +372,13 @@ export const {
   bulkLoadActiveLinksAtTime,
   clearBulkLinkData,
   setVisibleLinkStates,
+  setVisibleConnectivityStates,
+  setAvailablePairsTimeSeries,
+  clearAvailablePairsTimeSeries,
+  setConnectedPairsTimeSeries,
+  clearConnectedPairsTimeSeries,
+  setConnectionWindows,
+  clearConnectionWindows,
   addContactEvent,
   clearContactEvents,
   setPredictedContacts,
@@ -314,6 +394,8 @@ export const {
   completeHandover,
   resetCommunication,
   setGlobalThresholds,
+  setMaxConnectionsPerNode,
+  setLinkDisplayMode,
 } = communicationSlice.actions;
 
 export { defaultLinkParams };

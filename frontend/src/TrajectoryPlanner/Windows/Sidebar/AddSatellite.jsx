@@ -638,11 +638,12 @@ const AddSatellite = ({ editId = null, onClose }) => {
               </div>
             )}
 
-            {/* Component pointing inline */}
-            {(bodyFrame.components || []).length > 0 && (
+            {/* Component pointing inline — only for non-laser components.
+                Laser pointers are driven by the connectivity module (auto). */}
+            {(bodyFrame.components || []).filter(c => c.type !== 'laserPointer').length > 0 && (
               <div style={{ marginTop:'16px' }}>
                 <h3>Component Pointing</h3>
-                {(bodyFrame.components || []).map((comp) => (
+                {(bodyFrame.components || []).filter(c => c.type !== 'laserPointer').map((comp) => (
                   <div key={comp.id} style={{ background:'#16213e',border:'1px solid #374151',borderRadius:'8px',padding:'10px',marginBottom:'8px' }}>
                     <span style={{ fontSize:'11px',fontWeight:600,color:comp.type==='solarPanel'?'#3b82f6':'#ef4444',display:'block',marginBottom:'6px' }}>{comp.name}</span>
                     <div className='detail-row' style={{ marginBottom:'4px' }}>
@@ -766,7 +767,7 @@ const AddSatellite = ({ editId = null, onClose }) => {
                 setBodyFrame(prev => ({ ...prev, components: [...(prev.components||[]), comp] }));
               }}>+ Solar Panel</Button>
               <Button size="small" variant="outlined" onClick={() => {
-                const comp = createComponent({ name: `Laser ${(bodyFrame.components||[]).length+1}`, type: 'laserPointer', parentAxis: '+Z', axisDirection: [0, 0, 1], positionOffset: [0, 0, 0.03], dof: 2, offset: 0.03, slewRateDegSec: 10 });
+                const comp = createComponent({ name: `Laser ${(bodyFrame.components||[]).length+1}`, type: 'laserPointer', parentAxis: '+Z', axisDirection: [0, 0, 1], positionOffset: [0, 0, 0.03], dof: 2, offset: 0.03, slewRateDegSec: 10, pointingMode: 'connectivity' });
                 setBodyFrame(prev => ({ ...prev, components: [...(prev.components||[]), comp] }));
               }}>+ Laser Pointer</Button>
             </div>

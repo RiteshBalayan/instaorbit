@@ -314,6 +314,7 @@ router.post('/simulate-bulk', (req, res) => {
 
     const linkTimeline = [];
     const activeLinksAtTime = {};
+    const availabilityTimeSeries = [];
     let prevActivePairSet = '';
 
     for (let step = 0; step < totalSteps; step++) {
@@ -420,6 +421,7 @@ router.post('/simulate-bulk', (req, res) => {
       if (linkConfigs.length > 0) {
         const stepActiveLinks = [];
         const stepActivePairIds = [];
+        const stepAvailablePairs = [];
 
         for (const cfg of linkConfigs) {
           const lr = linkLib.computeLinkServer(cfg, satPositionsKm, groundStations, utcMs, globalThresholds);
@@ -435,11 +437,22 @@ router.post('/simulate-bulk', (req, res) => {
               });
             }
             stepActivePairIds.push(`${cfg.txId}→${cfg.rxId}`);
+            // Collect link availability metrics (position-free)
+            stepAvailablePairs.push({
+              txId: lr.txId,
+              rxId: lr.rxId,
+              rangeKm: lr.rangeKm,
+              elevationDeg: lr.elevationDeg,
+              snrDb: lr.snrDb,
+              linkMargin: lr.linkMargin,
+              inLink: lr.inLink,
+            });
           }
         }
 
         linkTimeline.push({ time: t, activePairIds: stepActivePairIds });
         activeLinksAtTime[t] = stepActiveLinks;
+        availabilityTimeSeries.push({ time: t, pairs: stepAvailablePairs });
       }
     }
 
@@ -454,6 +467,11 @@ router.post('/simulate-bulk', (req, res) => {
       attitude: attitudeResult,
       components: componentResult,
       linkData: { contactWindows, activeLinksAtTime },
+      // Feature 1: Isolated link availability output (position-free)
+      linkAvailability: {
+        timeSeries: availabilityTimeSeries,
+        contactWindows,
+      },
       meta: { totalSteps, stepSize, duration, computeTimeMs },
     });
   } catch (err) {

@@ -19,6 +19,7 @@ import SatelliteAltIcon from '@mui/icons-material/SatelliteAlt';
 import CellTowerIcon from '@mui/icons-material/CellTower';
 import PublicIcon from '@mui/icons-material/Public';
 import LinkIcon from '@mui/icons-material/Link';
+import HubIcon from '@mui/icons-material/Hub';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -33,6 +34,7 @@ import { addGroundStation, updateGroundStation, deleteGroundStation } from '../.
 import AddSatellite from '../Sidebar/AddSatellite';
 import AddConstellation from '../Sidebar/AddConstellation';
 import LinkManager from '../Sidebar/LinkManager';
+import ConnectionManager from '../Sidebar/ConnectionManager';
 
 /* tiny map-click helper */
 const MapClickSelector = ({ onSelect }) => {
@@ -128,6 +130,9 @@ const MenuBar = () => {
   /* ── Link Manager modal ───────────────────────────────────── */
   const [showLinkManager, setShowLinkManager] = useState(false);
 
+  /* ── Connection Manager modal ─────────────────────────────── */
+  const [showConnectionManager, setShowConnectionManager] = useState(false);
+
   /* ── Ground Station modal ─────────────────────────────────── */
   const [showGSModal, setShowGSModal] = useState(false);
   const [gsName, setGsName] = useState('New Ground Station');
@@ -211,6 +216,12 @@ const MenuBar = () => {
         <button onClick={() => setShowLinkManager(true)} style={btnStyle}>
           <LinkIcon sx={{ fontSize: 14 }} />
           <span>Configure Link</span>
+        </button>
+
+        {/* Configure Connections */}
+        <button onClick={() => setShowConnectionManager(true)} style={btnStyle}>
+          <HubIcon sx={{ fontSize: 14 }} />
+          <span>Connections</span>
         </button>
 
         <div style={{ width: 1, height: 18, background: 'rgba(143,148,251,0.25)', margin: '0 2px' }} />
@@ -387,8 +398,8 @@ const MenuBar = () => {
         open={showLinkManager}
         onClose={() => setShowLinkManager(false)}
         fullWidth
-        maxWidth="sm"
-        PaperProps={{ sx: { ...dialogPaperSx, maxWidth: 560, maxHeight: '80vh' } }}
+        maxWidth="md"
+        PaperProps={{ sx: { ...dialogPaperSx, maxWidth: 900, maxHeight: '90vh' } }}
       >
         <div style={dialogHeaderStyle}>
           <span style={dialogTitleStyle}>
@@ -399,8 +410,30 @@ const MenuBar = () => {
             <CloseIcon sx={{ fontSize: 16 }} />
           </button>
         </div>
-        <DialogContent sx={{ p: '12px 16px' }}>
+        <DialogContent sx={{ p: '16px 20px' }}>
           <LinkManager />
+        </DialogContent>
+      </Dialog>
+
+      {/* Connection Manager */}
+      <Dialog
+        open={showConnectionManager}
+        onClose={() => setShowConnectionManager(false)}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{ sx: { ...dialogPaperSx, maxWidth: 900, maxHeight: '90vh' } }}
+      >
+        <div style={dialogHeaderStyle}>
+          <span style={dialogTitleStyle}>
+            <HubIcon sx={{ fontSize: 18, color: '#8b5cf6' }} />
+            Connection Manager
+          </span>
+          <button style={dialogCloseStyle} onClick={() => setShowConnectionManager(false)}>
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </button>
+        </div>
+        <DialogContent sx={{ p: '16px 20px' }}>
+          <ConnectionManager />
         </DialogContent>
       </Dialog>
     </>

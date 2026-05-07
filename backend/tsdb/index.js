@@ -184,6 +184,19 @@ function handleSubscribe(ws, msg) {
         })),
       }));
     }
+
+    // Also push connectivity states for the window
+    const connRows = stmts.queryConnectivityStates.all(sessionId, from, to);
+    if (connRows.length) {
+      ws.send(JSON.stringify({
+        type: 'connectivityStates',
+        sessionId,
+        states: connRows.map((r) => ({
+          time_s: r.time_s,
+          connections: JSON.parse(r.connections),
+        })),
+      }));
+    }
   };
 
   // Immediate first push
@@ -242,6 +255,14 @@ function handleQuery(ws, msg) {
     }));
   }
 
+  if (dataType === 'connectivityStates' || dataType === 'both') {
+    const connRows = stmts.queryConnectivityStates.all(sessionId, from, to);
+    result.connectivityStates = connRows.map((r) => ({
+      time_s: r.time_s,
+      connections: JSON.parse(r.connections),
+    }));
+  }
+
   ws.send(JSON.stringify({
     type: 'queryResult',
     requestId,
@@ -278,6 +299,16 @@ function handleWsIngest(ws, msg) {
       typeof payload.active_links === 'string'
         ? payload.active_links
         : JSON.stringify(payload.active_links),
+    );
+  }
+
+  if (dataType === 'connectivityState' && payload) {
+    stmts.insertConnectivityState.run(
+      sessionId,
+      payload.time_s,
+      typeof payload.connections === 'string'
+        ? payload.connections
+        : JSON.stringify(payload.connections),
     );
   }
 

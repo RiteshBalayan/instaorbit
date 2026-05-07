@@ -1,5 +1,5 @@
 /**
- * Link-state + contact-window REST routes.
+ * Link-state + contact-window + connectivity REST routes.
  *
  * POST   /sessions/:id/link-states           – Bulk ingest link states
  * GET    /sessions/:id/link-states            – Query link states by time range
@@ -8,10 +8,24 @@
  * POST   /sessions/:id/contact-windows        – Bulk ingest contact windows
  * GET    /sessions/:id/contact-windows        – Query contact windows (filter by tx_id, rx_id)
  * DELETE /sessions/:id/contact-windows        – Delete all contact windows for session
+ *
+ * POST   /sessions/:id/connectivity-states    – Bulk ingest connectivity states
+ * GET    /sessions/:id/connectivity-states    – Query connectivity states by time range
+ * DELETE /sessions/:id/connectivity-states    – Delete all connectivity states for session
+ *
+ * POST   /sessions/:id/connection-windows     – Bulk ingest connection windows
+ * GET    /sessions/:id/connection-windows     – Query connection windows
+ * DELETE /sessions/:id/connection-windows     – Delete all connection windows for session
  */
 
 const express = require('express');
-const { stmts, bulkInsertLinkStates, bulkInsertContactWindows } = require('../db');
+const {
+  stmts,
+  bulkInsertLinkStates,
+  bulkInsertContactWindows,
+  bulkInsertConnectivityStates,
+  bulkInsertConnectionWindows,
+} = require('../db');
 
 const router = express.Router({ mergeParams: true });
 
@@ -168,6 +182,161 @@ router.delete('/contact-windows', (req, res) => {
     res.json({ message: 'Contact windows deleted' });
   } catch (err) {
     console.error('DELETE contact-windows error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/* ═══════════════  CONNECTIVITY STATES  ═══════════════ */
+
+/**
+ * POST /sessions/:id/connectivity-states
+ * Body: { states: [{ time_s, connections: [...] }] }
+ */
+router.post('/connectivity-states', (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { states } = req.body;
+
+    if (!Array.isArray(states) || !states.length) {
+      return res.status(400).json({ error: 'states array required' });
+    }
+
+    const rows = states.map((s) => ({
+      session_id: sessionId,
+      time_s: s.time_s ?? s.time,
+      connections: typeof s.connections === 'string'
+        ? s.connections
+        : JSON.stringify(s.connections ?? []),
+    }));
+
+    bulkInsertConnectivityStates(rows);
+    res.json({ inserted: rows.length });
+  } catch (err) {
+    console.error('POST connectivity-states error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/**
+ * GET /sessions/:id/connectivity-states?from=0&to=3600&resolution=1
+ */
+router.get('/connectivity-states', (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { from = 0, to = 999999999, resolution = 1 } = req.query;
+    const fromT = Number(from);
+    const toT = Number(to);
+    const resn = Math.max(1, Math.round(Number(resolution)));
+
+    let rows;
+    if (resn <= 1) {
+      rows = stmts.queryConnectivityStates.all(sessionId, fromT, toT);
+    } else {
+      rows = stmts.queryConnectivityStatesDownsampled.all(sessionId, fromT, toT, resn);
+    }
+
+    const states = rows.map((r) => ({
+      time_s: r.time_s,
+      connections: JSON.parse(r.connections),
+    }));
+
+    res.json({ states, count: states.length });
+  } catch (err) {
+    console.error('GET connectivity-states error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/**
+ * DELETE /sessions/:id/connectivity-states
+ */
+router.delete('/connectivity-states', (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    stmts.deleteConnectivityStates.run(sessionId);
+    res.json({ message: 'Connectivity states deleted' });
+  } catch (err) {
+    console.error('DELETE connectivity-states error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/* ═══════════════  CONNECTION WINDOWS  ═══════════════ */
+
+/**
+ * POST /sessions/:id/connection-windows
+ * Body: { windows: [{ id, pair_id, tx_node_id, rx_node_id, sim_start, sim_end, closed }] }
+ */
+router.post('/connection-windows', (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { windows } = req.body;
+
+    if (!Array.isArray(windows) || !windows.length) {
+      return res.status(400).json({ error: 'windows array required' });
+    }
+
+    const rows = windows.map((w) => ({
+      session_id: sessionId,
+      id: w.id,
+      pair_id: w.pair_id ?? w.pairId ?? null,
+      tx_node_id: w.tx_node_id ?? w.txNodeId ?? null,
+      rx_node_id: w.rx_node_id ?? w.rxNodeId ?? null,
+      sim_start: w.sim_start ?? w.simStart ?? null,
+      sim_end: w.sim_end ?? w.simEnd ?? null,
+      closed: w.closed ? 1 : 0,
+    }));
+
+    bulkInsertConnectionWindows(rows);
+    res.json({ inserted: rows.length });
+  } catch (err) {
+    console.error('POST connection-windows error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/**
+ * GET /sessions/:id/connection-windows?node_id=X
+ */
+router.get('/connection-windows', (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { node_id } = req.query;
+
+    let rows;
+    if (node_id !== undefined) {
+      rows = stmts.queryConnectionWindowsByNode.all(sessionId, String(node_id), String(node_id));
+    } else {
+      rows = stmts.queryConnectionWindows.all(sessionId);
+    }
+
+    const windows = rows.map((r) => ({
+      id: r.id,
+      pair_id: r.pair_id,
+      tx_node_id: r.tx_node_id,
+      rx_node_id: r.rx_node_id,
+      sim_start: r.sim_start,
+      sim_end: r.sim_end,
+      closed: !!r.closed,
+    }));
+
+    res.json({ windows, count: windows.length });
+  } catch (err) {
+    console.error('GET connection-windows error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/**
+ * DELETE /sessions/:id/connection-windows
+ */
+router.delete('/connection-windows', (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    stmts.deleteConnectionWindows.run(sessionId);
+    res.json({ message: 'Connection windows deleted' });
+  } catch (err) {
+    console.error('DELETE connection-windows error:', err);
     res.status(500).json({ error: String(err) });
   }
 });

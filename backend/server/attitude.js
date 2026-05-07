@@ -404,6 +404,7 @@ function parentAxisToVec(axis) {
  * @param {number}   utcMs
  * @param {Object}   prevComponentAngles – { compId: { a1, a2 } } from previous step
  * @param {number}   dt               – timestep seconds
+ * @param {Object}   [connectivityAssignments] – { compId: { x, y, z } } target ECI km positions from connectivity
  * @returns {Object} { compId: { a1, a2?, targetId } }
  */
 function computeComponentAttitudes(
@@ -416,6 +417,7 @@ function computeComponentAttitudes(
   utcMs,
   prevComponentAngles,
   dt,
+  connectivityAssignments,
 ) {
   if (!components || components.length === 0) return {};
 
@@ -446,6 +448,57 @@ function computeComponentAttitudes(
         targetId: null,
       };
       continue;
+    }
+
+    // Connectivity mode — pointing driven by connectivity assignments
+    // The connectivityAssignments map provides the target ECI position
+    // for each laser component that has an active connection.
+    if (comp.pointingMode === 'connectivity' && connectivityAssignments) {
+      const assignment = connectivityAssignments[comp.id];
+      if (assignment) {
+        // We have a target position from connectivity — use it
+        const dirECI = vec3Normalize(vec3Sub([assignment.x, assignment.y, assignment.z], posECI_km));
+        const dirBody = quatRotateVec(bodyQInv, dirECI);
+        const pAxis = parentAxisToVec(comp.parentAxis || '+Y');
+
+        // 2-DOF gimbal angles
+        const dot = vec3Dot(dirBody, pAxis);
+        const proj = [
+          dirBody[0] - dot * pAxis[0],
+          dirBody[1] - dot * pAxis[1],
+          dirBody[2] - dot * pAxis[2],
+        ];
+        const projLen = vec3Length(proj);
+
+        let desiredA2 = Math.atan2(dot, projLen) * (180 / Math.PI);
+        let desiredA1 = 0;
+        if (projLen > 1e-10) {
+          let refVec;
+          if (Math.abs(pAxis[1]) > 0.9) refVec = [1, 0, 0];
+          else if (Math.abs(pAxis[0]) > 0.9) refVec = [0, 1, 0];
+          else refVec = [1, 0, 0];
+          const rDot = vec3Dot(refVec, pAxis);
+          refVec = vec3Normalize([
+            refVec[0] - rDot * pAxis[0],
+            refVec[1] - rDot * pAxis[1],
+            refVec[2] - rDot * pAxis[2],
+          ]);
+          const perpVec = vec3Normalize(vec3Cross(pAxis, refVec));
+          const projNorm = vec3Normalize(proj);
+          const c = vec3Dot(projNorm, refVec);
+          const s = vec3Dot(projNorm, perpVec);
+          desiredA1 = Math.atan2(s, c) * (180 / Math.PI);
+        }
+
+        desiredA1 = clampRange(desiredA1, a1Min, a1Max);
+        desiredA2 = clampRange(desiredA2, a2Min, a2Max);
+        const a1 = slewLimitAngle(prev.a1, desiredA1, slewRate, dt);
+        const a2 = slewLimitAngle(prev.a2 || 0, desiredA2, slewRate, dt);
+
+        result[comp.id] = { a1, a2, targetId: assignment.targetId || 'connectivity' };
+        continue;
+      }
+      // No connectivity assignment for this laser — fall through to default behavior
     }
 
     // Resolve target direction in ECI

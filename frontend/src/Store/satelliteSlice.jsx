@@ -29,6 +29,7 @@ export const defaultBodyFrame = () => ({
  *   'default' – type-specific default (sun for panels, nadir for lasers)
  *   'target'  – walk pointingTargets priority list (same schema as body)
  *   'fixed'   – locked at fixedAnglesDeg
+ *   'connectivity' – driven by link connectivity output (laser pointers only)
  */
 let _componentIdCounter = 0;
 export const createComponent = (overrides = {}) => ({
@@ -54,7 +55,7 @@ export const createComponent = (overrides = {}) => ({
   },
   slewRateDegSec: 5,                 // component slew rate (°/s)
   // Pointing
-  pointingMode: 'default',           // 'default' | 'target' | 'fixed'
+  pointingMode: 'default',           // 'default' | 'target' | 'fixed' | 'connectivity'
   pointingTargets: [],               // same schema as body-level targets
   fixedAnglesDeg: { a1: 0, a2: 0 }, // used when pointingMode === 'fixed'
   ...overrides,

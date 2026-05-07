@@ -82,11 +82,33 @@ db.exec(`
     PRIMARY KEY (session_id, id)
   );
 
+  CREATE TABLE IF NOT EXISTS connectivity_states (
+    session_id   TEXT NOT NULL,
+    time_s       REAL NOT NULL,
+    connections  TEXT,
+    PRIMARY KEY (session_id, time_s)
+  ) WITHOUT ROWID;
+
+  CREATE TABLE IF NOT EXISTS connection_windows (
+    session_id  TEXT NOT NULL,
+    id          TEXT NOT NULL,
+    pair_id     TEXT,
+    tx_node_id  TEXT,
+    rx_node_id  TEXT,
+    sim_start   REAL,
+    sim_end     REAL,
+    closed      INTEGER DEFAULT 0,
+    PRIMARY KEY (session_id, id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_trace_session_sat_time
     ON trace_points(session_id, sat_id, time_s);
 
   CREATE INDEX IF NOT EXISTS idx_links_session_time
     ON link_states(session_id, time_s);
+
+  CREATE INDEX IF NOT EXISTS idx_connectivity_session_time
+    ON connectivity_states(session_id, time_s);
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user
     ON sessions(user_id);
@@ -183,6 +205,44 @@ const stmts = {
   deleteContactWindows: db.prepare(`
     DELETE FROM contact_windows WHERE session_id = ?
   `),
+
+  /* Connectivity states */
+  insertConnectivityState: db.prepare(`
+    INSERT OR REPLACE INTO connectivity_states (session_id, time_s, connections)
+    VALUES (?, ?, ?)
+  `),
+  queryConnectivityStates: db.prepare(`
+    SELECT * FROM connectivity_states
+    WHERE session_id = ? AND time_s BETWEEN ? AND ?
+    ORDER BY time_s
+  `),
+  queryConnectivityStatesDownsampled: db.prepare(`
+    SELECT * FROM connectivity_states
+    WHERE session_id = ? AND time_s BETWEEN ? AND ?
+      AND CAST(time_s AS INTEGER) % ? = 0
+    ORDER BY time_s
+  `),
+  deleteConnectivityStates: db.prepare(`
+    DELETE FROM connectivity_states WHERE session_id = ?
+  `),
+
+  /* Connection windows */
+  insertConnectionWindow: db.prepare(`
+    INSERT OR REPLACE INTO connection_windows
+    (session_id, id, pair_id, tx_node_id, rx_node_id, sim_start, sim_end, closed)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `),
+  queryConnectionWindows: db.prepare(`
+    SELECT * FROM connection_windows WHERE session_id = ? ORDER BY sim_start
+  `),
+  queryConnectionWindowsByNode: db.prepare(`
+    SELECT * FROM connection_windows
+    WHERE session_id = ? AND (tx_node_id = ? OR rx_node_id = ?)
+    ORDER BY sim_start
+  `),
+  deleteConnectionWindows: db.prepare(`
+    DELETE FROM connection_windows WHERE session_id = ?
+  `),
 };
 
 /* ── Bulk insert helpers (wrapped in transactions) ────────── */
@@ -215,10 +275,27 @@ const bulkInsertContactWindows = db.transaction((rows) => {
   }
 });
 
+const bulkInsertConnectivityStates = db.transaction((rows) => {
+  for (const r of rows) {
+    stmts.insertConnectivityState.run(r.session_id, r.time_s, r.connections);
+  }
+});
+
+const bulkInsertConnectionWindows = db.transaction((rows) => {
+  for (const r of rows) {
+    stmts.insertConnectionWindow.run(
+      r.session_id, r.id, r.pair_id, r.tx_node_id, r.rx_node_id,
+      r.sim_start, r.sim_end, r.closed ? 1 : 0,
+    );
+  }
+});
+
 const clearSessionData = db.transaction((sessionId) => {
   stmts.deleteTracePoints.run(sessionId);
   stmts.deleteLinkStates.run(sessionId);
   stmts.deleteContactWindows.run(sessionId);
+  stmts.deleteConnectivityStates.run(sessionId);
+  stmts.deleteConnectionWindows.run(sessionId);
 });
 
 /* ── Exports ──────────────────────────────────────────────── */
@@ -228,5 +305,7 @@ module.exports = {
   bulkInsertTracePoints,
   bulkInsertLinkStates,
   bulkInsertContactWindows,
+  bulkInsertConnectivityStates,
+  bulkInsertConnectionWindows,
   clearSessionData,
 };

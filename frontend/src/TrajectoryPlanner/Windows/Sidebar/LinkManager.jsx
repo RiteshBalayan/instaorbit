@@ -10,7 +10,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setLinks, deleteLink as deleteLinkAction, setGlobalThresholds } from '../../../Store/communicationSlice';
+import { setLinks, deleteLink as deleteLinkAction, setGlobalThresholds, setMaxConnectionsPerNode } from '../../../Store/communicationSlice';
 import {
   defaultParams,
   computeLink,
@@ -628,6 +628,7 @@ const LinkManager = () => {
   const savedLinks = useSelector((s) => s.communication.links);
   const contactWindows = useSelector((s) => s.communication.contactWindows);
   const globalThresholds = useSelector((s) => s.communication.globalThresholds || { minElevationDeg: 10, maxDistanceKm: null });
+  const maxConnectionsPerNode = useSelector((s) => s.communication.maxConnectionsPerNode ?? 1);
   const renderTime = useSelector((s) => s.timer.RenderTime);
   const starttime = useSelector((s) => s.timer.starttime);
 
@@ -709,6 +710,35 @@ const LinkManager = () => {
     persistLinks(updated);
   };
 
+  // ── Global "Connect All Sats" — full-mesh between every satellite pair ──
+  const satEndpoints = useMemo(() => endpoints.filter((e) => e.type === 'sat'), [endpoints]);
+  const allSatPairs = useMemo(() => {
+    const pairs = [];
+    for (let i = 0; i < satEndpoints.length; i++) {
+      for (let j = i + 1; j < satEndpoints.length; j++) {
+        pairs.push([satEndpoints[i].id, satEndpoints[j].id]);
+      }
+    }
+    return pairs;
+  }, [satEndpoints]);
+  const hasLinkBetween = useCallback(
+    (a, b) => linkConfigs.some((l) => (l.txId === a && l.rxId === b) || (l.txId === b && l.rxId === a)),
+    [linkConfigs],
+  );
+  const allSatsConnected = allSatPairs.length > 0 && allSatPairs.every(([a, b]) => hasLinkBetween(a, b));
+
+  const handleConnectAllSats = () => {
+    const pairsToAdd = allSatPairs.filter(([a, b]) => !hasLinkBetween(a, b));
+    if (pairsToAdd.length > 0) handleAddMany(pairsToAdd);
+  };
+  const handleDisconnectAllSats = () => {
+    const satIds = new Set(satEndpoints.map((e) => e.id));
+    const idsToDelete = linkConfigs
+      .filter((l) => satIds.has(l.txId) && satIds.has(l.rxId))
+      .map((l) => l.id);
+    if (idsToDelete.length > 0) handleDeleteMany(idsToDelete);
+  };
+
   // Summary counts
   const activeCount = linkResults.filter((r) => r.ready && r.inLink).length;
   const totalCount = linkConfigs.length;
@@ -725,9 +755,23 @@ const LinkManager = () => {
             </span>
           )}
         </div>
-        <button className="lm-btn lm-btn-primary lm-btn-sm" onClick={() => setShowAdd(!showAdd)} disabled={endpoints.length < 2}>
-          <IconPlus /> Add
-        </button>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            className={`lm-btn lm-btn-sm ${allSatsConnected ? 'lm-btn-danger-solid' : 'lm-btn-primary'}`}
+            onClick={allSatsConnected ? handleDisconnectAllSats : handleConnectAllSats}
+            disabled={satEndpoints.length < 2}
+            title={
+              allSatsConnected
+                ? 'Remove every satellite-to-satellite link'
+                : 'Create a link between every pair of satellites'
+            }
+          >
+            {allSatsConnected ? 'Disconnect All Sats' : 'Connect All Sats'}
+          </button>
+          <button className="lm-btn lm-btn-primary lm-btn-sm" onClick={() => setShowAdd(!showAdd)} disabled={endpoints.length < 2}>
+            <IconPlus /> Add
+          </button>
+        </div>
       </div>
 
       {/* ── Quick-add popover ───────────────────────────── */}
@@ -755,6 +799,22 @@ const LinkManager = () => {
             <input type="number" className="lm-input-sm" value={globalThresholds.maxDistanceKm ?? ''} placeholder="∞" min={0} step={100}
               style={{ width:'70px' }}
               onChange={(e) => dispatch(setGlobalThresholds({ maxDistanceKm: e.target.value ? Number(e.target.value) : null }))} />
+          </label>
+          <label
+            style={{ fontSize:'11px',color:'#9ca3af',display:'flex',alignItems:'center',gap:'4px' }}
+            title="Each satellite/ground node can be assigned up to this many simultaneous links by the connectivity solver. Set this BEFORE running connectivity."
+          >
+            Max Connections / Sat
+            <input
+              type="number"
+              className="lm-input-sm"
+              value={maxConnectionsPerNode}
+              min={1}
+              max={64}
+              step={1}
+              style={{ width:'50px' }}
+              onChange={(e) => dispatch(setMaxConnectionsPerNode(e.target.value))}
+            />
           </label>
         </div>
       </div>

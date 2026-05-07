@@ -43,25 +43,52 @@ export const useTimeline = () => {
   const isRunning = useSelector((state) => state.timer.isRunning);
   const linkHistory = useSelector((state) => state.communication?.linkHistory || []);
   const contactWindows = useSelector((state) => state.communication?.contactWindows || []);
+  const connectionWindows = useSelector((state) => state.communication?.connectionWindows || []);
+  const linkDisplayMode = useSelector((state) => state.communication?.linkDisplayMode || 'connected');
   const satellites = useSelector((state) => state.satellites?.satellitesConfig || []);
   const groundStations = useSelector((state) => state.groundStations?.groundStations || []);
 
+  const connectionWindowsRef = useRef([]);
+  const linkDisplayModeRef = useRef('connected');
+
   // Keep refs in sync (cheap — no re-renders)
   contactWindowsRef.current = contactWindows;
+  connectionWindowsRef.current = connectionWindows;
   linkHistoryRef.current = linkHistory;
   satellitesRef.current = satellites;
   groundStationsRef.current = groundStations;
+  linkDisplayModeRef.current = linkDisplayMode;
 
   // ── Helper: full rebuild from current refs ──────────────────
   const rebuildTimeline = () => {
     const container = timelineRef.current;
     if (!container) return;
 
-    const cw = contactWindowsRef.current;
+    const rawCw = contactWindowsRef.current;
+    const rawConnW = connectionWindowsRef.current;
     const sats = satellitesRef.current;
     const gs = groundStationsRef.current;
     const lh = linkHistoryRef.current;
     const filter = filterEndpointRef.current;
+    const st = starttime || Date.now();
+    const displayMode = linkDisplayModeRef.current;
+
+    // Respect linkDisplayMode:
+    // 'connected' → prefer connectionWindows (connectivity solver output)
+    // 'available' → use contactWindows (all line-of-sight links)
+    let cw;
+    if (displayMode === 'connected' && rawConnW.length > 0) {
+      cw = rawConnW.map(w => ({
+        ...w,
+        txId: w.txParentId || w.txId,
+        rxId: w.rxParentId || w.rxId,
+        // Convert elapsed seconds → absolute timestamp (ms) if needed
+        simStart: w.simStart < 1e9 ? st + w.simStart * 1000 : w.simStart,
+        simEnd:   w.simEnd   < 1e9 ? st + w.simEnd   * 1000 : w.simEnd,
+      }));
+    } else {
+      cw = rawCw;
+    }
 
     // Filter contact windows by endpoint if filter is set
     const filteredCw = filter
@@ -94,7 +121,7 @@ export const useTimeline = () => {
   // here — link bars are added by the periodic refresh below.
   useEffect(() => {
     rebuildTimeline();
-  }, [particles.length, starttime, showSatBars, filterEndpoint]);
+  }, [particles.length, starttime, showSatBars, filterEndpoint, connectionWindows.length, contactWindows.length, linkDisplayMode]);
 
   // ── 2.  Refresh link bars when simulation pauses ────────────
   // When the user stops the simulation (isRunning false → true → false),
